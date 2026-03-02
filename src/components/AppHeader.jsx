@@ -765,7 +765,7 @@ class AppHeader extends React.Component {
             }}
           >
             <span className={styles.langSelector}>
-              {LANG_OPTIONS.find(o => o.value === getLang())?.short || 'zh'}
+              {LANG_OPTIONS.find(o => o.value === getLang())?.label || '简体中文'}
             </span>
           </Dropdown>
           {cliMode && viewMode === 'chat' && (

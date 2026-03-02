@@ -2818,6 +2818,30 @@ const i18nData = {
     "no": "Velg et element til venstre", "pt-BR": "Selecione um item à esquerda",
     "th": "เลือกรายการทางซ้าย", "tr": "Soldan bir öğe seçin",
     "uk": "Виберіть елемент ліворуч"
+  },
+  "ui.context.history": {
+    "zh": "历史", "en": "History", "zh-TW": "歷史",
+    "ko": "기록", "ja": "履歴", "de": "Verlauf",
+    "es": "Historial", "fr": "Historique", "it": "Cronologia",
+    "da": "Historik", "pl": "Historia", "ru": "История",
+    "ar": "التاريخ", "no": "Historikk", "pt-BR": "Histórico",
+    "th": "ประวัติ", "tr": "Geçmiş", "uk": "Історія"
+  },
+  "ui.context.currentTurn": {
+    "zh": "当前轮次", "en": "Current Turn", "zh-TW": "當前輪次",
+    "ko": "현재 턴", "ja": "現在のターン", "de": "Aktueller Durchgang",
+    "es": "Turno actual", "fr": "Tour actuel", "it": "Turno corrente",
+    "da": "Aktuel tur", "pl": "Bieżąca tura", "ru": "Текущий ход",
+    "ar": "الدور الحالي", "no": "Gjeldende tur", "pt-BR": "Turno atual",
+    "th": "รอบปัจจุบัน", "tr": "Mevcut tur", "uk": "Поточний хід"
+  },
+  "ui.context.historyTurnNoTime": {
+    "zh": "历史轮次 {n}", "en": "Turn {n}", "zh-TW": "歷史輪次 {n}",
+    "ko": "턴 {n}", "ja": "ターン {n}", "de": "Runde {n}",
+    "es": "Turno {n}", "fr": "Tour {n}", "it": "Turno {n}",
+    "da": "Tur {n}", "pl": "Tura {n}", "ru": "Ход {n}",
+    "ar": "الدور {n}", "no": "Tur {n}", "pt-BR": "Turno {n}",
+    "th": "รอบ {n}", "tr": "Tur {n}", "uk": "Хід {n}"
   }
 };
 

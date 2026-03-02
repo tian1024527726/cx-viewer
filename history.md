@@ -12,6 +12,17 @@
 - Fix: raw-to-chat scroll positioning — switching from raw mode with a selected request now correctly scrolls to the corresponding chat message
 - i18n: added `ui.chatInput.hintTab` entry for all supported languages
 
+## 1.3.9 (2026-03-02)
+
+- Feat: Context Tab — turn-based conversation view with history collapsing and current turn auto-selection
+- Feat: Context Tab — response inheritance: last turn's assistant blocks overridden with actual API response content
+- Feat: Context Tab — timestamps (HH:MM:SS) shown in sidebar items and content area role headers
+- Feat: Context Tab — thinking blocks (collapsible), tool_use/tool_result blocks with JSON viewer, per-block translation
+- Feat: Context Tab — system blocks and tools section rendered with block-level components
+- Feat: Language selector shows full language name instead of short code
+- Fix: removed "View in conversation" button from Context tab bar extra content
+- Chore: add .idea/ to .gitignore
+
 ## 1.3.8 (2026-03-01)
 
 - Feat: inflight request detection — write request entry before fetch, deduplicate by timestamp+url on read; live spinner and popover for in-flight requests
