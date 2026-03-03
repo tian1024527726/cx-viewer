@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.14 (2026-03-04)
+
+- Fix: shared PTY multi-client rendering corruption — only the active client (last to send input) controls PTY size, preventing PC/mobile resize conflicts
+
 ## 1.4.13 (2026-03-04)
 
 - Feat: FileExplorer selected file highlight — active file shows background matching hover state

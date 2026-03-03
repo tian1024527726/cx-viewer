@@ -998,6 +998,12 @@ async function setupTerminalWebSocket(httpServer) {
 
     const wss = new WebSocketServer({ noServer: true });
 
+    // 多客户端共享 PTY 的尺寸冲突解决：
+    // 只有"活跃客户端"（最近发送 input 的）的尺寸才会应用到 PTY，
+    // 其他客户端的 resize 仅存储不生效，避免 PC/移动端尺寸互相覆盖导致渲染混乱。
+    let activeWs = null;        // 当前活跃的 WebSocket 连接
+    const clientSizes = new Map(); // ws → { cols, rows }
+
     httpServer.on('upgrade', (req, socket, head) => {
       const pathname = new URL(req.url, `http://${req.headers.host}`).pathname;
       if (pathname === '/ws/terminal') {
@@ -1039,9 +1045,24 @@ async function setupTerminalWebSocket(httpServer) {
         try {
           const msg = JSON.parse(raw.toString());
           if (msg.type === 'input') {
+            // 发送 input 的客户端成为活跃客户端
+            if (activeWs !== ws) {
+              activeWs = ws;
+              // 切换活跃客户端时，将 PTY 调整为该客户端的尺寸
+              const size = clientSizes.get(ws);
+              if (size) {
+                resizePty(size.cols, size.rows);
+              }
+            }
             writeToPty(msg.data);
           } else if (msg.type === 'resize') {
-            resizePty(msg.cols, msg.rows);
+            // 存储该客户端的尺寸
+            clientSizes.set(ws, { cols: msg.cols, rows: msg.rows });
+            // 仅活跃客户端（或首个客户端）的 resize 直接生效
+            if (activeWs === ws || activeWs === null) {
+              activeWs = ws;
+              resizePty(msg.cols, msg.rows);
+            }
           }
         } catch {}
       });
@@ -1049,6 +1070,18 @@ async function setupTerminalWebSocket(httpServer) {
       ws.on('close', () => {
         removeDataListener();
         removeExitListener();
+        clientSizes.delete(ws);
+        if (activeWs === ws) {
+          // 活跃客户端断开，将控制权交给剩余的某个客户端
+          activeWs = null;
+          for (const [remainWs, size] of clientSizes) {
+            if (remainWs.readyState === 1) {
+              activeWs = remainWs;
+              resizePty(size.cols, size.rows);
+              break;
+            }
+          }
+        }
       });
     });
   } catch (err) {
