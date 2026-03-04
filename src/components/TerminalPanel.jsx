@@ -400,6 +400,38 @@ class TerminalPanel extends React.Component {
     }
   };
 
+  /**
+   * 移动端虚拟按键触摸处理：区分点击与拖动滚动。
+   * 仅当触摸位移 < 阈值时才视为点击并触发按键，否则视为滚动不触发。
+   */
+  _vkTouchStart = (e) => {
+    const touch = e.touches[0];
+    this._vkStartX = touch.clientX;
+    this._vkStartY = touch.clientY;
+    this._vkMoved = false;
+    this._vkTarget = e.currentTarget;
+    this._vkTarget.classList.add(styles.virtualKeyPressed);
+  };
+
+  _vkTouchMove = (e) => {
+    if (this._vkMoved) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - this._vkStartX;
+    const dy = touch.clientY - this._vkStartY;
+    if (dx * dx + dy * dy > 64) { // 8px 阈值
+      this._vkMoved = true;
+    }
+  };
+
+  _vkTouchEnd = (seq, e) => {
+    e.preventDefault(); // 阻止后续 ghost click
+    this._vkTarget?.classList.remove(styles.virtualKeyPressed);
+    this._vkTarget = null;
+    if (!this._vkMoved) {
+      this.handleVirtualKey(seq);
+    }
+  };
+
   render() {
     return (
       <div className={styles.terminalPanel}>
@@ -410,7 +442,9 @@ class TerminalPanel extends React.Component {
               <button
                 key={k.label}
                 className={styles.virtualKey}
-                onTouchStart={(e) => { e.preventDefault(); this.handleVirtualKey(k.seq); }}
+                onTouchStart={this._vkTouchStart}
+                onTouchMove={this._vkTouchMove}
+                onTouchEnd={(e) => this._vkTouchEnd(k.seq, e)}
               >
                 {k.label}
               </button>
