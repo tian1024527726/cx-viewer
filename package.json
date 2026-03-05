@@ -1,6 +1,6 @@
 {
   "name": "cc-viewer",
-  "version": "1.4.18",
+  "version": "1.4.19",
   "description": "Claude Code Logger visualization management tool",
   "license": "MIT",
   "main": "server.js",
@@ -55,6 +55,7 @@
     "plugin-loader.js",
     "pty-manager.js",
     "locales/",
+    "workspace-registry.js",
     "concepts/"
   ],
   "devDependencies": {

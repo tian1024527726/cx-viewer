@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.19 (2026-03-05)
+
+- Fix: include `workspace-registry.js` in npm package files
+
 ## 1.4.18 (2026-03-05)
 
 - Fix: duplicate request entries in log — in-flight requests now marked with `inProgress: true`, removed on completion to preserve original payload
