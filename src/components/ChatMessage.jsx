@@ -162,6 +162,29 @@ class ChatMessage extends React.Component {
     if (tu.name === 'Bash') {
       const cmd = inp.command || '';
       const desc = inp.description || '';
+      const lineCount = cmd.split('\n').length;
+
+      // 如果命令超过5行，使用折叠组件
+      if (lineCount > 5) {
+        return (
+          <div key={tu.id} className={styles.toolBox}>
+            <Text strong className={styles.toolLabel}>
+              Bash{desc ? <span className={styles.descSpan}> — {desc}</span> : ''}
+            </Text>
+            <Collapse
+              ghost
+              size="small"
+              items={[{
+                key: '1',
+                label: <Text type="secondary" className={styles.bashCollapseLabel}>{t('ui.bashCommand')} ({lineCount} {t('ui.lines')})</Text>,
+                children: codePre(cmd, '#c9d1d9'),
+              }]}
+              className={styles.collapseMargin}
+            />
+          </div>
+        );
+      }
+
       return box(
         <>Bash{desc ? <span className={styles.descSpan}> — {desc}</span> : ''}</>,
         codePre(cmd, '#c9d1d9')

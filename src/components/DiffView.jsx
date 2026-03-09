@@ -52,6 +52,11 @@ function DiffView({ file_path, old_string, new_string, startLine = 1 }) {
   const digits = String(maxLineNum).length;
   const lineNumWidth = digits * 8 + 10;
 
+  const rowCls = (type) =>
+    type === 'del' ? styles.rowDel
+    : type === 'add' ? styles.rowAdd
+    : styles.rowContext;
+
   return (
     <div className={styles.wrapper}>
       <div className={styles.header}>
@@ -71,26 +76,30 @@ function DiffView({ file_path, old_string, new_string, startLine = 1 }) {
         </span>
       </div>
       {!collapsed && (
-        <div className={styles.tableWrap}>
-          <table className={styles.diffTable} style={{ '--line-num-w': `${lineNumWidth}px` }}>
-            <tbody>
-              {diffLines.map((dl, i) => {
-                const rowClass =
-                  dl.type === 'del' ? styles.rowDel
-                  : dl.type === 'add' ? styles.rowAdd
-                  : styles.rowContext;
-                const prefix = dl.type === 'del' ? '-' : dl.type === 'add' ? '+' : ' ';
-                return (
-                  <tr key={i} className={rowClass}>
-                    <td className={styles.lineNumOld}>{dl.oldNum ?? ''}</td>
-                    <td className={styles.lineNumNew}>{dl.newNum ?? ''}</td>
-                    <td className={styles.prefix}>{prefix}</td>
-                    <td className={styles.lineContent}>{dl.text}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className={styles.diffBody}>
+          {/* Fixed left gutter: line numbers + prefix */}
+          <div className={styles.gutter} style={{ '--line-num-w': `${lineNumWidth}px` }}>
+            {diffLines.map((dl, i) => {
+              const prefix = dl.type === 'del' ? '-' : dl.type === 'add' ? '+' : ' ';
+              return (
+                <div key={i} className={`${styles.gutterRow} ${rowCls(dl.type)}`}>
+                  <span className={styles.lineNumOld} style={{ width: lineNumWidth }}>{dl.oldNum ?? ''}</span>
+                  <span className={styles.lineNumNew} style={{ width: lineNumWidth }}>{dl.newNum ?? ''}</span>
+                  <span className={styles.prefix}>{prefix}</span>
+                </div>
+              );
+            })}
+          </div>
+          {/* Scrollable code area */}
+          <div className={styles.codeWrap}>
+            <div className={styles.codeInner}>
+              {diffLines.map((dl, i) => (
+                <div key={i} className={`${styles.codeLine} ${rowCls(dl.type)}`}>
+                  {dl.text}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>

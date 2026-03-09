@@ -1,12 +1,19 @@
 # Changelog
 
+## 1.5.9 (2026-03-09)
+
+- Fix: DiffView restructured from single table to fixed gutter + scrollable code layout — line numbers and +/- prefix no longer shift on mobile horizontal scroll
+- Fix: DiffView code background colors (red/green) now extend to full row width — fills viewport when code is short, follows longest line when code overflows
+
 ## 1.5.8 (2026-03-09)
 
 - Feat: mobile chat list performance optimization — limit rendering to last 300 items with "load more" button (loads 100 at a time), prevents UI lag with 500+ messages
 - Feat: incremental SSE loading — client sends cached metadata (since/cc) to server, receives only delta entries instead of full reload
+- Feat: auto-collapse long bash commands — bash commands with more than 5 lines are automatically collapsed in chat view to improve readability
 - Improve: silent incremental updates — no loading overlay when cache exists, seamless merge of new data
 - Improve: mobile "stick to bottom" button — 2x larger size (120px height, 24px font) for better touch targets
 - i18n: add "ui.loadMoreHistory" with {count} placeholder across 17 languages
+- i18n: add "ui.bashCommand" and "ui.lines" for bash command collapse feature
 
 ## 1.5.7 (2026-03-09)
 

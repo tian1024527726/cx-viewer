@@ -41,98 +41,89 @@
   color: #6b7280;
 }
 
-.tableWrap {
-  overflow-x: auto;
-}
+/* === Two-column layout: fixed gutter + scrollable code === */
 
-.diffTable {
-  border-collapse: collapse;
+.diffBody {
+  display: flex;
   font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Menlo', 'Consolas', monospace;
   font-size: 12px;
   line-height: 1.5;
 }
 
-.diffTable td {
-  padding: 0 4px;
-  white-space: pre;
-  vertical-align: top;
+/* Left gutter: line numbers + prefix, never scrolls horizontally */
+.gutter {
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.gutterRow {
+  display: flex;
+  height: 18px; /* 12px * 1.5 line-height */
 }
 
 .lineNumOld,
 .lineNumNew {
-  width: var(--line-num-w, 40px);
-  min-width: var(--line-num-w, 40px);
-  max-width: var(--line-num-w, 40px);
   text-align: right;
   color: #484f58;
-  user-select: none;
-  padding-right: 6px;
-  position: sticky;
-  z-index: 2;
-}
-
-.lineNumOld {
-  left: 0;
-}
-
-.lineNumNew {
-  left: var(--line-num-w, 40px);
+  padding: 0 6px 0 2px;
+  box-sizing: border-box;
 }
 
 .prefix {
   width: 16px;
   min-width: 16px;
-  max-width: 16px;
   text-align: center;
-  user-select: none;
   font-weight: 600;
-  position: sticky;
-  left: calc(var(--line-num-w, 40px) * 2);
-  z-index: 2;
 }
 
-.lineContent {
-  white-space: pre;
+/* Right code area: horizontally scrollable */
+.codeWrap {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
 }
+
+/* Inner container: stretches to max(100%, longest line) */
+.codeInner {
+  display: inline-block;
+  min-width: 100%;
+}
+
+.codeLine {
+  white-space: pre;
+  padding: 0 4px;
+  height: 18px; /* must match gutterRow height */
+}
+
+/* === Row type colors === */
 
 .rowContext {
   background: #1a1a2e;
-}
-.rowContext td {
   color: #8b949e;
-}
-.rowContext .lineNumOld,
-.rowContext .lineNumNew,
-.rowContext .prefix {
-  background: #1a1a2e;
 }
 
 .rowDel {
   background: rgba(239, 68, 68, 0.12);
-}
-.rowDel td {
   color: #fca5a5;
 }
-.rowDel .prefix {
-  color: #ef4444;
-}
-.rowDel .lineNumOld,
-.rowDel .lineNumNew,
-.rowDel .prefix {
+.rowDel.gutterRow {
   background: #341f31;
+}
+.rowDel.gutterRow .prefix {
+  color: #ef4444;
 }
 
 .rowAdd {
   background: rgba(34, 197, 94, 0.12);
-}
-.rowAdd td {
   color: #86efac;
 }
-.rowAdd .prefix {
+.rowAdd.gutterRow {
+  background: #1b2f34;
+}
+.rowAdd.gutterRow .prefix {
   color: #22c55e;
 }
-.rowAdd .lineNumOld,
-.rowAdd .lineNumNew,
-.rowAdd .prefix {
-  background: #1b2f34;
+
+.rowContext.gutterRow {
+  background: #1a1a2e;
 }

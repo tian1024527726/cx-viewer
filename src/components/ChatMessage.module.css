@@ -201,6 +201,11 @@
   font-size: 12px;
 }
 
+.bashCollapseLabel {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
 /* === Tool call box === */
 
 .toolBox {
