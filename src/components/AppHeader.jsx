@@ -1,5 +1,5 @@
 import React from 'react';
-import { Space, Tag, Button, Badge, Typography, Dropdown, Popover, Modal, Collapse, Drawer, Switch, Tabs, Spin, Tooltip, Input, message } from 'antd';
+import { Space, Tag, Button, Badge, Typography, Dropdown, Popover, Modal, Collapse, Drawer, Switch, Tabs, Spin, Tooltip, Input, Table, message } from 'antd';
 import { MessageOutlined, FileTextOutlined, ImportOutlined, DownOutlined, DashboardOutlined, ExportOutlined, DownloadOutlined, SettingOutlined, BarChartOutlined, CodeOutlined, GlobalOutlined, CopyOutlined, ApiOutlined, DeleteOutlined, ReloadOutlined, PlusOutlined } from '@ant-design/icons';
 import { QRCodeCanvas } from 'qrcode.react';
 import { formatTokenCount, computeTokenStats, computeCacheRebuildStats, computeToolUsageStats, computeSkillUsageStats } from '../utils/helpers';
@@ -36,7 +36,7 @@ const { Text } = Typography;
 class AppHeader extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { countdownText: '', promptModalVisible: false, promptData: [], promptViewMode: 'original', settingsDrawerVisible: false, globalSettingsVisible: false, projectStatsVisible: false, projectStats: null, projectStatsLoading: false, localUrl: '', pluginModalVisible: false, pluginsList: [], pluginsDir: '', deleteConfirmVisible: false, deleteTarget: null };
+    this.state = { countdownText: '', promptModalVisible: false, promptData: [], promptViewMode: 'original', settingsDrawerVisible: false, globalSettingsVisible: false, projectStatsVisible: false, projectStats: null, projectStatsLoading: false, localUrl: '', pluginModalVisible: false, pluginsList: [], pluginsDir: '', deleteConfirmVisible: false, deleteTarget: null, processModalVisible: false, processList: [], processLoading: false };
     this._rafId = null;
     this._expiredTimer = null;
     this.updateCountdown = this.updateCountdown.bind(this);
@@ -637,6 +637,48 @@ class AppHeader extends React.Component {
     input.click();
   };
 
+  fetchProcesses = () => {
+    this.setState({ processLoading: true });
+    fetch(apiUrl('/api/ccv-processes'))
+      .then(r => r.json())
+      .then(data => {
+        this.setState({ processList: data.processes || [], processLoading: false });
+      })
+      .catch(() => {
+        this.setState({ processList: [], processLoading: false });
+      });
+  };
+
+  handleShowProcesses = () => {
+    this.setState({ processModalVisible: true });
+    this.fetchProcesses();
+  };
+
+  handleKillProcess = (pid) => {
+    Modal.confirm({
+      title: t('ui.processManagement.killConfirm'),
+      onOk: () => {
+        fetch(apiUrl('/api/ccv-processes/kill'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pid }),
+        })
+          .then(r => r.json())
+          .then(data => {
+            if (data.ok) {
+              message.success(t('ui.processManagement.killed'));
+              this.fetchProcesses();
+            } else {
+              message.error(data.error || t('ui.processManagement.killFailed'));
+            }
+          })
+          .catch(() => {
+            message.error(t('ui.processManagement.killFailed'));
+          });
+      },
+    });
+  };
+
   renderProjectStatsContent() {
     const { projectStats, projectStatsLoading } = this.state;
 
@@ -777,6 +819,12 @@ class AppHeader extends React.Component {
         label: t('ui.switchWorkspace'),
         onClick: onReturnToWorkspaces,
       }] : []),
+      {
+        key: 'process-management',
+        icon: <DashboardOutlined />,
+        label: t('ui.processManagement'),
+        onClick: this.handleShowProcesses,
+      },
       { type: 'divider' },
       {
         key: 'project-stats',
@@ -1165,6 +1213,38 @@ class AppHeader extends React.Component {
           cancelText="Cancel"
         >
           <p>{this.state.deleteTarget ? t('ui.plugins.deleteConfirm', { name: this.state.deleteTarget.name }) : ''}</p>
+        </Modal>
+        <Modal
+          title={<span><DashboardOutlined style={{ marginRight: 8 }} />{t('ui.processManagement')}</span>}
+          open={this.state.processModalVisible}
+          onCancel={() => this.setState({ processModalVisible: false })}
+          footer={
+            <Button icon={<ReloadOutlined />} onClick={this.fetchProcesses} loading={this.state.processLoading}>
+              {t('ui.processManagement.refresh')}
+            </Button>
+          }
+          width={780}
+        >
+          <Table
+            dataSource={this.state.processList}
+            rowKey="pid"
+            loading={this.state.processLoading}
+            size="middle"
+            pagination={false}
+            columns={[
+              { title: t('ui.processManagement.port'), dataIndex: 'port', width: 80, render: (text) => text ? <a href={`http://127.0.0.1:${text}`} target="_blank" rel="noopener noreferrer">{text}</a> : '' },
+              { title: 'PID', dataIndex: 'pid', width: 80 },
+              { title: t('ui.processManagement.command'), dataIndex: 'command', ellipsis: true },
+              { title: t('ui.processManagement.startTime'), dataIndex: 'startTime', width: 200 },
+              {
+                title: t('ui.processManagement.action'),
+                width: 100,
+                render: (_, record) => record.isCurrent
+                  ? <Tag color="green">{t('ui.processManagement.current')}</Tag>
+                  : <Button size="small" danger onClick={() => this.handleKillProcess(record.pid)}>{t('ui.processManagement.kill')}</Button>,
+              },
+            ]}
+          />
         </Modal>
       </div>
     );

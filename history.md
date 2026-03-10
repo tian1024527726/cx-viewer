@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.5.12 (2026-03-10)
+
+- Feat: CCV process management — list all CCV instances (port 7008-7099), view PID/port/command/start time, stop idle processes from UI
+- Feat: process management API — GET /api/ccv-processes (discover via lsof, filter child processes) and POST /api/ccv-processes/kill (with safety checks)
+- Improve: shell hook passthrough — non-interactive commands (--version, --help, plugin, mcp, etc.) bypass CCV interception entirely
+- Improve: interceptor skip — non-interactive arguments skip interceptor setup and server startup for faster CLI responses
+- Improve: PTY manager — switch to --settings JSON injection for ANTHROPIC_BASE_URL to reliably override settings.json config
+- Fix: Modal.confirm dark theme — add global CSS overrides for antd confirm dialogs (background, text, button colors)
+- Fix: DetailPanel reminder select — reduce CSS specificity from !important to doubled selector for cleaner overrides
+- Fix: FileContentView minimap gutter — add padding-top alignment for line number column
+- i18n: add ui.processManagement.* keys (12 entries) across all 18 supported languages
+
 ## 1.5.11 (2026-03-10)
 
 - Feat: migrate FileContentView from highlight.js to CodeMirror 6 — full-featured code editor with syntax highlighting, editing, and save support

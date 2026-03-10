@@ -3172,6 +3172,94 @@ const i18nData = {
     "no": "Ingen undermapper i denne mappen", "pt-BR": "Nenhum subdiretório neste diretório",
     "th": "ไม่มีไดเรกทอรีย่อยในไดเรกทอรีนี้", "tr": "Bu dizinde alt dizin yok",
     "uk": "У цьому каталозі немає підкаталогів"
+  },
+  "ui.processManagement": {
+    "zh": "CCV进程管理", "en": "CCV Process Manager", "zh-TW": "CCV程序管理",
+    "ko": "CCV 프로세스 관리", "ja": "CCVプロセス管理", "de": "CCV-Prozessverwaltung",
+    "es": "Gestión de procesos CCV", "fr": "Gestion des processus CCV", "it": "Gestione processi CCV",
+    "da": "CCV-processtyring", "pl": "Zarządzanie procesami CCV", "ru": "Управление процессами CCV",
+    "ar": "إدارة عمليات CCV", "no": "CCV-prosessbehandling", "pt-BR": "Gerenciamento de processos CCV",
+    "th": "จัดการโปรเซส CCV", "tr": "CCV Süreç Yönetimi", "uk": "Керування процесами CCV"
+  },
+  "ui.processManagement.command": {
+    "zh": "命令", "en": "Command", "zh-TW": "命令",
+    "ko": "명령", "ja": "コマンド", "de": "Befehl",
+    "es": "Comando", "fr": "Commande", "it": "Comando",
+    "da": "Kommando", "pl": "Polecenie", "ru": "Команда",
+    "ar": "أمر", "no": "Kommando", "pt-BR": "Comando",
+    "th": "คำสั่ง", "tr": "Komut", "uk": "Команда"
+  },
+  "ui.processManagement.port": {
+    "zh": "端口", "en": "Port", "zh-TW": "端口",
+    "ko": "포트", "ja": "ポート", "de": "Port",
+    "es": "Puerto", "fr": "Port", "it": "Porta",
+    "da": "Port", "pl": "Port", "ru": "Порт",
+    "ar": "منفذ", "no": "Port", "pt-BR": "Porta",
+    "th": "พอร์ต", "tr": "Port", "uk": "Порт"
+  },
+  "ui.processManagement.startTime": {
+    "zh": "启动时间", "en": "Start Time", "zh-TW": "啟動時間",
+    "ko": "시작 시간", "ja": "開始時刻", "de": "Startzeit",
+    "es": "Hora de inicio", "fr": "Heure de démarrage", "it": "Ora di avvio",
+    "da": "Starttid", "pl": "Czas uruchomienia", "ru": "Время запуска",
+    "ar": "وقت البدء", "no": "Starttid", "pt-BR": "Hora de início",
+    "th": "เวลาเริ่มต้น", "tr": "Başlangıç zamanı", "uk": "Час запуску"
+  },
+  "ui.processManagement.action": {
+    "zh": "操作", "en": "Action", "zh-TW": "操作",
+    "ko": "작업", "ja": "操作", "de": "Aktion",
+    "es": "Acción", "fr": "Action", "it": "Azione",
+    "da": "Handling", "pl": "Akcja", "ru": "Действие",
+    "ar": "إجراء", "no": "Handling", "pt-BR": "Ação",
+    "th": "การดำเนินการ", "tr": "İşlem", "uk": "Дія"
+  },
+  "ui.processManagement.kill": {
+    "zh": "关闭", "en": "Stop", "zh-TW": "關閉",
+    "ko": "서비스 중지", "ja": "サービス停止", "de": "Dienst beenden",
+    "es": "Detener servicio", "fr": "Arrêter le service", "it": "Arresta servizio",
+    "da": "Stop tjeneste", "pl": "Zatrzymaj usługę", "ru": "Остановить сервис",
+    "ar": "إيقاف الخدمة", "no": "Stopp tjeneste", "pt-BR": "Parar serviço",
+    "th": "หยุดบริการ", "tr": "Servisi durdur", "uk": "Зупинити сервіс"
+  },
+  "ui.processManagement.killConfirm": {
+    "zh": "确定要关闭此CCV进程吗？", "en": "Are you sure you want to stop this CCV process?", "zh-TW": "確定要關閉此CCV程序嗎？",
+    "ko": "이 CCV 프로세스를 중지하시겠습니까?", "ja": "このCCVプロセスを停止しますか？", "de": "Möchten Sie diesen CCV-Prozess wirklich beenden?",
+    "es": "¿Seguro que desea detener este proceso CCV?", "fr": "Voulez-vous vraiment arrêter ce processus CCV ?", "it": "Sei sicuro di voler arrestare questo processo CCV?",
+    "da": "Er du sikker på, at du vil stoppe denne CCV-proces?", "pl": "Czy na pewno chcesz zatrzymać ten proces CCV?", "ru": "Вы уверены, что хотите остановить этот процесс CCV?",
+    "ar": "هل أنت متأكد من إيقاف عملية CCV هذه؟", "no": "Er du sikker på at du vil stoppe denne CCV-prosessen?", "pt-BR": "Tem certeza de que deseja parar este processo CCV?",
+    "th": "คุณแน่ใจหรือไม่ว่าต้องการหยุดโปรเซส CCV นี้?", "tr": "Bu CCV sürecini durdurmak istediğinizden emin misiniz?", "uk": "Ви впевнені, що хочете зупинити цей процес CCV?"
+  },
+  "ui.processManagement.killed": {
+    "zh": "进程已关闭", "en": "Process stopped", "zh-TW": "程序已關閉",
+    "ko": "프로세스가 중지되었습니다", "ja": "プロセスが停止しました", "de": "Prozess beendet",
+    "es": "Proceso detenido", "fr": "Processus arrêté", "it": "Processo arrestato",
+    "da": "Proces stoppet", "pl": "Proces zatrzymany", "ru": "Процесс остановлен",
+    "ar": "تم إيقاف العملية", "no": "Prosess stoppet", "pt-BR": "Processo parado",
+    "th": "หยุดโปรเซสแล้ว", "tr": "Süreç durduruldu", "uk": "Процес зупинено"
+  },
+  "ui.processManagement.killFailed": {
+    "zh": "关闭失败", "en": "Failed to stop", "zh-TW": "關閉失敗",
+    "ko": "중지 실패", "ja": "停止に失敗しました", "de": "Beenden fehlgeschlagen",
+    "es": "Error al detener", "fr": "Échec de l'arrêt", "it": "Arresto fallito",
+    "da": "Stop mislykkedes", "pl": "Nie udało się zatrzymać", "ru": "Не удалось остановить",
+    "ar": "فشل الإيقاف", "no": "Stopp mislyktes", "pt-BR": "Falha ao parar",
+    "th": "หยุดไม่สำเร็จ", "tr": "Durdurma başarısız", "uk": "Не вдалося зупинити"
+  },
+  "ui.processManagement.refresh": {
+    "zh": "刷新", "en": "Refresh", "zh-TW": "重新整理",
+    "ko": "새로고침", "ja": "更新", "de": "Aktualisieren",
+    "es": "Actualizar", "fr": "Actualiser", "it": "Aggiorna",
+    "da": "Opdater", "pl": "Odśwież", "ru": "Обновить",
+    "ar": "تحديث", "no": "Oppdater", "pt-BR": "Atualizar",
+    "th": "รีเฟรช", "tr": "Yenile", "uk": "Оновити"
+  },
+  "ui.processManagement.current": {
+    "zh": "当前", "en": "Current", "zh-TW": "目前",
+    "ko": "현재", "ja": "現在", "de": "Aktuell",
+    "es": "Actual", "fr": "Actuel", "it": "Corrente",
+    "da": "Aktuel", "pl": "Bieżący", "ru": "Текущий",
+    "ar": "الحالي", "no": "Gjeldende", "pt-BR": "Atual",
+    "th": "ปัจจุบัน", "tr": "Mevcut", "uk": "Поточний"
   }
 };
 

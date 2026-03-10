@@ -80,3 +80,34 @@ body {
 .ant-tooltip .ant-tooltip-arrow::after {
   background: #090909;
 }
+
+/* antd Modal.confirm dark override */
+.ant-modal-confirm .ant-modal-content {
+  background-color: #1a1a1a;
+  border: 1px solid #2a2a2a;
+}
+.ant-modal-confirm .ant-modal-confirm-title {
+  color: #e6e6e6;
+}
+.ant-modal-confirm .ant-modal-confirm-content {
+  color: #aaa;
+}
+.ant-modal-confirm .ant-btn-default {
+  background-color: transparent;
+  border-color: #444;
+  color: #ccc;
+}
+.ant-modal-confirm .ant-btn-default.ant-btn-default:hover,
+.ant-modal-confirm .ant-btn-default.ant-btn-default:focus {
+  background-color: #2a2a2a;
+  border-color: #666;
+  color: #fff;
+}
+.ant-modal-confirm .ant-btn-primary {
+  background-color: #1668dc;
+  border-color: #1668dc;
+}
+.ant-modal-confirm .ant-btn-primary:hover {
+  background-color: #1554ad;
+  border-color: #1554ad;
+}

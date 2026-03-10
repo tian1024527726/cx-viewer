@@ -98,17 +98,21 @@ export async function spawnClaude(proxyPort, cwd, extraArgs = [], claudePath = n
   env.ANTHROPIC_BASE_URL = `http://127.0.0.1:${proxyPort}`;
   env.CCV_PROXY_MODE = '1'; // 告诉 interceptor.js 不要再启动 server
 
-  // 通过环境变量注入 ANTHROPIC_BASE_URL（已在上方设置到 env 对象中）。
-  // 不使用 --settings 覆盖，因为 --settings 会替换整个 env 配置，
-  // 可能干扰定制版 Claude Code的内部认证逻辑。
-  // 环境变量方式对 npm 和 native 版本均有效，且不影响已有配置。
+  // 通过 --settings 注入 ANTHROPIC_BASE_URL，确保覆盖 settings.json 中的配置。
+  // 仅覆盖 env.ANTHROPIC_BASE_URL，不影响其他 settings 字段。
+  const settingsJson = JSON.stringify({
+    env: {
+      ANTHROPIC_BASE_URL: env.ANTHROPIC_BASE_URL
+    }
+  });
+
   let command = claudePath;
-  let args = [...extraArgs];
+  let args = ['--settings', settingsJson, ...extraArgs];
 
   // 如果是 npm 版本（cli.js），需要使用 node 来运行
   if (isNpmVersion && claudePath.endsWith('.js')) {
     command = process.execPath; // node 可执行文件路径
-    args = [claudePath, ...extraArgs];
+    args = [claudePath, '--settings', settingsJson, ...extraArgs];
   }
 
   lastExitCode = null;

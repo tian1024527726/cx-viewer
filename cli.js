@@ -44,6 +44,7 @@ function buildShellHook(isNative) {
     'setup-token', // token setup
     'agents',      // list configured agents
     'plugin',      // plugin management
+    'plugins',     // alias for plugin
     'mcp',         // MCP server configuration
   ];
 
@@ -81,6 +82,17 @@ ${SHELL_HOOK_END}`;
   const candidates = buildShellCandidates();
   return `${SHELL_HOOK_START}
 claude() {
+  # Pass through certain commands directly without ccv interception
+  case "$1" in
+    ${passthroughCommands.join('|')})
+      command claude "$@"
+      return
+      ;;
+    ${passthroughFlags.join('|')})
+      command claude "$@"
+      return
+      ;;
+  esac
   local cli_js=""
   for candidate in ${candidates}; do
     if [ -f "$candidate" ]; then
@@ -259,6 +271,7 @@ async function runCliMode(extraClaudeArgs = [], cwd) {
   //    server.js 的 isCliMode 在模块顶层求值且只执行一次）
   process.env.CCV_CLI_MODE = '1';
   process.env.CCV_PROJECT_DIR = workingDir;
+  process.env.CCV_PROXY_MODE = '1';
 
   // 1. 启动代理
   const { startProxy } = await import('./proxy.js');

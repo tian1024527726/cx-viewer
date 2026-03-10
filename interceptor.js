@@ -1,5 +1,10 @@
 // LLM Request Interceptor
 // 拦截并记录所有Claude API请求
+
+// 非交互命令（如 claude -v, claude --help）不需要启动 ccv
+const _ccvSkipArgs = ['--version', '-v', '--v', '--help', '-h', 'doctor', 'install', 'update', 'upgrade', 'auth', 'setup-token', 'agents', 'plugin', 'plugins', 'mcp'];
+const _ccvSkip = _ccvSkipArgs.includes(process.argv[2]);
+
 import './proxy-env.js';
 import { appendFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync, statSync, renameSync, unlinkSync, existsSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -750,11 +755,11 @@ export function setupInterceptor() {
 }
 
 // 自动执行拦截器设置
-setupInterceptor();
+if (!_ccvSkip) setupInterceptor();
 
 // 等待日志文件初始化完成后启动 Web Viewer 服务
 // 如果是 ccv --c 通过 proxy 模式启动的，外层已有 server，跳过
-if (!process.env.CCV_PROXY_MODE) {
+if (!_ccvSkip && !process.env.CCV_PROXY_MODE) {
   _initPromise.then(() => import('./server.js')).catch((err) => {
     console.error('[CC-Viewer] Failed to start viewer server:', err);
   });
