@@ -32,7 +32,7 @@ function writePrefs(obj) {
 
 function cleanup() {
   for (const f of createdFiles) {
-    try { rmSync(f, { force: true }); } catch {}
+    try { rmSync(f, { force: true }); } catch { }
   }
   createdFiles = [];
   if (savedPrefs !== null) {
@@ -148,6 +148,20 @@ describe('loadPlugins', () => {
     const info = getPluginsInfo();
     assert.ok(info.find(p => p.file === 'test-valid.mjs'), '.mjs should be loaded');
     assert.ok(!info.find(p => p.file === 'test-ignore.txt'), '.txt should be ignored');
+  });
+
+  it('handles plugin with syntax error gracefully (not loaded)', async () => {
+    writePlugin('test-bad.js', `
+      export default {
+        name: 'bad-plugin',
+        hooks: { localUrl(v) { return { url: v.url + '/bad' }; } }
+    `);
+    await loadPlugins();
+    const info = getPluginsInfo();
+    const bad = info.find(p => p.file === 'test-bad.js');
+    assert.ok(bad);
+    assert.equal(bad.name, 'bad-plugin');
+    assert.deepStrictEqual(bad.hooks, []);
   });
 });
 

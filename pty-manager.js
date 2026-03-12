@@ -19,6 +19,19 @@ let lastPtyRows = 30;
 const MAX_BUFFER = 200000;
 let batchBuffer = '';
 let batchScheduled = false;
+let _ptyImportForTests = null;
+
+export function _setPtyImportForTests(fn) {
+  _ptyImportForTests = fn;
+}
+
+async function getPty() {
+  if (typeof _ptyImportForTests === 'function') {
+    return _ptyImportForTests();
+  }
+  const ptyMod = await import('node-pty');
+  return ptyMod.default || ptyMod;
+}
 
 /**
  * 在 outputBuffer 截断时，找到安全的截断位置，
@@ -65,7 +78,7 @@ function flushBatch() {
   const chunk = batchBuffer;
   batchBuffer = '';
   for (const cb of dataListeners) {
-    try { cb(chunk); } catch {}
+    try { cb(chunk); } catch { }
   }
 }
 
@@ -78,7 +91,7 @@ function fixSpawnHelperPermissions() {
     if (!(stat.mode & 0o111)) {
       chmodSync(helperPath, stat.mode | 0o755);
     }
-  } catch {}
+  } catch { }
 }
 
 export async function spawnClaude(proxyPort, cwd, extraArgs = [], claudePath = null, isNpmVersion = false, serverPort = null) {
@@ -86,8 +99,7 @@ export async function spawnClaude(proxyPort, cwd, extraArgs = [], claudePath = n
     killPty();
   }
 
-  const ptyMod = await import('node-pty');
-  const pty = ptyMod.default || ptyMod;
+  const pty = await getPty();
 
   fixSpawnHelperPermissions();
 
@@ -162,7 +174,7 @@ export async function spawnClaude(proxyPort, cwd, extraArgs = [], claudePath = n
     // 保留 lastWorkspacePath，不清除，用于 respawn
     currentWorkspacePath = null;
     for (const cb of exitListeners) {
-      try { cb(exitCode); } catch {}
+      try { cb(exitCode); } catch { }
     }
   });
 
@@ -183,8 +195,7 @@ export async function spawnShell() {
   if (ptyProcess) return false; // 已有进程在运行
   const cwd = lastWorkspacePath || process.cwd();
 
-  const ptyMod = await import('node-pty');
-  const pty = ptyMod.default || ptyMod;
+  const pty = await getPty();
 
   fixSpawnHelperPermissions();
 
@@ -221,7 +232,7 @@ export async function spawnShell() {
     ptyProcess = null;
     currentWorkspacePath = null;
     for (const cb of exitListeners) {
-      try { cb(exitCode); } catch {}
+      try { cb(exitCode); } catch { }
     }
   });
 
@@ -232,7 +243,7 @@ export function resizePty(cols, rows) {
   lastPtyCols = cols;
   lastPtyRows = rows;
   if (ptyProcess) {
-    try { ptyProcess.resize(cols, rows); } catch {}
+    try { ptyProcess.resize(cols, rows); } catch { }
   }
 }
 
@@ -241,7 +252,7 @@ export function killPty() {
     flushBatch();
     batchBuffer = '';
     batchScheduled = false;
-    try { ptyProcess.kill(); } catch {}
+    try { ptyProcess.kill(); } catch { }
     ptyProcess = null;
   }
 }

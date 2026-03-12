@@ -18,7 +18,7 @@
     "dev": "vite",
     "build": "node build.js",
     "start": "node server.js",
-    "test": "node --test",
+    "test": "CCV_LOG_DIR=tmp node --test",
     "prepublishOnly": "npm run build"
   },
   "keywords": [

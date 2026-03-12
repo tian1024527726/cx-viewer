@@ -38,7 +38,6 @@ You can use Claude directly from the web page while viewing the full request pay
 
 Even better — you can even code from your mobile device!
 
-
 ### Logger Mode
 
 ⚠️ If you still prefer using the native claude tool or VS Code extension, use this mode.
@@ -46,6 +45,7 @@ Even better — you can even code from your mobile device!
 In this mode, launching `claude` or `claude --dangerously-skip-permissions` will automatically start a logging process that records request logs to ~/.claude/cc-viewer/*yourproject*/date.jsonl
 
 Enable logger mode:
+
 ```bash
 ccv -logger
 ```
@@ -59,9 +59,27 @@ This command automatically detects how Claude Code is installed locally (NPM or 
 - NPM-installed Claude Code is the recommended approach for this project.
 
 Uninstall logger mode:
+
 ```bash
 ccv --uninstall
 ```
+
+### Configuration Override
+
+If you need to use a custom API endpoint (e.g., a corporate proxy), simply configure it in `~/.claude/settings.json` or set the `ANTHROPIC_BASE_URL` environment variable. `ccv` will automatically detect and correctly forward requests.
+
+### Environment Variables
+
+- `CCV_LOG_DIR`: Override the default log directory (`~/.claude/cc-viewer`).
+  - Set to `tmp` to use the system temporary directory (useful for testing or ephemeral sessions).
+  - Set to any absolute path or `~/path` to customize storage location.
+- `CCV_DEBUG_PLUGINS`: Set to `1` to enable debug logs for the plugin system.
+
+### Silent Mode
+
+By default, `ccv` runs in silent mode when wrapping `claude`, keeping your terminal output clean and consistent with the native experience. All logs are captured in the background and can be viewed at `http://localhost:7008`.
+
+Once configured, use the `claude` command as normal. Visit `http://localhost:7008` to access the monitoring interface.
 
 ### Troubleshooting
 
@@ -70,9 +88,11 @@ If you encounter issues starting cc-viewer, here is the ultimate troubleshooting
 Step 1: Open Claude Code in any directory.
 
 Step 2: Give Claude Code the following instruction:
+
 ```
 I have installed the cc-viewer npm package, but after running ccv it still doesn't work properly. Please check cc-viewer's cli.js and findcc.js, and adapt them to the local Claude Code deployment based on the specific environment. Keep the scope of changes as constrained as possible within findcc.js.
 ```
+
 Letting Claude Code diagnose the issue itself is more effective than asking anyone or reading any documentation!
 
 After the above instruction is completed, `findcc.js` will be updated. If your project frequently requires local deployment, or if forked code often needs to resolve installation issues, keeping this file lets you simply copy it next time. At this stage, many projects and companies using Claude Code are not deploying on Mac but rather on server-side hosted environments, so the author has separated `findcc.js` to make it easier to track cc-viewer source code updates going forward.
@@ -80,6 +100,7 @@ After the above instruction is completed, `findcc.js` will be updated. If your p
 ### Other Commands
 
 See:
+
 ```bash
 ccv -h
 ```
@@ -94,9 +115,7 @@ By default, `ccv` runs in silent mode when wrapping `claude`, keeping your termi
 
 Once configured, use the `claude` command as normal. Visit `http://localhost:7008` to access the monitoring interface.
 
-
 ## Features
-
 
 ### Programming Mode
 

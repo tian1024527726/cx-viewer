@@ -6,11 +6,12 @@ const _ccvSkipArgs = ['--version', '-v', '--v', '--help', '-h', 'doctor', 'insta
 const _ccvSkip = _ccvSkipArgs.includes(process.argv[2]);
 
 import './proxy-env.js';
-import { appendFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync, statSync, renameSync, unlinkSync, existsSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync, statSync, renameSync, unlinkSync, existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, basename } from 'node:path';
 import { LOG_DIR } from './findcc.js';
+import { assembleStreamMessage, cleanupTempFiles, findRecentLog, isAnthropicApiPath, isMainAgentRequest, migrateConversationContext } from './lib/interceptor-core.js';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -40,43 +41,6 @@ function generateNewLogFilePath() {
   const dir = join(LOG_DIR, projectName);
   try { mkdirSync(dir, { recursive: true }); } catch { }
   return { filePath: join(dir, `${projectName}_${ts}.jsonl`), dir, projectName };
-}
-
-// 查找同项目最近的日志文件
-function findRecentLog(dir, projectName) {
-  try {
-    const files = readdirSync(dir)
-      .filter(f => f.startsWith(projectName + '_') && f.endsWith('.jsonl'))
-      .sort()
-      .reverse();
-    if (files.length === 0) return null;
-    return join(dir, files[0]);
-  } catch { }
-  return null;
-}
-
-// 清理残留的临时文件（rename 为正式文件名，保留数据）
-function cleanupTempFiles(dir, projectName) {
-  try {
-    const tempFiles = readdirSync(dir)
-      .filter(f => f.startsWith(projectName + '_') && f.endsWith('_temp.jsonl'));
-    for (const f of tempFiles) {
-      try {
-        const tempPath = join(dir, f);
-        const newPath = tempPath.replace('_temp.jsonl', '.jsonl');
-        if (existsSync(newPath)) {
-          // 正式文件已存在，追加临时文件内容后删除
-          const tempContent = readFileSync(tempPath, 'utf-8');
-          if (tempContent.trim()) {
-            appendFileSync(newPath, tempContent);
-          }
-          unlinkSync(tempPath);
-        } else {
-          renameSync(tempPath, newPath);
-        }
-      } catch { }
-    }
-  } catch { }
 }
 
 // Resume 状态（供 server.js 使用）
@@ -209,125 +173,6 @@ export function resetWorkspace() {
 
 const MAX_LOG_SIZE = 150 * 1024 * 1024; // 150MB
 
-const SUBAGENT_SYSTEM_RE = /command execution specialist|file search specialist|planning specialist|general-purpose agent/i;
-
-/**
- * 提取请求体中的 system prompt 文本
- */
-function getSystemText(body) {
-  const system = body?.system;
-  if (typeof system === 'string') return system;
-  if (Array.isArray(system)) {
-    return system.map(s => (s && s.text) || '').join('');
-  }
-  return '';
-}
-
-/**
- * 判断请求是否为 MainAgent（拦截器侧标记用）
- * 与 contentFilter.js 保持一致的检测逻辑
- */
-function isMainAgentRequest(body) {
-  if (!body?.system || !Array.isArray(body?.tools)) return false;
-
-  const sysText = getSystemText(body);
-
-  // 必须包含 MainAgent 身份标识
-  if (!sysText.includes('You are Claude Code')) return false;
-
-  // 排除 SubAgent
-  if (SUBAGENT_SYSTEM_RE.test(sysText)) return false;
-
-  // 新架构检测（v2.1.69+）：延迟工具加载机制
-  const isSystemArray = Array.isArray(body.system);
-  const hasToolSearch = body.tools.some(t => t.name === 'ToolSearch');
-
-  if (isSystemArray && hasToolSearch) {
-    // 检查第一条消息是否包含 <available-deferred-tools>
-    const messages = body.messages || [];
-    const firstMsgContent = messages.length > 0 ?
-      (typeof messages[0].content === 'string' ? messages[0].content :
-       Array.isArray(messages[0].content) ? messages[0].content.map(c => c.text || '').join('') : '') : '';
-    if (firstMsgContent.includes('<available-deferred-tools>')) {
-      return true;
-    }
-  }
-
-  // 旧架构检测：工具数量 > 10 且包含核心工具
-  if (body.tools.length > 10) {
-    const hasEdit = body.tools.some(t => t.name === 'Edit');
-    const hasBash = body.tools.some(t => t.name === 'Bash');
-    const hasTaskOrAgent = body.tools.some(t => t.name === 'Task' || t.name === 'Agent');
-    if (hasEdit && hasBash && hasTaskOrAgent) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-function isPreflightEntry(entry) {
-  if (entry.mainAgent || entry.isHeartbeat || entry.isCountTokens) return false;
-  const body = entry.body || {};
-  if (Array.isArray(body.tools) && body.tools.length > 0) return false;
-  const msgs = body.messages || [];
-  if (msgs.length !== 1 || msgs[0].role !== 'user') return false;
-  const sysText = typeof body.system === 'string' ? body.system :
-    Array.isArray(body.system) ? body.system.map(s => s?.text || '').join('') : '';
-  return sysText.includes('Claude Code');
-}
-
-function migrateConversationContext(oldFile, newFile) {
-  try {
-    const content = readFileSync(oldFile, 'utf-8');
-    if (!content.trim()) return;
-
-    const parts = content.split('\n---\n').filter(p => p.trim());
-    if (parts.length === 0) return;
-
-    // 从后向前扫描，找到最近一条 messages.length === 1 的 mainAgent 条目
-    let originIndex = -1;
-    for (let i = parts.length - 1; i >= 0; i--) {
-      if (!parts[i].includes('"mainAgent": true')) continue;
-      try {
-        const entry = JSON.parse(parts[i]);
-        if (entry.mainAgent) {
-          const msgs = entry.body?.messages;
-          if (Array.isArray(msgs) && msgs.length === 1) {
-            originIndex = i;
-            break;
-          }
-        }
-      } catch { }
-    }
-
-    if (originIndex < 0) return; // 找不到起点，不迁移
-
-    // 检查前一条是否为 Preflight
-    let migrationStart = originIndex;
-    if (originIndex > 0) {
-      try {
-        const prev = JSON.parse(parts[originIndex - 1]);
-        if (isPreflightEntry(prev)) {
-          migrationStart = originIndex - 1;
-        }
-      } catch { }
-    }
-
-    // 迁移条目写入新文件
-    const migratedParts = parts.slice(migrationStart);
-    writeFileSync(newFile, migratedParts.join('\n---\n') + '\n---\n');
-
-    // 旧文件只保留迁移前的条目
-    const remainingParts = parts.slice(0, migrationStart);
-    if (remainingParts.length > 0) {
-      writeFileSync(oldFile, remainingParts.join('\n---\n') + '\n---\n');
-    } else {
-      writeFileSync(oldFile, '');
-    }
-  } catch { }
-}
-
 function checkAndRotateLogFile() {
   try {
     if (!existsSync(LOG_FILE)) return;
@@ -352,106 +197,6 @@ function getBaseUrlHost() {
   return null;
 }
 const CUSTOM_API_HOST = getBaseUrlHost();
-
-// 通过请求路径识别 Anthropic API 端点（兼容 CCR 等代理场景）
-function isAnthropicApiPath(urlStr) {
-  try {
-    const pathname = new URL(urlStr).pathname;
-    return /^\/v1\/messages(\/count_tokens|\/batches(\/.*)?)?$/.test(pathname)
-      || /^\/api\/eval\/sdk-/.test(pathname);
-  } catch {
-    return /\/v1\/messages/.test(urlStr);
-  }
-}
-
-// 组装流式消息为完整的 message 对象
-function assembleStreamMessage(events) {
-  let message = null;
-  const contentBlocks = [];
-  let currentBlockIndex = -1;
-
-  for (const event of events) {
-    if (typeof event !== 'object' || !event.type) continue;
-
-    switch (event.type) {
-      case 'message_start':
-        // 初始化消息对象
-        message = { ...event.message };
-        message.content = [];
-        break;
-
-      case 'content_block_start':
-        // 开始新的内容块
-        currentBlockIndex = event.index;
-        contentBlocks[currentBlockIndex] = { ...event.content_block };
-        if (contentBlocks[currentBlockIndex].type === 'text') {
-          contentBlocks[currentBlockIndex].text = '';
-        } else if (contentBlocks[currentBlockIndex].type === 'thinking') {
-          contentBlocks[currentBlockIndex].thinking = '';
-        }
-        break;
-
-      case 'content_block_delta':
-        // 累积内容块的增量数据
-        if (event.index >= 0 && contentBlocks[event.index] && event.delta) {
-          if (event.delta.type === 'text_delta' && event.delta.text) {
-            contentBlocks[event.index].text += event.delta.text;
-          } else if (event.delta.type === 'input_json_delta' && event.delta.partial_json) {
-            if (typeof contentBlocks[event.index]._inputJson !== 'string') {
-              contentBlocks[event.index]._inputJson = '';
-            }
-            contentBlocks[event.index]._inputJson += event.delta.partial_json;
-          } else if (event.delta.type === 'thinking_delta' && event.delta.thinking) {
-            contentBlocks[event.index].thinking += event.delta.thinking;
-          } else if (event.delta.type === 'signature_delta' && event.delta.signature) {
-            contentBlocks[event.index].signature = event.delta.signature;
-          }
-        }
-        break;
-
-      case 'content_block_stop':
-        // 内容块结束
-        if (event.index >= 0 && contentBlocks[event.index]) {
-          // 如果是 tool_use 且有累积的 input JSON，尝试解析
-          if (contentBlocks[event.index].type === 'tool_use' && typeof contentBlocks[event.index]._inputJson === 'string') {
-            try {
-              contentBlocks[event.index].input = JSON.parse(contentBlocks[event.index]._inputJson);
-            } catch {
-              contentBlocks[event.index].input = contentBlocks[event.index]._inputJson;
-            }
-            delete contentBlocks[event.index]._inputJson;
-          }
-        }
-        break;
-
-      case 'message_delta':
-        // 更新消息的增量数据（如 stop_reason, usage）
-        if (message && event.delta) {
-          if (event.delta.stop_reason) {
-            message.stop_reason = event.delta.stop_reason;
-          }
-          if (event.delta.stop_sequence !== undefined) {
-            message.stop_sequence = event.delta.stop_sequence;
-          }
-        }
-        if (message && event.usage) {
-          message.usage = { ...message.usage, ...event.usage };
-        }
-        break;
-
-      case 'message_stop':
-        // 消息结束
-        break;
-    }
-  }
-
-  // 将内容块添加到消息中
-  if (message) {
-    message.content = contentBlocks.filter(block => block !== undefined);
-  }
-
-  return message;
-}
 
 // 保存 viewer 模块引用
 let viewerModule = null;

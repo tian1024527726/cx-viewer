@@ -1,237 +1,18 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync, mkdirSync, readdirSync, appendFileSync, unlinkSync, renameSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync, mkdirSync, appendFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-
-/**
- * Tests for interceptor.js core logic.
- *
- * Since interceptor.js has heavy side effects on import (patches globalThis.fetch,
- * imports server.js, etc.), we test the pure logic functions by replicating them here.
- */
-
-// ============================================================================
-// Replicated pure functions from interceptor.js
-// ============================================================================
-
-function getSystemText(body) {
-  const system = body?.system;
-  if (typeof system === 'string') return system;
-  if (Array.isArray(system)) {
-    return system.map(s => (s && s.text) || '').join('');
-  }
-  return '';
-}
-
-const SUBAGENT_SYSTEM_RE = /command execution specialist|file search specialist|planning specialist|general-purpose agent/i;
-
-function isMainAgentRequest(body) {
-  if (!body?.system || !Array.isArray(body?.tools)) return false;
-  const sysText = getSystemText(body);
-  if (!sysText.includes('You are Claude Code')) return false;
-  if (SUBAGENT_SYSTEM_RE.test(sysText)) return false;
-
-  const isSystemArray = Array.isArray(body.system);
-  const hasToolSearch = body.tools.some(t => t.name === 'ToolSearch');
-  if (isSystemArray && hasToolSearch) {
-    const messages = body.messages || [];
-    const firstMsgContent = messages.length > 0 ?
-      (typeof messages[0].content === 'string' ? messages[0].content :
-       Array.isArray(messages[0].content) ? messages[0].content.map(c => c.text || '').join('') : '') : '';
-    if (firstMsgContent.includes('<available-deferred-tools>')) return true;
-  }
-
-  if (body.tools.length > 10) {
-    const hasEdit = body.tools.some(t => t.name === 'Edit');
-    const hasBash = body.tools.some(t => t.name === 'Bash');
-    const hasTaskOrAgent = body.tools.some(t => t.name === 'Task' || t.name === 'Agent');
-    if (hasEdit && hasBash && hasTaskOrAgent) return true;
-  }
-  return false;
-}
-
-function isPreflightEntry(entry) {
-  if (entry.mainAgent || entry.isHeartbeat || entry.isCountTokens) return false;
-  const body = entry.body || {};
-  if (Array.isArray(body.tools) && body.tools.length > 0) return false;
-  const msgs = body.messages || [];
-  if (msgs.length !== 1 || msgs[0].role !== 'user') return false;
-  const sysText = typeof body.system === 'string' ? body.system :
-    Array.isArray(body.system) ? body.system.map(s => s?.text || '').join('') : '';
-  return sysText.includes('Claude Code');
-}
-
-function isAnthropicApiPath(urlStr) {
-  try {
-    const pathname = new URL(urlStr).pathname;
-    return /^\/v1\/messages(\/count_tokens|\/batches(\/.*)?)?$/.test(pathname)
-      || /^\/api\/eval\/sdk-/.test(pathname);
-  } catch {
-    return /\/v1\/messages/.test(urlStr);
-  }
-}
-
-function assembleStreamMessage(events) {
-  let message = null;
-  const contentBlocks = [];
-  let currentBlockIndex = -1;
-
-  for (const event of events) {
-    if (!event || typeof event !== 'object' || !event.type) continue;
-
-    switch (event.type) {
-      case 'message_start':
-        message = { ...event.message };
-        message.content = [];
-        break;
-
-      case 'content_block_start':
-        currentBlockIndex = event.index;
-        contentBlocks[currentBlockIndex] = { ...event.content_block };
-        if (contentBlocks[currentBlockIndex].type === 'text') {
-          contentBlocks[currentBlockIndex].text = '';
-        } else if (contentBlocks[currentBlockIndex].type === 'thinking') {
-          contentBlocks[currentBlockIndex].thinking = '';
-        }
-        break;
-
-      case 'content_block_delta':
-        if (event.index >= 0 && contentBlocks[event.index] && event.delta) {
-          if (event.delta.type === 'text_delta' && event.delta.text) {
-            contentBlocks[event.index].text += event.delta.text;
-          } else if (event.delta.type === 'input_json_delta' && event.delta.partial_json) {
-            if (typeof contentBlocks[event.index]._inputJson !== 'string') {
-              contentBlocks[event.index]._inputJson = '';
-            }
-            contentBlocks[event.index]._inputJson += event.delta.partial_json;
-          } else if (event.delta.type === 'thinking_delta' && event.delta.thinking) {
-            contentBlocks[event.index].thinking += event.delta.thinking;
-          } else if (event.delta.type === 'signature_delta' && event.delta.signature) {
-            contentBlocks[event.index].signature = event.delta.signature;
-          }
-        }
-        break;
-
-      case 'content_block_stop':
-        if (event.index >= 0 && contentBlocks[event.index]) {
-          if (contentBlocks[event.index].type === 'tool_use' && typeof contentBlocks[event.index]._inputJson === 'string') {
-            try {
-              contentBlocks[event.index].input = JSON.parse(contentBlocks[event.index]._inputJson);
-            } catch {
-              contentBlocks[event.index].input = contentBlocks[event.index]._inputJson;
-            }
-            delete contentBlocks[event.index]._inputJson;
-          }
-        }
-        break;
-
-      case 'message_delta':
-        if (message && event.delta) {
-          if (event.delta.stop_reason) {
-            message.stop_reason = event.delta.stop_reason;
-          }
-          if (event.delta.stop_sequence !== undefined) {
-            message.stop_sequence = event.delta.stop_sequence;
-          }
-        }
-        if (message && event.usage) {
-          message.usage = { ...message.usage, ...event.usage };
-        }
-        break;
-
-      case 'message_stop':
-        break;
-    }
-  }
-
-  if (message) {
-    message.content = contentBlocks.filter(block => block !== undefined);
-  }
-
-  return message;
-}
-
-function findRecentLog(dir, projectName) {
-  try {
-    const files = readdirSync(dir)
-      .filter(f => f.startsWith(projectName + '_') && f.endsWith('.jsonl'))
-      .sort()
-      .reverse();
-    if (files.length === 0) return null;
-    return join(dir, files[0]);
-  } catch { }
-  return null;
-}
-
-function cleanupTempFiles(dir, projectName) {
-  try {
-    const tempFiles = readdirSync(dir)
-      .filter(f => f.startsWith(projectName + '_') && f.endsWith('_temp.jsonl'));
-    for (const f of tempFiles) {
-      try {
-        const tempPath = join(dir, f);
-        const newPath = tempPath.replace('_temp.jsonl', '.jsonl');
-        if (existsSync(newPath)) {
-          const tempContent = readFileSync(tempPath, 'utf-8');
-          if (tempContent.trim()) {
-            appendFileSync(newPath, tempContent);
-          }
-          unlinkSync(tempPath);
-        } else {
-          renameSync(tempPath, newPath);
-        }
-      } catch { }
-    }
-  } catch { }
-}
-
-function migrateConversationContext(oldFile, newFile) {
-  try {
-    const content = readFileSync(oldFile, 'utf-8');
-    if (!content.trim()) return;
-
-    const parts = content.split('\n---\n').filter(p => p.trim());
-    if (parts.length === 0) return;
-
-    let originIndex = -1;
-    for (let i = parts.length - 1; i >= 0; i--) {
-      if (!parts[i].includes('"mainAgent": true')) continue;
-      try {
-        const entry = JSON.parse(parts[i]);
-        if (entry.mainAgent) {
-          const msgs = entry.body?.messages;
-          if (Array.isArray(msgs) && msgs.length === 1) {
-            originIndex = i;
-            break;
-          }
-        }
-      } catch { }
-    }
-
-    if (originIndex < 0) return;
-
-    let migrationStart = originIndex;
-    if (originIndex > 0) {
-      try {
-        const prev = JSON.parse(parts[originIndex - 1]);
-        if (isPreflightEntry(prev)) {
-          migrationStart = originIndex - 1;
-        }
-      } catch { }
-    }
-
-    const migratedParts = parts.slice(migrationStart);
-    writeFileSync(newFile, migratedParts.join('\n---\n') + '\n---\n');
-
-    const remainingParts = parts.slice(0, migrationStart);
-    if (remainingParts.length > 0) {
-      writeFileSync(oldFile, remainingParts.join('\n---\n') + '\n---\n');
-    } else {
-      writeFileSync(oldFile, '');
-    }
-  } catch { }
-}
+import {
+  assembleStreamMessage,
+  cleanupTempFiles,
+  findRecentLog,
+  getSystemText,
+  isAnthropicApiPath,
+  isMainAgentRequest,
+  isPreflightEntry,
+  migrateConversationContext,
+} from '../lib/interceptor-core.js';
 
 // ============================================================================
 // Test helpers
@@ -397,6 +178,24 @@ describe('interceptor', () => {
       };
       assert.equal(isMainAgentRequest(body), false);
     });
+
+    it('new architecture: rejects deferred-tools without ToolSearch', () => {
+      const body = {
+        system: [{ text: 'You are Claude Code' }],
+        tools: [{ name: 'Bash' }],
+        messages: [{ role: 'user', content: 'some text <available-deferred-tools> list' }],
+      };
+      assert.equal(isMainAgentRequest(body), false);
+    });
+
+    it('new architecture: accepts even with few tools if marker present', () => {
+      const body = {
+        system: [{ text: 'You are Claude Code' }],
+        tools: [{ name: 'ToolSearch' }, { name: 'Bash' }],
+        messages: [{ role: 'user', content: '<available-deferred-tools>' }],
+      };
+      assert.equal(isMainAgentRequest(body), true);
+    });
   });
 
   // --------------------------------------------------------------------------
@@ -523,6 +322,15 @@ describe('interceptor', () => {
   // assembleStreamMessage
   // --------------------------------------------------------------------------
   describe('assembleStreamMessage', () => {
+    it('ignores non-object events and returns null when no message_start', () => {
+      const events = [
+        'data: {"type":"message_start"}',
+        { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'x' } },
+      ];
+      const msg = assembleStreamMessage(events);
+      assert.equal(msg, null);
+    });
+
     it('assembles a simple text response', () => {
       const events = [
         { type: 'message_start', message: { id: 'msg_1', role: 'assistant', model: 'claude-opus-4-6', usage: { input_tokens: 10 } } },
@@ -643,6 +451,33 @@ describe('interceptor', () => {
       const msg = assembleStreamMessage(events);
       assert.equal(msg.stop_reason, 'stop_sequence');
       assert.equal(msg.stop_sequence, '\n\nHuman:');
+    });
+
+    it('assembles multi-part JSON delta', () => {
+      const events = [
+        { type: 'message_start', message: { id: 'msg_split', role: 'assistant' } },
+        { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 'tu_split', name: 'Split' } },
+        { type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: '{"k' } },
+        { type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: 'ey":' } },
+        { type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: '"va' } },
+        { type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: 'l"}' } },
+        { type: 'content_block_stop', index: 0 },
+        { type: 'message_stop' },
+      ];
+      const msg = assembleStreamMessage(events);
+      assert.deepStrictEqual(msg.content[0].input, { key: 'val' });
+    });
+
+    it('handles content_block_start with existing text/thinking', () => {
+      const events = [
+        { type: 'message_start', message: { id: 'msg_reset', role: 'assistant' } },
+        { type: 'content_block_start', index: 0, content_block: { type: 'text', text: 'SHOULD_BE_CLEARED' } },
+        { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'RealContent' } },
+        { type: 'content_block_stop', index: 0 },
+        { type: 'message_stop' },
+      ];
+      const msg = assembleStreamMessage(events);
+      assert.equal(msg.content[0].text, 'RealContent');
     });
   });
 
@@ -810,6 +645,40 @@ describe('interceptor', () => {
       migrateConversationContext(oldFile, newFile);
 
       assert.ok(!existsSync(newFile));
+    });
+
+    it('migrates single MainAgent entry correctly', () => {
+      const entry = JSON.stringify({
+        mainAgent: true,
+        body: { messages: [{ role: 'user', content: 'start' }] }
+      }, null, 2);
+      const oldFile = join(tempDir, 'single.jsonl');
+      const newFile = join(tempDir, 'single_new.jsonl');
+      writeFileSync(oldFile, entry + '\n---\n');
+
+      migrateConversationContext(oldFile, newFile);
+
+      const newContent = readFileSync(newFile, 'utf-8');
+      assert.ok(newContent.includes('start'));
+      const oldContent = readFileSync(oldFile, 'utf-8');
+      assert.equal(oldContent, '');
+    });
+
+    it('handles corrupted JSON lines gracefully', () => {
+      const goodEntry = JSON.stringify({ mainAgent: true, body: { messages: [{ role: 'user', content: 'ok' }] } });
+      const badEntry = '{ "broken": json';
+      const oldFile = join(tempDir, 'corrupt.jsonl');
+      const newFile = join(tempDir, 'corrupt_new.jsonl');
+
+      writeFileSync(oldFile, [badEntry, goodEntry].join('\n---\n') + '\n---\n');
+
+      migrateConversationContext(oldFile, newFile);
+
+      const newContent = readFileSync(newFile, 'utf-8');
+      assert.ok(newContent.includes('ok'), 'new file should contain the valid entry');
+
+      const oldContent = readFileSync(oldFile, 'utf-8');
+      assert.ok(oldContent.includes('broken'), 'old file should retain the corrupted entry');
     });
   });
 
