@@ -67,9 +67,16 @@ describe('server API endpoints', () => {
     assert.ok(port > 0, 'port should be assigned');
   });
 
-  after(() => {
-    stopViewer();
-    rmSync(tmpDir, { recursive: true, force: true });
+  after(async () => {
+    // Wait for server to fully close to avoid EPIPE from lingering async activity
+    await new Promise((resolve) => {
+      stopViewer();
+      // Give server.close() time to finish pending connections
+      setTimeout(() => {
+        rmSync(tmpDir, { recursive: true, force: true });
+        resolve();
+      }, 200);
+    });
   });
 
   // --- CORS ---
