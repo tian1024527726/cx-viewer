@@ -31,7 +31,7 @@ function httpRequest(port, path, { method = 'GET', body = null } = {}) {
   });
 }
 
-describe('server plugin endpoints', () => {
+describe('server plugin endpoints', { concurrency: false }, () => {
   let startViewer, stopViewer, getPort;
   let port;
 

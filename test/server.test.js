@@ -51,7 +51,7 @@ function httpRequest(port, path, { method = 'GET', body = null } = {}) {
   });
 }
 
-describe('server API endpoints', () => {
+describe('server API endpoints', { concurrency: false }, () => {
   let startViewer, stopViewer, getPort;
   let port;
 

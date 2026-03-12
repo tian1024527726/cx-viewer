@@ -1,6 +1,6 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdirSync, unlinkSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdirSync, unlinkSync, writeFileSync, readFileSync, existsSync, utimesSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawn } from 'node:child_process';
@@ -97,5 +97,22 @@ describe('workspace-registry', () => {
     const paths = data.workspaces.map(w => w.path);
     assert.ok(paths.includes(wsA));
     assert.ok(paths.includes(wsB));
+  });
+
+  it('recovers from stale lock', () => {
+    // Manually create a lock file with old mtime
+    const LOCK_FILE = join(LOG_DIR, 'workspaces.lock');
+    const oldTime = new Date(Date.now() - 10000);
+    writeFileSync(LOCK_FILE, '');
+    utimesSync(LOCK_FILE, oldTime, oldTime);
+
+    // Attempt to register - should clear lock and succeed
+    const wsDir = join(tmpdir(), `ccv-ws-${Date.now()}-stale`);
+    mkdirSync(wsDir, { recursive: true });
+
+    // This will throw if lock is not cleared
+    const entry = registerWorkspace(wsDir);
+    assert.ok(entry);
+    assert.ok(!existsSync(LOCK_FILE)); // Lock should be gone after operation
   });
 });

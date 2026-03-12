@@ -63,13 +63,28 @@ export function loadWorkspaces() {
 }
 
 export function saveWorkspaces(list) {
+  const tmpFile = `${WORKSPACES_FILE}.tmp-${process.pid}-${randomBytes(4).toString('hex')}`;
   try {
     mkdirSync(LOG_DIR, { recursive: true });
-    const tmpFile = `${WORKSPACES_FILE}.tmp-${process.pid}-${randomBytes(4).toString('hex')}`;
     writeFileSync(tmpFile, JSON.stringify({ workspaces: list }, null, 2));
-    renameSync(tmpFile, WORKSPACES_FILE);
+    
+    // Windows 上 renameSync 可能会因为目标文件存在或被占用而失败
+    // 简单的重试机制
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        renameSync(tmpFile, WORKSPACES_FILE);
+        break;
+      } catch (err) {
+        if (retries === 1) throw err;
+        retries--;
+        sleep(20);
+      }
+    }
   } catch (err) {
     console.error('[CC Viewer] Failed to save workspaces:', err.message);
+    // 尝试清理临时文件
+    try { unlinkSync(tmpFile); } catch { }
   }
 }
 

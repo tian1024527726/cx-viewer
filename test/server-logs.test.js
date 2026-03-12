@@ -34,7 +34,7 @@ function httpRequest(port, path, { method = 'GET', body = null } = {}) {
   });
 }
 
-describe('server local logs endpoints', () => {
+describe('server local logs endpoints', { concurrency: false }, () => {
   let startViewer, stopViewer, getPort;
   let port;
   const projectName = `projX_${Date.now()}`;

@@ -49,6 +49,13 @@ This command automatically detects how Claude Code is installed locally (NPM or 
 
 If you need to use a custom API endpoint (e.g., a corporate proxy), simply configure it in `~/.claude/settings.json` or set the `ANTHROPIC_BASE_URL` environment variable. `ccv` will automatically detect and correctly forward requests.
 
+### Environment Variables
+
+- `CCV_LOG_DIR`: Override the default log directory (`~/.claude/cc-viewer`).
+  - Set to `tmp` to use the system temporary directory (useful for testing or ephemeral sessions).
+  - Set to any absolute path or `~/path` to customize storage location.
+- `CCV_DEBUG_PLUGINS`: Set to `1` to enable debug logs for the plugin system.
+
 ### Silent Mode
 
 By default, `ccv` runs in silent mode when wrapping `claude`, keeping your terminal output clean and consistent with the native experience. All logs are captured in the background and can be viewed at `http://localhost:7008`.
