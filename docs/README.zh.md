@@ -42,8 +42,11 @@ ccv -d
 
 ### 日志模式
 
-⚠️如果你仍然习惯使用claude 原生工具，或者VS code插件，请使用该模式
-这个模式下面启动claude 或者 claude --dangerously-skip-permissions 会自动启动一个日志进程帮忙记录请求报文
+⚠️如果你仍然习惯使用claude 原生工具，或者VS code插件，请使用该模式。
+
+这个模式下面启动 ```claude``` 或者 ```claude --dangerously-skip-permissions``` 
+
+会自动启动一个日志进程自动记录请求日志到~/.claude/cc-viewer/*yourproject*/date.jsonl
 
 启动日志模式：
 ```bash
