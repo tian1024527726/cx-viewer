@@ -1986,8 +1986,14 @@ export function getPort() {
   return actualPort;
 }
 
+let _stoppingPromise = null;
 export function stopViewer() {
-  runParallelHook('serverStopping').catch(() => {});
+  if (_stoppingPromise) return _stoppingPromise;
+  _stoppingPromise = _doStop();
+  return _stoppingPromise;
+}
+async function _doStop() {
+  try { await Promise.race([runParallelHook('serverStopping'), new Promise(r => setTimeout(r, 3000))]); } catch { }
   // 如果用户未做选择，将临时文件转为正式文件
   if (_resumeState && _resumeState.tempFile) {
     try {
@@ -2051,5 +2057,5 @@ function handleExit() {
   }
 }
 process.on('exit', handleExit);
-process.on('SIGINT', () => { handleExit(); process.exit(); });
-process.on('SIGTERM', () => { handleExit(); process.exit(); });
+process.on('SIGINT', () => { stopViewer().finally(() => process.exit()); });
+process.on('SIGTERM', () => { stopViewer().finally(() => process.exit()); });

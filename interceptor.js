@@ -477,10 +477,10 @@ export function setupInterceptor() {
   });
 
   // 注册退出处理器
-  const cleanupViewer = () => {
+  const cleanupViewer = async () => {
     if (viewerModule && typeof viewerModule.stopViewer === 'function') {
       try {
-        viewerModule.stopViewer();
+        await viewerModule.stopViewer();
       } catch (err) {
         // Silently fail
       }
@@ -488,13 +488,11 @@ export function setupInterceptor() {
   };
 
   process.on('SIGINT', () => {
-    cleanupViewer();
-    process.exit(0);
+    cleanupViewer().finally(() => process.exit(0));
   });
 
   process.on('SIGTERM', () => {
-    cleanupViewer();
-    process.exit(0);
+    cleanupViewer().finally(() => process.exit(0));
   });
 
   process.on('beforeExit', () => {
