@@ -1,15 +1,29 @@
 import { resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync, realpathSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { execSync } from 'node:child_process';
+import { threadId } from 'node:worker_threads';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
 // ============ 配置区（第三方适配只需修改此处）============
 
+function resolveLogDir() {
+  const envDir = process.env.CCV_LOG_DIR;
+  if (typeof envDir === 'string' && envDir.trim()) {
+    const raw = envDir.trim();
+    const expanded = raw.startsWith('~/') ? join(homedir(), raw.slice(2)) : raw;
+    return resolve(expanded);
+  }
+  if (process.argv.includes('--test')) {
+    return join(tmpdir(), 'cc-viewer-test', `${process.pid}-${threadId}`);
+  }
+  return join(homedir(), '.claude', 'cc-viewer');
+}
+
 // 日志存储根目录（所有项目日志、偏好设置均存放于此）
-export const LOG_DIR = join(homedir(), '.claude', 'cc-viewer');
+export const LOG_DIR = resolveLogDir();
 
 // npm 包名候选列表（按优先级排列）
 export const PACKAGES = ['@anthropic-ai/claude-code', '@ali/claude-code'];
@@ -88,7 +102,7 @@ export function resolveNpmClaudePath() {
               }
             }
           }
-        } catch {}
+        } catch { }
       }
     } catch {
       // ignore
@@ -120,7 +134,7 @@ export function resolveNativePath() {
         try {
           const real = realpathSync(result);
           if (real.includes('node_modules')) continue;
-        } catch {}
+        } catch { }
         return result;
       }
     } catch {

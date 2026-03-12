@@ -5,6 +5,7 @@ import {
   writeToPty,
   resizePty,
   killPty,
+  _setPtyImportForTests,
   onPtyData,
   onPtyExit,
   getPtyState,
@@ -81,162 +82,101 @@ describe('pty-manager: listener registration', () => {
 // ─── spawnClaude integration (requires claude binary) ───
 
 describe('pty-manager: spawnClaude integration', () => {
-  let ptyInstance;
+  let spawned = [];
+
+  beforeEach(() => {
+    spawned = [];
+    _setPtyImportForTests(() => ({
+      spawn(command, args, opts) {
+        const dataHandlers = [];
+        const exitHandlers = [];
+        let killed = false;
+        const inst = {
+          command,
+          args,
+          opts,
+          write(data) {
+            for (const cb of dataHandlers) cb(`out:${data}`);
+          },
+          resize() {},
+          kill() {
+            if (killed) return;
+            killed = true;
+            for (const cb of exitHandlers) cb({ exitCode: 0 });
+          },
+          onData(cb) { dataHandlers.push(cb); },
+          onExit(cb) { exitHandlers.push(cb); },
+          _isKilled() { return killed; },
+        };
+        spawned.push(inst);
+        return inst;
+      },
+    }));
+  });
 
   afterEach(() => {
-    if (ptyInstance) {
-      killPty();
-      ptyInstance = null;
-    }
+    killPty();
+    _setPtyImportForTests(null);
   });
 
-  it('spawnClaude throws when claude not found (mocked)', async () => {
-    // This test assumes resolveNativePath() returns null in test env
-    // If claude is installed, this test may fail — skip or mock
-    try {
-      await spawnClaude(9999, process.cwd());
-      // If it succeeds, claude is installed
-      killPty();
-    } catch (err) {
-      assert.ok(err.message.includes('claude not found'));
-    }
+  it('getPtyState reflects running state after spawn', async () => {
+    await spawnClaude(9999, process.cwd(), [], '/bin/echo');
+    const state = getPtyState();
+    assert.equal(state.running, true);
+    killPty();
+    assert.equal(getPtyState().running, false);
   });
 
-  it('getPtyState reflects running state after spawn (if claude exists)', async () => {
-    try {
-      ptyInstance = await spawnClaude(9999, process.cwd());
-      const state = getPtyState();
-      assert.equal(state.running, true);
-      killPty();
-    } catch (err) {
-      // claude not found, skip
-      if (!err.message.includes('claude not found')) throw err;
-    }
+  it('getCurrentWorkspace returns cwd after spawn', async () => {
+    await spawnClaude(9999, process.cwd(), [], '/bin/echo');
+    const ws = getCurrentWorkspace();
+    assert.equal(ws.running, true);
+    assert.equal(ws.cwd, process.cwd());
   });
 
-  it('getCurrentWorkspace returns cwd after spawn (if claude exists)', async () => {
-    try {
-      ptyInstance = await spawnClaude(9999, process.cwd());
-      const ws = getCurrentWorkspace();
-      assert.equal(ws.running, true);
-      assert.equal(ws.cwd, process.cwd());
-      killPty();
-    } catch (err) {
-      if (!err.message.includes('claude not found')) throw err;
-    }
-  });
-
-  it('onPtyData receives data from PTY (if claude exists)', async () => {
-    try {
-      ptyInstance = await spawnClaude(9999, process.cwd());
-
-      return new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          killPty();
-          reject(new Error('Timeout waiting for PTY data'));
-        }, 5000);
-
-        const unsub = onPtyData((data) => {
-          clearTimeout(timeout);
-          unsub();
-          assert.ok(data.length > 0, 'should receive data');
-          killPty();
-          resolve();
-        });
-
-        // Send a command to trigger output
-        writeToPty('echo test\r');
+  it('onPtyData receives data from PTY', async () => {
+    await spawnClaude(9999, process.cwd(), [], '/bin/echo');
+    await new Promise((resolve) => {
+      const unsub = onPtyData((data) => {
+        unsub();
+        assert.ok(data.includes('out:'));
+        resolve();
       });
-    } catch (err) {
-      if (!err.message.includes('claude not found')) throw err;
-    }
+      writeToPty('echo test\r');
+    });
   });
 
-  it('onPtyExit fires when PTY exits (if claude exists)', async () => {
-    try {
-      ptyInstance = await spawnClaude(9999, process.cwd());
-
-      return new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          killPty();
-          reject(new Error('Timeout waiting for PTY exit'));
-        }, 5000);
-
-        const unsub = onPtyExit((exitCode) => {
-          clearTimeout(timeout);
-          unsub();
-          assert.equal(typeof exitCode, 'number');
-          resolve();
-        });
-
-        // Kill PTY to trigger exit
-        killPty();
+  it('onPtyExit fires when PTY exits', async () => {
+    await spawnClaude(9999, process.cwd(), [], '/bin/echo');
+    await new Promise((resolve) => {
+      const unsub = onPtyExit((exitCode) => {
+        unsub();
+        assert.equal(exitCode, 0);
+        resolve();
       });
-    } catch (err) {
-      if (!err.message.includes('claude not found')) throw err;
-    }
-  });
-
-  it('getOutputBuffer accumulates PTY output (if claude exists)', async () => {
-    try {
-      ptyInstance = await spawnClaude(9999, process.cwd());
-
-      return new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          killPty();
-          reject(new Error('Timeout waiting for output buffer'));
-        }, 5000);
-
-        const unsub = onPtyData(() => {
-          const buf = getOutputBuffer();
-          if (buf.length > 0) {
-            clearTimeout(timeout);
-            unsub();
-            assert.ok(buf.length > 0, 'buffer should contain data');
-            killPty();
-            resolve();
-          }
-        });
-
-        writeToPty('echo test\r');
-      });
-    } catch (err) {
-      if (!err.message.includes('claude not found')) throw err;
-    }
-  });
-
-  it('resizePty changes PTY dimensions (if claude exists)', async () => {
-    try {
-      ptyInstance = await spawnClaude(9999, process.cwd());
-      // resize should not throw
-      assert.doesNotThrow(() => resizePty(80, 24));
       killPty();
-    } catch (err) {
-      if (!err.message.includes('claude not found')) throw err;
-    }
+    });
   });
 
-  it('killPty stops the PTY process (if claude exists)', async () => {
-    try {
-      ptyInstance = await spawnClaude(9999, process.cwd());
-      assert.equal(getPtyState().running, true);
-      killPty();
-      assert.equal(getPtyState().running, false);
-    } catch (err) {
-      if (!err.message.includes('claude not found')) throw err;
-    }
+  it('getOutputBuffer accumulates PTY output', async () => {
+    await spawnClaude(9999, process.cwd(), [], '/bin/echo');
+    writeToPty('echo test\r');
+    await new Promise(r => setTimeout(r, 0));
+    const buf = getOutputBuffer();
+    assert.ok(buf.includes('out:'));
   });
 
-  it('spawnClaude kills existing PTY before spawning new one (if claude exists)', async () => {
-    try {
-      ptyInstance = await spawnClaude(9999, process.cwd());
-      const firstPty = ptyInstance;
-      ptyInstance = await spawnClaude(9999, process.cwd());
-      assert.notEqual(ptyInstance, firstPty, 'should be a new PTY instance');
-      killPty();
-    } catch (err) {
-      if (!err.message.includes('claude not found')) throw err;
-    }
+  it('resizePty does not throw while running', async () => {
+    await spawnClaude(9999, process.cwd(), [], '/bin/echo');
+    assert.doesNotThrow(() => resizePty(80, 24));
+  });
+
+  it('spawnClaude kills existing PTY before spawning new one', async () => {
+    await spawnClaude(9999, process.cwd(), [], '/bin/echo');
+    const first = spawned[0];
+    await spawnClaude(9999, process.cwd(), [], '/bin/echo');
+    assert.equal(first._isKilled(), true);
+    assert.equal(spawned.length, 2);
   });
 });
 

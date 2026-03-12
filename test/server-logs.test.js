@@ -1,11 +1,10 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { request } from 'node:http';
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from 'node:fs';
+import { rmSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+import { LOG_DIR } from '../findcc.js';
 
-const tmpDir = mkdtempSync(join(tmpdir(), 'ccv-server-logs-'));
 process.env.CCV_WORKSPACE_MODE = '1';
 process.env.CCV_CLI_MODE = '0';
 
@@ -38,15 +37,15 @@ function httpRequest(port, path, { method = 'GET', body = null } = {}) {
 describe('server local logs endpoints', () => {
   let startViewer, stopViewer, getPort;
   let port;
+  const projectName = `projX_${Date.now()}`;
+  const fileName = `${projectName}_20260101_120000.jsonl`;
+  const fileRel = `${projectName}/${fileName}`;
+  const projectDir = join(LOG_DIR, projectName);
 
   before(async () => {
-    // Prepare a fake project with logs (note: server reads default LOG_DIR; we validate response shape)
-    const fakeLogDir = join(tmpDir, 'logs');
-    const project = join(fakeLogDir, 'projX');
-    mkdirSync(project, { recursive: true });
-    const fileName = 'projX_20260101_120000.jsonl';
-    writeFileSync(join(project, fileName), JSON.stringify({ timestamp: '2026-01-01T12:00:00Z' }) + '\n---\n');
-    writeFileSync(join(project, 'projX.json'), JSON.stringify({ files: { [fileName]: { summary: { sessionCount: 3 } } } }));
+    mkdirSync(projectDir, { recursive: true });
+    writeFileSync(join(projectDir, fileName), JSON.stringify({ timestamp: '2026-01-01T12:00:00Z' }) + '\n---\n');
+    writeFileSync(join(projectDir, `${projectName}.json`), JSON.stringify({ files: { [fileName]: { summary: { sessionCount: 3 } } } }));
 
     const mod = await import('../server.js');
     startViewer = mod.startViewer;
@@ -59,7 +58,7 @@ describe('server local logs endpoints', () => {
 
   after(() => {
     stopViewer();
-    rmSync(tmpDir, { recursive: true, force: true });
+    rmSync(projectDir, { recursive: true, force: true });
   });
 
   it('GET /api/local-logs returns grouped logs with stats', async () => {
@@ -67,6 +66,11 @@ describe('server local logs endpoints', () => {
     assert.equal(res.status, 200);
     const data = res.json();
     assert.equal(typeof data._currentProject, 'string');
+    assert.ok(Array.isArray(data[projectName]));
+    assert.equal(data[projectName].length, 1);
+    assert.equal(data[projectName][0].file, fileRel);
+    assert.equal(data[projectName][0].turns, 3);
+    assert.equal(data[projectName][0].timestamp, '20260101_120000');
   });
 
   it('GET /api/download-log rejects invalid file name', async () => {
@@ -84,5 +88,21 @@ describe('server local logs endpoints', () => {
   it('GET /api/download-log returns 404 when file not found', async () => {
     const res = await httpRequest(port, '/api/download-log?file=projX/not-exist.jsonl');
     assert.equal(res.status, 404);
+  });
+
+  it('GET /api/download-log returns file content for existing log', async () => {
+    const res = await httpRequest(port, `/api/download-log?file=${encodeURIComponent(fileRel)}`);
+    assert.equal(res.status, 200);
+    assert.equal(res.headers['content-type'], 'application/octet-stream');
+    assert.ok(res.body.includes('2026-01-01T12:00:00Z'));
+  });
+
+  it('GET /api/local-log returns entries for existing log', async () => {
+    const res = await httpRequest(port, `/api/local-log?file=${encodeURIComponent(fileRel)}`);
+    assert.equal(res.status, 200);
+    const data = res.json();
+    assert.ok(Array.isArray(data));
+    assert.equal(data.length, 1);
+    assert.equal(data[0].timestamp, '2026-01-01T12:00:00Z');
   });
 });

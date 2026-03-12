@@ -1,11 +1,7 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { request } from 'node:http';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
 
-const tmpDir = mkdtempSync(join(tmpdir(), 'ccv-server-plugins-'));
 process.env.CCV_WORKSPACE_MODE = '1';
 process.env.CCV_CLI_MODE = '0';
 
@@ -52,7 +48,6 @@ describe('server plugin endpoints', () => {
 
   after(() => {
     stopViewer();
-    rmSync(tmpDir, { recursive: true, force: true });
   });
 
   it('GET /api/plugins returns plugins list', async () => {
