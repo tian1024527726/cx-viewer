@@ -256,21 +256,51 @@ class ChatMessage extends React.Component {
     // AskUserQuestion: 问卷卡片
     if (tu.name === 'AskUserQuestion') {
       const questions = inp.questions || [];
+      const { askAnswerMap } = this.props;
+      const selectedAnswers = askAnswerMap?.[tu.id] || {};
+      const hasAnswers = Object.keys(selectedAnswers).length > 0;
+      const checkSvg = (
+        <svg className={styles.askCheckSvg} width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M3 8.5L6.5 12L13 4" stroke="#2ea043" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      );
       return (
         <div key={tu.id} className={styles.askQuestionBox}>
-          {questions.map((q, qi) => (
-            <div key={qi} className={qi < questions.length - 1 ? styles.questionSpacing : undefined}>
-              {q.header && <span className={styles.askQuestionHeader}>{q.header}</span>}
-              <div className={styles.askQuestionText}>{q.question}</div>
-              <div className={styles.optionList}>
-                {q.options && q.options.map((opt, oi) => (
-                  <div key={oi} className={styles.askOptionItem}>
-                    ○ {opt.label}{opt.description && <span className={styles.optionDesc}>— {opt.description}</span>}
-                  </div>
-                ))}
+          {questions.map((q, qi) => {
+            const answer = selectedAnswers[q.question];
+            const answerLabels = answer != null && q.multiSelect
+              ? answer.split(',').map(s => s.trim())
+              : [];
+            const isOptionMatch = (optLabel) => {
+              if (answer == null) return false;
+              if (q.multiSelect) return answerLabels.includes(optLabel);
+              return answer === optLabel;
+            };
+            const anyOptionMatched = q.options?.some(opt => isOptionMatch(opt.label));
+            const isOtherAnswer = hasAnswers && answer != null && !anyOptionMatched;
+            return (
+              <div key={qi} className={qi < questions.length - 1 ? styles.questionSpacing : undefined}>
+                {q.header && <span className={styles.askQuestionHeader}>{q.header}</span>}
+                <div className={styles.askQuestionText}>{q.question}</div>
+                <div className={styles.optionList}>
+                  {q.options && q.options.map((opt, oi) => {
+                    const selected = isOptionMatch(opt.label);
+                    return (
+                      <div key={oi} className={`${styles.askOptionItem}${selected ? ' ' + styles.askOptionSelected : ''}`}>
+                        {selected ? checkSvg : '○'} {opt.label}
+                        {opt.description && <span className={styles.optionDesc}>— {opt.description}</span>}
+                      </div>
+                    );
+                  })}
+                  {isOtherAnswer && (
+                    <div className={`${styles.askOptionItem} ${styles.askOptionSelected}`}>
+                      {checkSvg} {answer}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       );
     }
@@ -521,43 +551,6 @@ class ChatMessage extends React.Component {
     );
   }
 
-  renderUserSelectionMessage() {
-    const { questions, answers } = this.props;
-    const userName = this.getUserName();
-    return (
-      <div className={styles.messageRowEnd}>
-        <div className={styles.contentColLimited}>
-          {this.renderLabel(userName, ' — 选择')}
-          <div className={styles.bubbleSelection}>
-            {questions && questions.map((q, qi) => {
-              const answer = answers?.[q.question] || '未选择';
-              return (
-                <div key={qi} className={qi < questions.length - 1 ? styles.questionSpacing : undefined}>
-                  <div className={styles.questionText}>{q.question}</div>
-                  <div className={styles.optionList}>
-                    {q.options && q.options.map((opt, oi) => {
-                      const isSelected = answer === opt.label;
-                      return (
-                        <div key={oi} className={styles.option} style={{
-                          color: isSelected ? '#e5e5e5' : '#666',
-                          fontWeight: isSelected ? 600 : 'normal',
-                        }}>
-                          {isSelected ? '● ' : '○ '}{opt.label}
-                          {opt.description && <span className={styles.optionDesc}>— {opt.description}</span>}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        {this.renderUserAvatar('#2ea043')}
-      </div>
-    );
-  }
-
   renderPlanPromptMessage() {
     const { text, timestamp, modelInfo } = this.props;
     const timeStr = this.formatTime(timestamp);
@@ -610,7 +603,6 @@ class ChatMessage extends React.Component {
     if (role === 'user') return this.renderUserMessage();
     if (role === 'skill-loaded') return this.renderSkillLoadedMessage();
     if (role === 'plan-prompt') return this.renderPlanPromptMessage();
-    if (role === 'user-selection') return this.renderUserSelectionMessage();
     if (role === 'assistant') return this.renderAssistantMessage();
     if (role === 'sub-agent-chat') return this.renderSubAgentChatMessage();
     if (role === 'sub-agent') return this.renderSubAgentMessage();

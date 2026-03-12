@@ -90,17 +90,17 @@ const darkTheme = EditorView.theme({
     borderLeft: '1px solid #262626',
   },
   '.cm-minimap-overlay': {
-    border: '1px solid rgba(128, 144, 178, 0.6)',
-    background: 'rgba(95, 110, 145, 0.15)',
+    border: '1px solid rgba(158, 174, 235, 0.8)',
+    background: 'rgba(95, 110, 185, 0.45)',
     borderRadius: '2px',
     transition: 'opacity 0.2s ease',
   },
   '.cm-minimap-gutter:hover .cm-minimap-overlay': {
-    border: '1px solid rgba(128, 144, 178, 0.85)',
-    background: 'rgba(95, 110, 145, 0.25)',
+    border: '1px solid rgba(178, 194, 255, 0.95)',
+    background: 'rgba(95, 110, 225, 0.45)',
   },
   '.cm-activeLine': {
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   '.cm-cursor': {
     borderLeftColor: '#e0e0e0',

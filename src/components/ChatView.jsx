@@ -143,7 +143,33 @@ function buildToolResultMap(messages) {
       }
     }
   }
-  return { toolUseMap, toolResultMap, readContentMap, editSnapshotMap };
+  // 构建 askAnswerMap：为每个 AskUserQuestion tool_use 解析用户选择的答案
+  const askAnswerMap = {};
+  for (const msg of messages) {
+    if (msg.role === 'user' && Array.isArray(msg.content)) {
+      for (const block of msg.content) {
+        if (block.type === 'tool_result') {
+          const matchedTool = toolUseMap[block.tool_use_id];
+          if (matchedTool && matchedTool.name === 'AskUserQuestion') {
+            const resultText = extractToolResultText(block);
+            askAnswerMap[block.tool_use_id] = parseAskAnswerText(resultText);
+          }
+        }
+      }
+    }
+  }
+  return { toolUseMap, toolResultMap, readContentMap, editSnapshotMap, askAnswerMap };
+}
+
+/** 从 AskUserQuestion tool_result 文本中提取答案 map */
+function parseAskAnswerText(text) {
+  const answers = {};
+  const re = /"([^"]+)"="([^"]*)"/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    answers[m[1]] = m[2];
+  }
+  return answers;
 }
 
 class ChatView extends React.Component {
@@ -442,7 +468,7 @@ class ChatView extends React.Component {
 
   renderSessionMessages(messages, keyPrefix, modelInfo, tsToIndex) {
     const { userProfile, collapseToolResults, expandThinking, onViewRequest } = this.props;
-    const { toolUseMap, toolResultMap, readContentMap, editSnapshotMap } = buildToolResultMap(messages);
+    const { toolUseMap, toolResultMap, readContentMap, editSnapshotMap, askAnswerMap } = buildToolResultMap(messages);
 
     const renderedMessages = [];
 
@@ -459,26 +485,7 @@ class ChatView extends React.Component {
           const toolResults = content.filter(b => b.type === 'tool_result');
 
           if (suggestionText && toolResults.length > 0) {
-            let questions = null;
-            let answers = {};
-            for (const tr of toolResults) {
-              const matchedTool = toolUseMap[tr.tool_use_id];
-              if (matchedTool && matchedTool.name === 'AskUserQuestion' && matchedTool.input?.questions) {
-                questions = matchedTool.input.questions;
-                const resultText = extractToolResultText(tr);
-                try {
-                  const parsed = JSON.parse(resultText);
-                  answers = parsed.answers || {};
-                } catch {}
-                break;
-              }
-            }
-
-            if (questions) {
-              renderedMessages.push(
-                <ChatMessage key={`${keyPrefix}-selection-${mi}`} role="user-selection" questions={questions} answers={answers} timestamp={ts} userProfile={userProfile} {...viewReqProps} />
-              );
-            }
+            // AskUserQuestion 的用户回复：跳过渲染（答案已在 assistant 侧问卷卡片上显示）
           } else {
             const { commands, textBlocks, skillBlocks } = classifyUserContent(content);
             // 渲染 slash command 作为独立用户输入
@@ -512,11 +519,11 @@ class ChatView extends React.Component {
       } else if (msg.role === 'assistant') {
         if (Array.isArray(content)) {
           renderedMessages.push(
-            <ChatMessage key={`${keyPrefix}-asst-${mi}`} role="assistant" content={content} toolResultMap={toolResultMap} readContentMap={readContentMap} editSnapshotMap={editSnapshotMap} timestamp={ts} modelInfo={modelInfo} collapseToolResults={collapseToolResults} expandThinking={expandThinking} {...viewReqProps} />
+            <ChatMessage key={`${keyPrefix}-asst-${mi}`} role="assistant" content={content} toolResultMap={toolResultMap} readContentMap={readContentMap} editSnapshotMap={editSnapshotMap} askAnswerMap={askAnswerMap} timestamp={ts} modelInfo={modelInfo} collapseToolResults={collapseToolResults} expandThinking={expandThinking} {...viewReqProps} />
           );
         } else if (typeof content === 'string') {
           renderedMessages.push(
-            <ChatMessage key={`${keyPrefix}-asst-${mi}`} role="assistant" content={[{ type: 'text', text: content }]} toolResultMap={toolResultMap} readContentMap={readContentMap} editSnapshotMap={editSnapshotMap} timestamp={ts} modelInfo={modelInfo} collapseToolResults={collapseToolResults} expandThinking={expandThinking} {...viewReqProps} />
+            <ChatMessage key={`${keyPrefix}-asst-${mi}`} role="assistant" content={[{ type: 'text', text: content }]} toolResultMap={toolResultMap} readContentMap={readContentMap} editSnapshotMap={editSnapshotMap} askAnswerMap={askAnswerMap} timestamp={ts} modelInfo={modelInfo} collapseToolResults={collapseToolResults} expandThinking={expandThinking} {...viewReqProps} />
           );
         }
       }
