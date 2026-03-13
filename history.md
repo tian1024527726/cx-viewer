@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.5.26 (2026-03-13)
+
+- Feature: "当前项目" tag replaced with context usage health bar — shows real-time context window consumption with color transitions (green → yellow → red)
+- Feature: statusLine integration — auto-installs wrapper script to capture `context_window.used_percentage` from Claude Code, pushed to frontend via SSE
+- Feature: `getModelMaxTokens()` helper for model context window size mapping (Claude 200k, GPT-4o 128k, DeepSeek 128k, etc.)
+- Fix: statusLine lifecycle — proper install/uninstall with original config preservation, cleanup on abnormal exit
+- Fix: `ccv -uninstall` now cleans up statusLine config, ccv-statusline.sh script, and context-window.json
+- Fix: `removeShellHook` now scans all shell config files (.zshrc, .zprofile, .bashrc, .bash_profile, .profile)
+
 ## 1.5.25 (2026-03-13)
 
 - Feature: inject Claude process PID (`entry.pid`) into `onNewEntry` plugin hook — CLI mode uses PTY child PID, hook-injection mode uses `process.pid`
