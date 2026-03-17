@@ -385,3 +385,104 @@ export function findPrevMainAgentTimestamp(requests, startIndex) {
   }
   return null;
 }
+
+/**
+ * 从请求列表中提取最新 MainAgent 请求的 KV-cache 缓存内容
+ * cache_control 是缓存断点标记，表示从开始到该标记位置的所有内容都被缓存
+ * @param {Array} requests - 请求列表
+ * @returns {Object|null} - { system: string[], messages: string[], tools: string[], cacheCreateTokens: number, cacheReadTokens: number }
+ */
+export function extractCachedContent(requests) {
+  if (!Array.isArray(requests) || requests.length === 0) return null;
+
+  // 逆序查找最新的 MainAgent 请求
+  let latestMainAgent = null;
+  for (let i = requests.length - 1; i >= 0; i--) {
+    if (isMainAgent(requests[i])) {
+      latestMainAgent = requests[i];
+      break;
+    }
+  }
+
+  if (!latestMainAgent || !latestMainAgent.body) return null;
+
+  const body = latestMainAgent.body;
+  const usage = latestMainAgent.response?.body?.usage;
+
+  const result = {
+    system: [],
+    messages: [],
+    tools: [],
+    cacheCreateTokens: usage?.cache_creation_input_tokens || 0,
+    cacheReadTokens: usage?.cache_read_input_tokens || 0,
+  };
+
+  // 提取 system：找到最后一个带 cache_control 的位置，提取从开始到该位置的所有内容
+  if (Array.isArray(body.system)) {
+    let lastCacheIndex = -1;
+    for (let i = body.system.length - 1; i >= 0; i--) {
+      if (body.system[i].cache_control) {
+        lastCacheIndex = i;
+        break;
+      }
+    }
+    if (lastCacheIndex >= 0) {
+      for (let i = 0; i <= lastCacheIndex; i++) {
+        const block = body.system[i];
+        if (block.type === 'text' && block.text) {
+          result.system.push(block.text);
+        }
+      }
+    }
+  }
+
+  // 提取 messages：找到最后一个带 cache_control 的消息，提取从开始到该位置的所有消息内容
+  if (Array.isArray(body.messages)) {
+    let lastCacheIndex = -1;
+    for (let i = body.messages.length - 1; i >= 0; i--) {
+      const content = body.messages[i].content;
+      if (Array.isArray(content)) {
+        for (const block of content) {
+          if (block.cache_control) {
+            lastCacheIndex = i;
+            break;
+          }
+        }
+        if (lastCacheIndex >= 0) break;
+      }
+    }
+    if (lastCacheIndex >= 0) {
+      for (let i = 0; i <= lastCacheIndex; i++) {
+        const msg = body.messages[i];
+        const content = msg.content;
+        if (typeof content === 'string') {
+          result.messages.push(`[${msg.role}] ${content}`);
+        } else if (Array.isArray(content)) {
+          for (const block of content) {
+            if (block.type === 'text' && block.text) {
+              result.messages.push(`[${msg.role}] ${block.text}`);
+            } else if (block.type === 'tool_result') {
+              const toolText = extractToolResultText(block);
+              if (toolText) {
+                result.messages.push(`[tool_result: ${block.tool_use_id}] ${toolText}`);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 提取 tools：如果任何 tool 带 cache_control，则整个 tools 数组都被缓存
+  if (Array.isArray(body.tools)) {
+    const hasCache = body.tools.some(tool => tool.cache_control);
+    if (hasCache) {
+      for (const tool of body.tools) {
+        const toolStr = `${tool.name}: ${tool.description || ''}`;
+        result.tools.push(toolStr);
+      }
+    }
+  }
+
+  return result;
+}

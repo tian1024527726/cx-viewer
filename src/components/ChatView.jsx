@@ -242,7 +242,7 @@ class ChatView extends React.Component {
       allItems: [],
       highlightTs: null,
       highlightFading: false,
-      terminalWidth: initialTerminalWidth || 468, // 默认 60cols * 7.8px
+      terminalWidth: initialTerminalWidth || 624, // 默认 80cols * 7.8px
       needsInitialSnap: initialTerminalWidth === null, // 标记是否需要初始化吸附
       inputEmpty: true,
       pendingInput: null,

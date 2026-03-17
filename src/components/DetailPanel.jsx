@@ -5,7 +5,7 @@ import JsonViewer from './JsonViewer';
 import ConceptHelp from './ConceptHelp';
 import { t } from '../i18n';
 import { apiUrl } from '../utils/apiUrl';
-import { formatTokenCount, stripPrivateKeys, hasClaudeMdReminder, isClaudeMdReminder, hasSkillsReminder, isSkillsReminder } from '../utils/helpers';
+import { formatTokenCount, stripPrivateKeys, hasClaudeMdReminder, isClaudeMdReminder, hasSkillsReminder, isSkillsReminder, extractCachedContent } from '../utils/helpers';
 import { classifyRequest } from '../utils/requestType';
 import { isMainAgent } from '../utils/contentFilter';
 import ContextTab from './ContextTab';
@@ -458,6 +458,73 @@ class DetailPanel extends React.Component {
             ) : (
               <Empty description={t('ui.responseNotCaptured')} />
             )}
+          </div>
+        ),
+      },
+      {
+        key: 'kv-cache-text',
+        label: 'KV-Cache-Text',
+        children: (
+          <div className={styles.tabContent} style={{ height: 'calc(100vh - 220px)', minHeight: 400 }}>
+            {(() => {
+              const cached = extractCachedContent([request]);
+              if (!cached || (cached.system.length === 0 && cached.messages.length === 0 && cached.tools.length === 0)) {
+                return <Empty description={t('ui.noCachedContent')} image={Empty.PRESENTED_IMAGE_SIMPLE} />;
+              }
+              const truncate = (text, max = 2000) => text.length > max ? text.substring(0, max) + '...' : text;
+              const buildPlainText = () => {
+                const parts = [];
+                if (cached.system.length > 0) { parts.push(`=== ${t('ui.systemPrompt')} ===`); cached.system.forEach(t => parts.push(t)); }
+                if (cached.messages.length > 0) { parts.push(`\n=== ${t('ui.messages')} ===`); cached.messages.forEach(t => parts.push(t)); }
+                if (cached.tools.length > 0) { parts.push(`\n=== ${t('ui.tools')} ===`); cached.tools.forEach(t => parts.push(t)); }
+                return parts.join('\n\n');
+              };
+              return (
+                <div style={{ padding: '8px 0', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  {(cached.cacheCreateTokens > 0 || cached.cacheReadTokens > 0) && (
+                    <div style={{ fontSize: 12, fontFamily: 'monospace', color: '#aaa', marginBottom: 12, flexShrink: 0 }}>
+                      {t('ui.tokens')}: <span style={{ color: '#faad14' }}>write {formatTokenCount(cached.cacheCreateTokens)}</span>
+                      {' / '}
+                      <span style={{ color: '#52c41a' }}>read {formatTokenCount(cached.cacheReadTokens)}</span>
+                      <CopyOutlined
+                        style={{ marginLeft: 8, cursor: 'pointer', color: '#888', transition: 'color 0.2s' }}
+                        onClick={() => {
+                          navigator.clipboard.writeText(buildPlainText()).then(() => {
+                            message.success(t('ui.copied'));
+                          }).catch(() => {});
+                        }}
+                      />
+                    </div>
+                  )}
+                  <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+                    {cached.system.length > 0 && (
+                      <div style={{ marginBottom: 12 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e5e5', marginBottom: 6 }}>{t('ui.systemPrompt')} ({cached.system.length})</div>
+                        {cached.system.map((text, i) => (
+                          <pre key={i} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 12, lineHeight: 1.5, color: '#ccc', background: '#111', border: '1px solid #2a2a2a', borderRadius: 4, padding: 8, margin: '4px 0', fontFamily: 'Menlo, Monaco, monospace' }}>{truncate(text)}</pre>
+                        ))}
+                      </div>
+                    )}
+                    {cached.messages.length > 0 && (
+                      <div style={{ marginBottom: 12 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e5e5', marginBottom: 6 }}>{t('ui.messages')} ({cached.messages.length})</div>
+                        {cached.messages.map((text, i) => (
+                          <pre key={i} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 12, lineHeight: 1.5, color: '#ccc', background: '#111', border: '1px solid #2a2a2a', borderRadius: 4, padding: 8, margin: '4px 0', fontFamily: 'Menlo, Monaco, monospace' }}>{truncate(text)}</pre>
+                        ))}
+                      </div>
+                    )}
+                    {cached.tools.length > 0 && (
+                      <div style={{ marginBottom: 12 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e5e5', marginBottom: 6 }}>{t('ui.tools')} ({cached.tools.length})</div>
+                        {cached.tools.map((text, i) => (
+                          <pre key={i} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 12, lineHeight: 1.5, color: '#ccc', background: '#111', border: '1px solid #2a2a2a', borderRadius: 4, padding: 8, margin: '4px 0', fontFamily: 'Menlo, Monaco, monospace' }}>{truncate(text)}</pre>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         ),
       },

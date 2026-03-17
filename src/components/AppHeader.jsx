@@ -2,7 +2,7 @@ import React from 'react';
 import { Space, Tag, Button, Dropdown, Popover, Modal, Collapse, Drawer, Switch, Tabs, Spin, Input, Table, message } from 'antd';
 import { MessageOutlined, FileTextOutlined, ImportOutlined, DashboardOutlined, ExportOutlined, DownloadOutlined, SettingOutlined, BarChartOutlined, CodeOutlined, GlobalOutlined, CopyOutlined, ApiOutlined, DeleteOutlined, ReloadOutlined, PlusOutlined } from '@ant-design/icons';
 import { QRCodeCanvas } from 'qrcode.react';
-import { formatTokenCount, computeTokenStats, computeCacheRebuildStats, computeToolUsageStats, computeSkillUsageStats, getModelMaxTokens } from '../utils/helpers';
+import { formatTokenCount, computeTokenStats, computeCacheRebuildStats, computeToolUsageStats, computeSkillUsageStats, getModelMaxTokens, extractCachedContent } from '../utils/helpers';
 import { isSystemText, classifyUserContent, isMainAgent } from '../utils/contentFilter';
 import { classifyRequest } from '../utils/requestType';
 import { t, getLang, setLang } from '../i18n';
@@ -360,6 +360,76 @@ class AppHeader extends React.Component {
         {cacheRebuildColumn}
         {toolColumn}
         {skillColumn}
+      </div>
+    );
+  }
+
+  renderCacheContentPopover() {
+    const { requests = [] } = this.props;
+    const cached = extractCachedContent(requests);
+
+    if (!cached || (cached.system.length === 0 && cached.messages.length === 0 && cached.tools.length === 0)) {
+      return <div className={styles.cachePopoverEmpty}>{t('ui.noCachedContent')}</div>;
+    }
+
+    const truncate = (text, max = 2000) => text.length > max ? text.substring(0, max) + '...' : text;
+
+    const renderSection = (title, items) => {
+      if (items.length === 0) return null;
+      return (
+        <div className={styles.cacheSection}>
+          <div className={styles.cacheSectionTitle}>{title} ({items.length})</div>
+          {items.map((text, i) => (
+            <pre key={i} className={styles.cacheCodeBlock}>{truncate(text)}</pre>
+          ))}
+        </div>
+      );
+    };
+
+    const buildPlainText = () => {
+      const parts = [];
+      if (cached.system.length > 0) {
+        parts.push(`=== ${t('ui.systemPrompt')} (${cached.system.length}) ===`);
+        cached.system.forEach(text => parts.push(text));
+      }
+      if (cached.messages.length > 0) {
+        parts.push(`\n=== ${t('ui.messages')} (${cached.messages.length}) ===`);
+        cached.messages.forEach(text => parts.push(text));
+      }
+      if (cached.tools.length > 0) {
+        parts.push(`\n=== ${t('ui.tools')} (${cached.tools.length}) ===`);
+        cached.tools.forEach(text => parts.push(text));
+      }
+      return parts.join('\n\n');
+    };
+
+    return (
+      <div className={styles.cachePopover}>
+        <div className={styles.cachePopoverHeader}>
+          <div className={styles.cachePopoverTitle}>
+            {t('ui.cachedContentTitle')}
+            <CopyOutlined
+              className={styles.cacheCopyBtn}
+              onClick={() => {
+                navigator.clipboard.writeText(buildPlainText()).then(() => {
+                  message.success(t('ui.copied'));
+                }).catch(() => {});
+              }}
+            />
+          </div>
+        </div>
+        {(cached.cacheCreateTokens > 0 || cached.cacheReadTokens > 0) && (
+          <div className={styles.cacheTokenInfo}>
+            {t('ui.tokens')}: <span style={{ color: '#faad14' }}>write {formatTokenCount(cached.cacheCreateTokens)}</span>
+            {' / '}
+            <span style={{ color: '#52c41a' }}>read {formatTokenCount(cached.cacheReadTokens)}</span>
+          </div>
+        )}
+        <div className={styles.cacheScrollArea}>
+          {renderSection(t('ui.systemPrompt'), cached.system)}
+          {renderSection(t('ui.messages'), cached.messages)}
+          {renderSection(t('ui.tools'), cached.tools)}
+        </div>
       </div>
     );
   }
@@ -937,14 +1007,21 @@ class AppHeader extends React.Component {
                 <span className={styles.liveTagText}>{t('ui.historyLog', { file: localLogFile })}</span>
               </Tag>
             ) : (
-              <span className={styles.liveTag} style={{ borderColor: ctxColor, color: ctxColor }}>
-                <span className={styles.liveTagFill} style={{ width: `${contextPercent}%`, backgroundColor: ctxColor }} />
-                <span className={styles.liveTagContent}>
-                  <span className={styles.liveTagText}>
-                    {t('ui.liveMonitoring')}{projectName ? `:${projectName}` : ''}
+              <Popover
+                content={this.renderCacheContentPopover()}
+                trigger="hover"
+                placement="bottomLeft"
+                overlayInnerStyle={{ background: '#1e1e1e', border: '1px solid #3a3a3a', borderRadius: 8, padding: '8px 8px' }}
+              >
+                <span className={styles.liveTag} style={{ borderColor: ctxColor, color: ctxColor }}>
+                  <span className={styles.liveTagFill} style={{ width: `${contextPercent}%`, backgroundColor: ctxColor }} />
+                  <span className={styles.liveTagContent}>
+                    <span className={styles.liveTagText}>
+                      {t('ui.liveMonitoring')}{projectName ? `:${projectName}` : ''}
+                    </span>
                   </span>
                 </span>
-              </span>
+              </Popover>
             );
           })()}
           {updateInfo && (

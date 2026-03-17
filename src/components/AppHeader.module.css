@@ -545,3 +545,75 @@
   color: #999;
 }
 
+/* KV-Cache content popover */
+.cachePopover {
+  max-width: 600px;
+}
+
+.cacheScrollArea {
+  max-height: 450px;
+  overflow-y: auto;
+}
+
+.cachePopoverTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #e5e5e5;
+}
+
+.cachePopoverHeader {
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #333;
+}
+
+.cacheCopyBtn {
+  font-size: 14px;
+  color: #888;
+  cursor: pointer;
+  transition: color 0.2s;
+  margin-left: 8px;
+}
+
+.cacheCopyBtn:hover {
+  color: #e5e5e5;
+}
+
+.cachePopoverEmpty {
+  padding: 8px 4px;
+  color: #999;
+  font-size: 13px;
+}
+
+.cacheTokenInfo {
+  font-size: 12px;
+  font-family: monospace;
+  color: #aaa;
+  margin-bottom: 8px;
+}
+
+.cacheSection {
+  margin-bottom: 10px;
+}
+
+.cacheSectionTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: #aaa;
+  margin-bottom: 4px;
+}
+
+.cacheCodeBlock {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #ccc;
+  background: #111;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  padding: 8px;
+  margin: 4px 0;
+  font-family: Menlo, Monaco, monospace;
+}
+
