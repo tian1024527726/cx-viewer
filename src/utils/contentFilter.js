@@ -35,11 +35,23 @@ export function isTeammate(req) {
   return TEAMMATE_SYSTEM_RE.test(sysText);
 }
 
+// WeakMap cache for isMainAgent — avoids redundant regex/array work across call sites
+const _isMainAgentCache = new WeakMap();
+
 /**
  * 判断请求是否为 MainAgent 请求。
  * 包含 interceptor 标记校验 + 新旧架构检测，全局唯一入口。
  */
 export function isMainAgent(req) {
+  if (!req) return false;
+  const cached = _isMainAgentCache.get(req);
+  if (cached !== undefined) return cached;
+  const result = _isMainAgentImpl(req);
+  _isMainAgentCache.set(req, result);
+  return result;
+}
+
+function _isMainAgentImpl(req) {
   if (!req) return false;
 
   // Teammate 子进程的请求不是 MainAgent，避免污染主会话视图

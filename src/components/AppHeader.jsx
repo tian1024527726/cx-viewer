@@ -54,6 +54,26 @@ class AppHeader extends React.Component {
     }
   }
 
+  shouldComponentUpdate(nextProps, nextState) {
+    // Skip re-render when only requests reference changed but count is same
+    // Stats are only visible when popover is open — state change handles that
+    return (
+      nextProps.requestCount !== this.props.requestCount ||
+      nextProps.viewMode !== this.props.viewMode ||
+      nextProps.cacheExpireAt !== this.props.cacheExpireAt ||
+      nextProps.cacheType !== this.props.cacheType ||
+      nextProps.isLocalLog !== this.props.isLocalLog ||
+      nextProps.projectName !== this.props.projectName ||
+      nextProps.collapseToolResults !== this.props.collapseToolResults ||
+      nextProps.expandThinking !== this.props.expandThinking ||
+      nextProps.expandDiff !== this.props.expandDiff ||
+      nextProps.filterIrrelevant !== this.props.filterIrrelevant ||
+      nextProps.cliMode !== this.props.cliMode ||
+      nextProps.contextWindow !== this.props.contextWindow ||
+      nextState !== this.state
+    );
+  }
+
   componentWillUnmount() {
     if (this._rafId) cancelAnimationFrame(this._rafId);
     if (this._expiredTimer) clearTimeout(this._expiredTimer);

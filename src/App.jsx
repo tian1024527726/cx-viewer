@@ -663,6 +663,10 @@ class App extends React.Component {
     this.setState({ viewMode: 'raw', selectedIndex: index, scrollCenter: true });
   };
 
+  handleScrollDone = () => { this.setState({ scrollCenter: false }); };
+  handleCacheHighlightDone = () => { this.setState({ pendingCacheHighlight: null }); };
+  handleScrollTsDone = () => { this.setState({ chatScrollToTs: null }); };
+
   handleViewInChat = () => {
     this.setState(prev => {
       const filteredRequests = prev.showAll ? prev.requests : filterRelevantRequests(prev.requests);
@@ -1325,7 +1329,13 @@ class App extends React.Component {
     const { requests, selectedIndex, viewMode, currentTab, cacheExpireAt, cacheType, leftPanelWidth, mainAgentSessions, showAll, fileLoading, fileLoadingCount } = this.state;
 
     // 过滤心跳请求（eval/sdk-* 和 count_tokens），除非 showAll
-    const filteredRequests = showAll ? requests : filterRelevantRequests(requests);
+    // P0 perf: cache filteredRequests by reference to avoid new array every render
+    if (this._filteredSource !== requests || this._filteredShowAll !== showAll) {
+      this._filteredSource = requests;
+      this._filteredShowAll = showAll;
+      this._filteredRequests = showAll ? requests : filterRelevantRequests(requests);
+    }
+    const filteredRequests = this._filteredRequests;
 
     // P0 perf: compute cache loss map from filtered list (O(n) vs old O(n²))
     if (this._cacheLossMapSource !== filteredRequests) {
@@ -1749,7 +1759,7 @@ class App extends React.Component {
                       selectedIndex={selectedIndex}
                       scrollCenter={this.state.scrollCenter}
                       onSelect={this.handleSelectRequest}
-                      onScrollDone={() => this.setState({ scrollCenter: false })}
+                      onScrollDone={this.handleScrollDone}
                       cacheLossMap={this._cacheLossMap}
                     />
                   </div>
@@ -1767,14 +1777,14 @@ class App extends React.Component {
                     onViewInChat={this.handleViewInChat}
                     expandDiff={this.state.expandDiff}
                     pendingCacheHighlight={this.state.pendingCacheHighlight}
-                    onCacheHighlightDone={() => this.setState({ pendingCacheHighlight: null })}
+                    onCacheHighlightDone={this.handleCacheHighlightDone}
                   />
                 </div>
               </div>
               )
             )}
             <div style={{ display: viewMode === 'chat' ? 'flex' : 'none', height: '100%', flexDirection: 'column' }}>
-              <ChatView requests={filteredRequests} mainAgentSessions={mainAgentSessions} userProfile={this.state.userProfile} collapseToolResults={this.state.collapseToolResults} expandThinking={this.state.expandThinking} onViewRequest={this.handleViewRequest} scrollToTimestamp={this.state.chatScrollToTs} onScrollTsDone={() => this.setState({ chatScrollToTs: null })} cliMode={this._isLocalLog ? false : this.state.cliMode} terminalVisible={this._isLocalLog ? false : this.state.terminalVisible} />
+              <ChatView requests={filteredRequests} mainAgentSessions={mainAgentSessions} userProfile={this.state.userProfile} collapseToolResults={this.state.collapseToolResults} expandThinking={this.state.expandThinking} onViewRequest={this.handleViewRequest} scrollToTimestamp={this.state.chatScrollToTs} onScrollTsDone={this.handleScrollTsDone} cliMode={this._isLocalLog ? false : this.state.cliMode} terminalVisible={this._isLocalLog ? false : this.state.terminalVisible} />
             </div>
           </Layout.Content>
           <div className={styles.footer}>

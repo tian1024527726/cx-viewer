@@ -15,6 +15,15 @@ class RequestList extends React.Component {
     this.scrollToSelected(true);
   }
 
+  shouldComponentUpdate(nextProps) {
+    return (
+      nextProps.requests !== this.props.requests ||
+      nextProps.selectedIndex !== this.props.selectedIndex ||
+      nextProps.scrollCenter !== this.props.scrollCenter ||
+      nextProps.cacheLossMap !== this.props.cacheLossMap
+    );
+  }
+
   componentDidUpdate(prevProps) {
     if (this.props.scrollCenter && prevProps.selectedIndex !== this.props.selectedIndex) {
       this.scrollToSelected(true);

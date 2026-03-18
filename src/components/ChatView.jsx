@@ -365,6 +365,20 @@ class ChatView extends React.Component {
     }
   }
 
+  shouldComponentUpdate(nextProps, nextState) {
+    // Only re-render when meaningful props/state change, not on every requests reference change
+    return (
+      nextProps.mainAgentSessions !== this.props.mainAgentSessions ||
+      nextProps.collapseToolResults !== this.props.collapseToolResults ||
+      nextProps.expandThinking !== this.props.expandThinking ||
+      nextProps.scrollToTimestamp !== this.props.scrollToTimestamp ||
+      nextProps.cliMode !== this.props.cliMode ||
+      nextProps.terminalVisible !== this.props.terminalVisible ||
+      nextProps.userProfile !== this.props.userProfile ||
+      nextState !== this.state
+    );
+  }
+
   componentDidUpdate(prevProps) {
     if (prevProps.mainAgentSessions !== this.props.mainAgentSessions) {
       if (isMobile) this._mobileExtraItems = 0;
