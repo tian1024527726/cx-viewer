@@ -588,7 +588,16 @@ class App extends React.Component {
           const messages = entry.body.messages;
           const prevCount = prevMessages.length;
 
-          const isNewSession = prevCount > 0 && messages.length < prevCount * 0.5 && (prevCount - messages.length) > 4;
+          const userId = entry.body.metadata?.user_id || null;
+          const sameUser = userId !== null && lastSession?.userId === userId;
+          const isNewSession = !sameUser && prevCount > 0 && messages.length < prevCount * 0.5 && (prevCount - messages.length) > 4;
+
+          // Claude Code 客户端偶尔发送只有 1-2 条消息的 mainAgent 瞬态请求。
+          // 如果直接用它替换已有的大 session（300+ 条消息），会导致对话视图闪烁——
+          // 大量 MainAgent 消息瞬间丢失，随后完整响应到达又恢复（331→2→331 反复交替）。
+          // 三重条件防止误杀：原 session 须较大(>10)、新消息极少(≤4)、且缩减超过 50%。
+          const isTransient = prevCount > 10 && messages.length <= 4 && messages.length < prevCount * 0.5;
+          if (isTransient) continue;
 
           for (let i = 0; i < messages.length; i++) {
             if (!isNewSession && i < prevCount && prevMessages[i]._timestamp) {
@@ -704,8 +713,18 @@ class App extends React.Component {
     // 消息数量大幅缩减（不到之前的一半且减少超过 4 条）视为新对话（/clear 等）
     const prevMsgCount = lastSession.messages ? lastSession.messages.length : 0;
     const isNewConversation = prevMsgCount > 0 && newMessages.length < prevMsgCount * 0.5 && (prevMsgCount - newMessages.length) > 4;
+    const sameUser = userId !== null && userId === lastSession.userId;
 
-    if (userId === lastSession.userId && !isNewConversation) {
+    // Claude Code 客户端偶尔发送只有 1-2 条消息的 mainAgent 瞬态请求。
+    // 如果直接用它替换已有的大 session（300+ 条消息），会导致对话视图闪烁——
+    // 大量 MainAgent 消息瞬间丢失，随后完整响应到达又恢复（331→2→331 反复交替）。
+    // 三重条件防止误杀：原 session 须较大(>10)、新消息极少(≤4)、且消息数大幅缩减。
+    if (isNewConversation && newMessages.length <= 4 && prevMsgCount > 10) {
+      return prevSessions;
+    }
+
+    // sameUser 时允许 context compression（消息缩减但仍有合理数量）
+    if (sameUser || (userId === lastSession.userId && !isNewConversation)) {
       const updated = [...prevSessions];
       updated[updated.length - 1] = { userId, messages: newMessages, response: newResponse, entryTimestamp };
       return updated;

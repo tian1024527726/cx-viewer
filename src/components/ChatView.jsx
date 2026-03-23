@@ -231,6 +231,7 @@ class ChatView extends React.Component {
     // requests 扫描缓存（tsToIndex / modelName / subAgentEntries）
     this._reqScanCache = { tsToIndex: {}, modelName: null, subAgentEntries: [], processedCount: 0 };
 
+
     // 从 localStorage 读取用户偏好的终端宽度（像素）
     const savedWidth = localStorage.getItem('cc-viewer-terminal-width');
     const initialTerminalWidth = savedWidth ? parseFloat(savedWidth) : null;
@@ -401,7 +402,7 @@ class ChatView extends React.Component {
       if (this.props.onUploadPathsConsumed) this.props.onUploadPathsConsumed();
     }
     if (prevProps.mainAgentSessions !== this.props.mainAgentSessions) {
-      // full_reload / sessions 引用变化 → 重置增量状态
+      // sessions 引用变化 → 重置增量状态
       if (this.props.mainAgentSessions !== this._prevSessions) {
         this._incToolState = null;
         this._incToolProcessedCount = 0;
@@ -418,8 +419,6 @@ class ChatView extends React.Component {
       this._checkToolFileChanges();
     } else if (prevProps.requests !== this.props.requests) {
       // SubAgent / Teammate 请求到达但 mainAgentSessions 未变
-      // subAgentEntries 必须全量重扫：response 可能原地更新已有条目
-      // tsToIndex / modelName 只追加不修改，保持增量
       this._reqScanCache.subAgentEntries = [];
       this._reqScanCache.subAgentProcessedCount = 0;
       this.startRender();
@@ -489,28 +488,10 @@ class ChatView extends React.Component {
     const rawItems = this.buildAllItems();
     const lastResponseItems = this._lastResponseItems;
     const allItems = this._applyMobileSlice(rawItems);
-    const prevLen = this._prevItemsLen;
     this._prevItemsLen = allItems.length;
 
-    const newCount = allItems.length - prevLen;
-
-    if (newCount <= 0 || (prevLen > 0 && newCount <= 3)) {
-      this.setState({ allItems, lastResponseItems, visibleCount: allItems.length, loading: false }, () => this.scrollToBottom());
-      return;
-    }
-
-    if (allItems.length > QUEUE_THRESHOLD) {
-      // 保留已渲染的内容，避免闪烁；仅新增部分延迟渲染
-      const keepVisible = Math.max(0, prevLen);
-      this.setState({ allItems, lastResponseItems, visibleCount: keepVisible, loading: false });
-      this._queueTimer = setTimeout(() => {
-        this.setState({ visibleCount: allItems.length }, () => this.scrollToBottom());
-      }, 50);
-    } else {
-      const startFrom = Math.max(0, prevLen);
-      this.setState({ allItems, lastResponseItems, visibleCount: startFrom, loading: false });
-      this.queueNext(startFrom, allItems.length);
-    }
+    this.setState({ allItems, lastResponseItems, visibleCount: allItems.length, loading: false },
+      () => this.scrollToBottom());
   }
 
   queueNext(current, total) {
@@ -839,7 +820,7 @@ class ChatView extends React.Component {
           const sa = subAgentEntries[subIdx];
           if (sa.timestamp) tsItemMap[sa.timestamp] = allItems.length;
           allItems.push(
-            <ChatMessage key={`sub-chat-${subIdx}`} role="sub-agent-chat" content={sa.content} toolResultMap={sa.toolResultMap} label={sa.label} isTeammate={sa.isTeammate} timestamp={sa.timestamp} collapseToolResults={collapseToolResults} expandThinking={expandThinking} requestIndex={sa.requestIndex} onViewRequest={onViewRequest} onOpenFile={this.handleOpenToolFilePath} />
+            <ChatMessage key={`sub-${sa.timestamp}`} role="sub-agent-chat" content={sa.content} toolResultMap={sa.toolResultMap} label={sa.label} isTeammate={sa.isTeammate} timestamp={sa.timestamp} collapseToolResults={collapseToolResults} expandThinking={expandThinking} requestIndex={sa.requestIndex} onViewRequest={onViewRequest} onOpenFile={this.handleOpenToolFilePath} />
           );
           subIdx++;
         }
@@ -854,7 +835,7 @@ class ChatView extends React.Component {
         if (nextSessionStart && sa.timestamp > nextSessionStart) break;
         if (sa.timestamp) tsItemMap[sa.timestamp] = allItems.length;
         allItems.push(
-          <ChatMessage key={`sub-chat-${subIdx}`} role="sub-agent-chat" content={sa.content} toolResultMap={sa.toolResultMap} label={sa.label} isTeammate={sa.isTeammate} timestamp={sa.timestamp} collapseToolResults={collapseToolResults} expandThinking={expandThinking} requestIndex={sa.requestIndex} onViewRequest={onViewRequest} onOpenFile={this.handleOpenToolFilePath} />
+          <ChatMessage key={`sub-${sa.timestamp}`} role="sub-agent-chat" content={sa.content} toolResultMap={sa.toolResultMap} label={sa.label} isTeammate={sa.isTeammate} timestamp={sa.timestamp} collapseToolResults={collapseToolResults} expandThinking={expandThinking} requestIndex={sa.requestIndex} onViewRequest={onViewRequest} onOpenFile={this.handleOpenToolFilePath} />
         );
         subIdx++;
       }
