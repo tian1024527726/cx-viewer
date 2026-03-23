@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.21 (2026-03-23)
+
+- Fix: user avatar fallback — when macOS system avatar is missing or broken, automatically falls back to default avatar instead of rendering a broken image
+
 ## 1.6.20 (2026-03-23)
 
 - Fix: AskUserQuestion multi-question form `isMultiQuestion` flag — last question now correctly identified via stored flag instead of queue length

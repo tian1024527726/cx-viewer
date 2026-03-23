@@ -104,7 +104,8 @@ class ChatMessage extends React.Component {
   renderUserAvatar(bgColor) {
     const { userProfile } = this.props;
     if (userProfile?.avatar) {
-      return <img src={userProfile.avatar} className={styles.avatarImg} alt={userProfile.name || 'User'} />;
+      return <img src={userProfile.avatar} className={styles.avatarImg} alt={userProfile.name || 'User'}
+        onError={(e) => { e.target.onerror = null; e.target.src = defaultAvatarUrl; }} />;
     }
     return <img src={defaultAvatarUrl} className={styles.avatarImg} alt={userProfile?.name || 'User'} />;
   }
