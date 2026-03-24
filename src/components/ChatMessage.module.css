@@ -112,9 +112,14 @@
 .bubbleAssistant {
   composes: bubble;
   background: rgb(20, 20, 20);
-  color: #e5e7eb;
+  color: #F5F5F5;
   transition: box-shadow 0s;
   position: relative;
+}
+
+.bubbleAssistant:hover {
+  background: #181818;
+  border: 1px solid #333;
 }
 
 .bubbleHighlight {
@@ -218,6 +223,10 @@
   font-size: 12px;
 }
 
+.toolBox:hover {
+  border-color: #333344;
+}
+
 .toolLabel {
   color: #a78bfa;
 }
@@ -229,7 +238,7 @@
   margin: 4px 0 0;
   white-space: pre-wrap;
   word-break: break-all;
-  background: #111;
+  background: #000;
   border-radius: 4px;
   padding: 6px 8px;
 }

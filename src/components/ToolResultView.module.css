@@ -1,7 +1,13 @@
 .plainResult {
   background: #111;
-  border-radius: 6px;
+  border-radius: 4px;
+  border: 1px solid #222;
+  overflow: hidden;
   font-size: 12px;
+}
+
+.plainResult:hover {
+  border-color: #333;
 }
 
 .plainTitle {
@@ -20,8 +26,12 @@
 .codeResult {
   background: #111;
   border-radius: 4px;
-  border: 1px solid #1e293b;
+  border: 1px solid #222;
   overflow: hidden;
+}
+
+.codeResult:hover {
+  border-color: #333;
 }
 
 .codeHeader {
@@ -29,11 +39,11 @@
   justify-content: space-between;
   align-items: center;
   padding: 4px 10px;
-  background: #111;
+  background: #000;
 }
 /* 展开时才显示分隔线，收起时 codeHeader 是最后可见元素，避免与容器 border 叠加成两条线 */
 .codeHeader:not(:last-child) {
-  border-bottom: 1px solid #1e293b;
+  border-bottom: 1px solid #222;
 }
 
 .codeTitle {
@@ -55,6 +65,7 @@
   line-height: 1.5;
   overflow: auto;
   max-height: 500px;
+  background: #000;
 }
 
 .markdownBody {

@@ -583,10 +583,7 @@ class ChatMessage extends React.Component {
   renderToolResult(tr) {
     if (!tr) return null;
     return (
-      <div className={styles.toolResult}>
-        <Text type="secondary" className={styles.toolResultLabel}>{tr.label}</Text>
-        <ToolResultView toolName={tr.toolName} toolInput={tr.toolInput} resultText={tr.resultText} defaultCollapsed={this.props.collapseToolResults} />
-      </div>
+      <ToolResultView toolName={tr.toolName} toolInput={tr.toolInput} resultText={tr.resultText} defaultCollapsed={this.props.collapseToolResults} />
     );
   }
 

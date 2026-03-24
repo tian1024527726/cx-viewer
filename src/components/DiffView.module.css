@@ -1,9 +1,13 @@
 .wrapper {
   margin: 6px 0;
-  background: #1a1a21;
+  background: #1a1a22;
   border: 1px solid #2a2a3e;
   border-radius: 6px;
   padding: 8px 12px;
+}
+
+.wrapper:hover {
+  border-color: #333344;
 }
 
 .header {
@@ -60,6 +64,8 @@
   font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', 'Menlo', 'Consolas', monospace;
   font-size: 12px;
   line-height: 1.5;
+  background: #111;
+  border: 1px solid #2f2f2f;
 }
 
 /* Left gutter: line numbers + prefix, never scrolls horizontally */
@@ -76,7 +82,7 @@
 .lineNumOld,
 .lineNumNew {
   text-align: right;
-  color: #484f58;
+  color: #888f98;
   padding: 0 6px 0 2px;
   box-sizing: border-box;
 }
@@ -110,32 +116,26 @@
 /* === Row type colors === */
 
 .rowContext {
-  background: #1a1a21;
+  background: #111;
   color: #8b949e;
 }
 
 .rowDel {
-  background: rgba(239, 68, 68, 0.12);
+  background: #ef444449;
   color: #fca5a5;
-}
-.rowDel.gutterRow {
-  background: #341f31;
 }
 .rowDel.gutterRow .prefix {
   color: #ef4444;
 }
 
 .rowAdd {
-  background: rgba(34, 197, 94, 0.12);
+  background: #22c55e49;
   color: #86efac;
-}
-.rowAdd.gutterRow {
-  background: #1b2f34;
 }
 .rowAdd.gutterRow .prefix {
   color: #22c55e;
 }
 
 .rowContext.gutterRow {
-  background: #1a1a21;
+  background: #111;
 }

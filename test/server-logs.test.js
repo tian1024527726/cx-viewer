@@ -97,12 +97,14 @@ describe('server local logs endpoints', { concurrency: false }, () => {
     assert.ok(res.body.includes('2026-01-01T12:00:00Z'));
   });
 
-  it('GET /api/local-log returns entries for existing log', async () => {
+  it('GET /api/local-log returns SSE event stream with entries', async () => {
     const res = await httpRequest(port, `/api/local-log?file=${encodeURIComponent(fileRel)}`);
     assert.equal(res.status, 200);
-    const data = res.json();
-    assert.ok(Array.isArray(data));
-    assert.equal(data.length, 1);
-    assert.equal(data[0].timestamp, '2026-01-01T12:00:00Z');
+    assert.equal(res.headers['content-type'], 'text/event-stream');
+    // 验证 SSE 流包含 load_start, load_chunk, load_end 事件
+    assert.ok(res.body.includes('event: load_start'), 'Should contain load_start event');
+    assert.ok(res.body.includes('event: load_chunk'), 'Should contain load_chunk event');
+    assert.ok(res.body.includes('event: load_end'), 'Should contain load_end event');
+    assert.ok(res.body.includes('2026-01-01T12:00:00Z'), 'Should contain entry data');
   });
 });

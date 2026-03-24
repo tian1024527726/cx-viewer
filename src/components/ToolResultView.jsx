@@ -296,7 +296,7 @@ function ToolResultView({ toolName, toolInput, resultText, defaultCollapsed }) {
   const lang = isCodeTool ? detectLang(toolName, toolInput, resultText) : null;
   const displayText = resultText.length > 5000 ? resultText.substring(0, 5000) + '\n... (truncated)' : resultText;
 
-  // Build title
+  // Build title（内层标题：显示文件名等有用信息）
   let title = toolName ? t('ui.toolReturnNamed', { name: toolName }) : 'Result';
   if (toolInput) {
     const filePath = toolInput.file_path || toolInput.path || '';

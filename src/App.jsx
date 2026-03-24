@@ -21,6 +21,7 @@ import { classifyRequest } from './utils/requestType';
 import styles from './App.module.css';
 import { apiUrl } from './utils/apiUrl';
 import { saveEntries, loadEntries, clearEntries, getCacheMeta } from './utils/entryCache';
+import { reconstructEntries } from '../lib/delta-reconstructor.js';
 
 class App extends React.Component {
   constructor(props) {
@@ -219,6 +220,7 @@ class App extends React.Component {
       window.visualViewport.removeEventListener('scroll', this._onVisualViewportChange);
     }
     if (this.eventSource) this.eventSource.close();
+    if (this._localLogES) { this._localLogES.close(); this._localLogES = null; }
     if (this._autoSelectTimer) clearTimeout(this._autoSelectTimer);
     if (this._loadingCountTimer) cancelAnimationFrame(this._loadingCountTimer);
     if (this._cacheSaveTimer) clearTimeout(this._cacheSaveTimer);
@@ -355,9 +357,12 @@ class App extends React.Component {
         this._isIncremental = false;
 
         // 增量模式：将增量数据拼接到已有缓存后面
-        const entries = (isIncremental && isMobile && this.state.requests.length > 0)
+        const rawEntries = (isIncremental && isMobile && this.state.requests.length > 0)
           ? [...this.state.requests, ...delta]
           : delta;
+
+        // Delta 重建：server 发送原始 delta 条目，客户端重建为完整 messages
+        const entries = Array.isArray(rawEntries) ? reconstructEntries(rawEntries) : rawEntries;
 
         if (Array.isArray(entries) && entries.length > 0) {
           this.assignMessageTimestamps(entries);
@@ -473,50 +478,63 @@ class App extends React.Component {
   }
 
   loadLocalLogFile(file) {
-    // 加载本地历史日志文件（非实时模式）
+    // 独立 SSE 链路加载历史日志：/api/local-log 返回 event-stream，
+    // 与 /events (CLI 模式) 完全隔离，不会触发 terminal/workspace 等 CLI 行为
     this._isLocalLog = true;
     this._localLogFile = file;
-    this.setState({ fileLoading: true, fileLoadingCount: 0 });
-    fetch(`/api/local-log?file=${encodeURIComponent(file)}`)
-      .then(res => {
-        // 检查响应状态和 Content-Type
-        if (!res.ok) {
-          return res.text().then(text => {
-            throw new Error(`HTTP ${res.status}: ${text}`);
-          });
+    this.setState({ fileLoading: true, fileLoadingCount: 0, serverCachedContent: null });
+
+    // 关闭上一次的加载连接（防止快速切换时资源泄漏）
+    if (this._localLogES) { this._localLogES.close(); this._localLogES = null; }
+
+    const entries = [];
+    const es = new EventSource(apiUrl(`/api/local-log?file=${encodeURIComponent(file)}`));
+    this._localLogES = es;
+
+    es.addEventListener('load_start', (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        this.setState({ fileLoadingCount: 0 });
+      } catch { }
+    });
+
+    es.addEventListener('load_chunk', (event) => {
+      try {
+        const chunk = JSON.parse(event.data);
+        if (Array.isArray(chunk)) {
+          entries.push(...chunk);
+          this.setState({ fileLoadingCount: entries.length });
         }
-        const contentType = res.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          return res.text().then(text => {
-            throw new Error(`Invalid content type: ${contentType}. Response: ${text.substring(0, 100)}`);
-          });
-        }
-        return res.json();
-      })
-      .then(entries => {
-        if (Array.isArray(entries)) {
-          this.animateLoadingCount(entries.length, () => {
-            this.assignMessageTimestamps(entries);
-            const mainAgentSessions = this.buildSessionsFromEntries(entries);
-            const filtered = filterRelevantRequests(entries);
-            this._rebuildRequestIndex(entries);
-            this.setState({
-              requests: entries,
-              selectedIndex: filtered.length > 0 ? filtered.length - 1 : null,
-              mainAgentSessions,
-              fileLoading: false,
-              fileLoadingCount: 0,
-              serverCachedContent: null,
-            });
-          });
-        } else {
-          this.setState({ fileLoading: false, fileLoadingCount: 0, serverCachedContent: null });
-        }
-      })
-      .catch(err => {
-        console.error('加载日志文件失败:', err);
-        this.setState({ fileLoading: false, fileLoadingCount: 0 });
-      });
+      } catch { }
+    });
+
+    es.addEventListener('load_end', () => {
+      es.close();
+      // Delta 重建：server 发送原始 delta 条目，客户端重建为完整 messages
+      const reconstructed = reconstructEntries(entries);
+      if (Array.isArray(reconstructed) && reconstructed.length > 0) {
+        this.assignMessageTimestamps(reconstructed);
+        const mainAgentSessions = this.buildSessionsFromEntries(reconstructed);
+        const filtered = filterRelevantRequests(reconstructed);
+        this._rebuildRequestIndex(reconstructed);
+        this.setState({
+          requests: reconstructed,
+          selectedIndex: filtered.length > 0 ? filtered.length - 1 : null,
+          mainAgentSessions,
+          fileLoading: false,
+          fileLoadingCount: 0,
+          serverCachedContent: null,
+        });
+      } else {
+        this.setState({ fileLoading: false, fileLoadingCount: 0, serverCachedContent: null });
+      }
+    });
+
+    es.onerror = () => {
+      es.close();
+      console.error('加载日志文件 SSE 连接错误');
+      this.setState({ fileLoading: false, fileLoadingCount: 0 });
+    };
   }
 
   handleEventMessage(event) {

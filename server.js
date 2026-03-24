@@ -43,9 +43,10 @@ import { uploadPlugins, installPluginFromUrl } from './lib/plugin-manager.js';
 import { getUserProfile } from './lib/user-profile.js';
 import { getGitDiffs } from './lib/git-diff.js';
 import { CONTEXT_WINDOW_FILE, readModelContextSize, buildContextWindowEvent, getContextSizeForModel } from './lib/context-watcher.js';
-import { readLogFile, watchLogFile, startWatching, getWatchedFiles } from './lib/log-watcher.js';
+import { watchLogFile, startWatching, getWatchedFiles } from './lib/log-watcher.js';
 import { isMainAgentEntry, extractCachedContent } from './lib/kv-cache-analyzer.js';
-import { listLocalLogs, readLocalLog, deleteLogFiles, mergeLogFiles } from './lib/log-management.js';
+import { listLocalLogs, deleteLogFiles, mergeLogFiles } from './lib/log-management.js';
+import { countLogEntries, streamRawEntriesAsync } from './lib/log-stream.js';
 import { detectTargetLang, translate } from './lib/translator.js';
 
 const PREFS_FILE = join(LOG_DIR, 'preferences.json');
@@ -348,7 +349,7 @@ async function handleRequest(req, res) {
   if (url === '/api/resume-choice' && method === 'POST') {
     let body = '';
     req.on('data', chunk => { body += chunk; if (body.length > MAX_POST_BODY) req.destroy(); });
-    req.on('end', () => {
+    req.on('end', async () => {
       try {
         const { choice } = JSON.parse(body);
         if (choice !== 'continue' && choice !== 'new') {
@@ -371,12 +372,18 @@ async function handleRequest(req, res) {
             client.write(`event: resume_resolved\ndata: ${resolvedData}\n\n`);
           } catch { }
         });
-        // 发送 full_reload 让客户端重新加载数据
-        const entries = readLogFile(LOG_FILE);
+        // 流式分段广播 full_reload，避免全量加载 OOM
+        const reloadTotal = countLogEntries(LOG_FILE);
         clients.forEach(client => {
-          try {
-            client.write(`event: full_reload\ndata: ${JSON.stringify(entries)}\n\n`);
-          } catch { }
+          try { client.write(`event: load_start\ndata: ${JSON.stringify({ total: reloadTotal, incremental: false })}\n\n`); } catch { }
+        });
+        await streamRawEntriesAsync(LOG_FILE, (raw) => {
+          clients.forEach(client => {
+            try { client.write('event: load_chunk\ndata: ['); client.write(raw); client.write(']\n\n'); } catch { }
+          });
+        });
+        clients.forEach(client => {
+          try { client.write(`event: load_end\ndata: {}\n\n`); } catch { }
         });
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true, logFile: result.logFile }));
@@ -528,12 +535,18 @@ async function handleRequest(req, res) {
           } catch {}
         });
 
-        // 发送 full_reload 以刷新会话区域
-        const entries = readLogFile(LOG_FILE);
+        // 流式分段广播以刷新会话区域，避免全量加载 OOM
+        const wsReloadTotal = countLogEntries(LOG_FILE);
         clients.forEach(client => {
-          try {
-            client.write(`event: full_reload\ndata: ${JSON.stringify(entries)}\n\n`);
-          } catch {}
+          try { client.write(`event: load_start\ndata: ${JSON.stringify({ total: wsReloadTotal, incremental: false })}\n\n`); } catch {}
+        });
+        await streamRawEntriesAsync(LOG_FILE, (raw) => {
+          clients.forEach(client => {
+            try { client.write('event: load_chunk\ndata: ['); client.write(raw); client.write(']\n\n'); } catch {}
+          });
+        });
+        clients.forEach(client => {
+          try { client.write(`event: load_end\ndata: {}\n\n`); } catch {}
         });
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -632,62 +645,48 @@ async function handleRequest(req, res) {
       res.write(`event: resume_prompt\ndata: ${JSON.stringify({ recentFileName: _resumeState.recentFileName })}\n\n`);
     }
 
-    const entries = readLogFile(LOG_FILE);
-    // 增量加载：客户端传 since（最后条目时间戳）和 cc（缓存条目数）
-    const since = parsedUrl.searchParams.get('since');
-    const cc = parseInt(parsedUrl.searchParams.get('cc') || '0', 10);
-    let entriesToSend = entries;
-    let incremental = false;
-    if (since && cc > 0) {
-      const sinceMs = new Date(since).getTime();
-      if (!isNaN(sinceMs)) {
-        const delta = entries.filter(e => e.timestamp && new Date(e.timestamp).getTime() > sinceMs);
-        if (cc + delta.length === entries.length) {
-          entriesToSend = delta;
-          incremental = true;
-        }
-      }
-    }
-    // 分段发送：先告知总数，再分块传输，让前端能显示真实加载进度
-    const CHUNK_SIZE = 50;
-    if (entriesToSend.length > CHUNK_SIZE) {
-      res.write(`event: load_start\ndata: ${JSON.stringify({ total: entriesToSend.length, incremental })}\n\n`);
-      for (let i = 0; i < entriesToSend.length; i += CHUNK_SIZE) {
-        const chunk = entriesToSend.slice(i, i + CHUNK_SIZE);
-        res.write(`event: load_chunk\ndata: ${JSON.stringify(chunk)}\n\n`);
-      }
-      res.write(`event: load_end\ndata: {}\n\n`);
-    } else if (incremental) {
-      // 增量模式：即使条目少也走 load_start/load_end 流程（可能 0 条新数据）
-      res.write(`event: load_start\ndata: ${JSON.stringify({ total: entriesToSend.length, incremental: true })}\n\n`);
-      if (entriesToSend.length > 0) {
-        res.write(`event: load_chunk\ndata: ${JSON.stringify(entriesToSend)}\n\n`);
-      }
-      res.write(`event: load_end\ndata: {}\n\n`);
-    } else {
-      res.write(`event: full_reload\ndata: ${JSON.stringify(entriesToSend)}\n\n`);
-    }
+    // 流式发送原始 delta 条目，客户端自行重建（避免 server OOM）
+    // 注：streamRawEntriesAsync 不支持 since 过滤，始终发送全量数据
+    const total = countLogEntries(LOG_FILE);
+    res.write(`event: load_start\ndata: ${JSON.stringify({ total, incremental: false })}\n\n`);
 
-    // Compute KV-Cache content + context_window for latest MainAgent
+    // 流式分段发送 + 追踪最新 MainAgent 的 KV-Cache 和 context_window
+    let latestKvCache = null;
+    let latestContextWindow = null;
     let pushedContextWindow = false;
-    for (let i = entries.length - 1; i >= 0; i--) {
-      if (isMainAgentEntry(entries[i])) {
-        const cached = extractCachedContent(entries[i]);
-        if (cached) {
-          res.write(`event: kv_cache_content\ndata: ${JSON.stringify(cached)}\n\n`);
-        }
-        // Push initial context_window from latest MainAgent usage
-        const usage = entries[i].response?.body?.usage;
-        if (usage) {
-          const contextSize = getContextSizeForModel(entries[i].body?.model);
-          const cwData = buildContextWindowEvent(usage, contextSize);
-          if (cwData) {
-            res.write(`event: context_window\ndata: ${JSON.stringify(cwData)}\n\n`);
-            pushedContextWindow = true;
+
+    await streamRawEntriesAsync(LOG_FILE, (raw) => {
+      // 直接发送原始 JSON 字符串，不做 parse/reconstruct/stringify
+      res.write('event: load_chunk\ndata: [');
+      res.write(raw);
+      res.write(']\n\n');
+      // 轻量追踪最新 MainAgent 的 KV-Cache 和 context_window（仅 regex 检测）
+      if (raw.includes('"mainAgent":true') || raw.includes('"mainAgent": true')) {
+        try {
+          const entry = JSON.parse(raw);
+          if (isMainAgentEntry(entry)) {
+            const cached = extractCachedContent(entry);
+            if (cached) latestKvCache = cached;
+            const usage = entry.response?.body?.usage;
+            if (usage) {
+              const contextSize = getContextSizeForModel(entry.body?.model);
+              const cw = buildContextWindowEvent(usage, contextSize);
+              if (cw) latestContextWindow = cw;
+            }
           }
-        }
-        break;
+        } catch { }
       }
+    });
+
+    res.write(`event: load_end\ndata: {}\n\n`);
+
+    // 发送最新 MainAgent 的 KV-Cache 和 context_window
+    if (latestKvCache) {
+      res.write(`event: kv_cache_content\ndata: ${JSON.stringify(latestKvCache)}\n\n`);
+    }
+    if (latestContextWindow) {
+      res.write(`event: context_window\ndata: ${JSON.stringify(latestContextWindow)}\n\n`);
+      pushedContextWindow = true;
     }
     // Fallback: no MainAgent in log (e.g. fresh session after -c), read context-window.json
     if (!pushedContextWindow) {
@@ -718,9 +717,17 @@ async function handleRequest(req, res) {
 
   // API endpoint
   if (url === '/api/requests' && method === 'GET') {
-    const entries = readLogFile(LOG_FILE);
+    // 异步流式 JSON 数组输出，不做 reconstruct，发原始条目
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(entries));
+    res.write('[');
+    let first = true;
+    await streamRawEntriesAsync(LOG_FILE, (raw) => {
+      if (!first) res.write(',');
+      res.write(raw);
+      first = false;
+    });
+    res.write(']');
+    res.end();
     return;
   }
 
@@ -1325,24 +1332,17 @@ async function handleRequest(req, res) {
         const stream = createReadStream(realPath);
         stream.pipe(res);
       } else {
-        // 重建为全量格式下载
-        const { readLocalLog } = await import('./lib/log-management.js');
-        const entries = readLocalLog(LOG_DIR, file);
-        // 清除 delta 元字段
-        for (const entry of entries) {
-          delete entry._deltaFormat;
-          delete entry._totalMessageCount;
-          delete entry._conversationId;
-          delete entry._isCheckpoint;
-        }
-        const content = entries.map(e => JSON.stringify(e)).join('\n---\n') + '\n---\n';
-        const buf = Buffer.from(content, 'utf-8');
+        // 流式下载原始条目（不重建，保持 delta 格式），避免 OOM
         res.writeHead(200, {
           'Content-Type': 'application/octet-stream',
           'Content-Disposition': `attachment; filename="${encodeURIComponent(fileName)}"`,
-          'Content-Length': buf.length,
+          'Transfer-Encoding': 'chunked',
         });
-        res.end(buf);
+        await streamRawEntriesAsync(realPath, (raw) => {
+          res.write(raw);
+          res.write('\n---\n');
+        });
+        res.end();
       }
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -1368,13 +1368,35 @@ async function handleRequest(req, res) {
     }
 
     try {
-      const entries = readLocalLog(LOG_DIR, file);
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(entries));
+      // 独立 SSE 流：直接向请求方返回 event-stream，不走 /events 广播
+      const { validateLogPath } = await import('./lib/log-management.js');
+      validateLogPath(LOG_DIR, file);
+      const filePath = join(LOG_DIR, file);
+      const total = countLogEntries(filePath);
+
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      });
+
+      res.write(`event: load_start\ndata: ${JSON.stringify({ total, incremental: false })}\n\n`);
+      await streamRawEntriesAsync(filePath, (raw) => {
+        res.write('event: load_chunk\ndata: [');
+        res.write(raw);
+        res.write(']\n\n');
+      });
+      res.write(`event: load_end\ndata: {}\n\n`);
+      res.end();
     } catch (err) {
-      const status = err.code === 'NOT_FOUND' ? 404 : err.code === 'ACCESS_DENIED' ? 403 : 500;
-      res.writeHead(status, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: err.message }));
+      // 如果 headers 未发送，返回 JSON 错误；否则关闭连接
+      if (!res.headersSent) {
+        const status = err.code === 'NOT_FOUND' ? 404 : err.code === 'ACCESS_DENIED' ? 403 : 500;
+        res.writeHead(status, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      } else {
+        res.end();
+      }
     }
     return;
   }

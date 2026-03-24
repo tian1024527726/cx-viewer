@@ -198,7 +198,7 @@ export function resetWorkspace() {
   LOG_FILE = '';
 }
 
-const MAX_LOG_SIZE = 150 * 1024 * 1024; // 150MB
+const MAX_LOG_SIZE = 250 * 1024 * 1024; // 250MB
 
 function checkAndRotateLogFile() {
   // Teammate 不做日志轮转，由 leader 负责
@@ -373,7 +373,7 @@ export function setupInterceptor() {
       }
     } catch { }
 
-    // 用户新指令边界：检查日志文件大小，超过 150MB 则切换新文件
+    // 用户新指令边界：检查日志文件大小，超过 250MB 则切换新文件
     if (requestEntry?.mainAgent) {
       checkAndRotateLogFile();
       // 仅 mainAgent 请求时缓存模型名，避免 SubAgent 覆盖

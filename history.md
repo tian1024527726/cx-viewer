@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.6.33 (2026-03-24)
+
+- Fix: eliminate server-side OOM on large JSONL files — server no longer reconstructs delta entries, sends raw delta via streaming SSE; client reconstructs locally
+- Feature: /api/local-log returns independent SSE stream (isolated from CLI /events), preventing mode confusion between logfile browsing and CLI mode
+- Perf: chunked file reading (1MB blocks via generator) replaces readFileSync for all log reading paths
+- Perf: restore MAX_LOG_SIZE from 150MB back to 250MB (now safe with streaming architecture)
+- Style: refine diff view, tool result, and chat bubble colors/borders/hover states
+- Style: remove redundant tool result outer labels (tr.label) from chat messages
+
 ## 1.6.32 (2026-03-24)
 
 - Fix: reduce MAX_LOG_SIZE from 250MB to 150MB to lower OOM risk with delta-compressed logs
