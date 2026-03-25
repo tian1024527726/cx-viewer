@@ -10,11 +10,11 @@ const KNOWN_DOCS = new Set([
   'Tool-NotebookEdit', 'Tool-WebFetch', 'Tool-WebSearch',
   'Tool-Task', 'Tool-Agent', 'Tool-TaskOutput', 'Tool-TaskStop',
   'Tool-TaskCreate', 'Tool-TaskGet', 'Tool-TaskUpdate', 'Tool-TaskList',
-  'Tool-TeamCreate', 'Tool-TeamDelete',
+  'Tool-TeamCreate', 'Tool-TeamDelete', 'Tool-SendMessage',
   'SubAgent-Search',
   'Tool-EnterPlanMode', 'Tool-ExitPlanMode',
   'Tool-AskUserQuestion', 'Tool-Skill',
-  'Tool-getDiagnostics', 'Tool-executeCode',
+  'Tool-getDiagnostics', 'Tool-executeCode', 'Tool-EnterWorktree',
   'MainAgent', 'Tools', 'CacheRebuild', 'BodyDiffJSON', 'TranslateContextPollution', 'KVCacheContent',
 ]);
 
