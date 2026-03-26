@@ -284,8 +284,17 @@ async function handleRequest(req, res) {
           : `${originalName}-${ts}`;
         const savePath = join(uploadDir, uniqueName);
         writeFileSync(savePath, fileData);
+        // 持久化副本到 ~/.claude/cc-viewer/${project}/images/，避免 /tmp 清理后丢失
+        let persistPath = null;
+        try {
+          const pName = _projectName || 'default';
+          const persistDir = join(homedir(), '.claude', 'cc-viewer', pName, 'images');
+          mkdirSync(persistDir, { recursive: true });
+          persistPath = join(persistDir, uniqueName);
+          writeFileSync(persistPath, fileData);
+        } catch { }
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true, path: savePath }));
+        res.end(JSON.stringify({ ok: true, path: savePath, persistPath }));
       } catch (err) {
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: err.message }));
@@ -792,7 +801,29 @@ async function handleRequest(req, res) {
   // Claude settings.json（启动时读取，不 watch）
   if (url === '/api/claude-settings' && method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ env: claudeSettings.env || {}, model: claudeSettings.model || null }));
+    res.end(JSON.stringify({ env: claudeSettings.env || {}, model: claudeSettings.model || null, showThinkingSummaries: claudeSettings.showThinkingSummaries || false }));
+    return;
+  }
+
+  if (url === '/api/claude-settings' && method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; if (body.length > MAX_POST_BODY) req.destroy(); });
+    req.on('end', () => {
+      try {
+        const incoming = JSON.parse(body);
+        const settingsPath = join(homedir(), '.claude', 'settings.json');
+        let settings = {};
+        try { if (existsSync(settingsPath)) settings = JSON.parse(readFileSync(settingsPath, 'utf-8')); } catch { }
+        Object.assign(settings, incoming);
+        writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+        Object.assign(claudeSettings, incoming);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid JSON' }));
+      }
+    });
     return;
   }
 
@@ -1011,7 +1042,24 @@ async function handleRequest(req, res) {
     const isEditorSession = parsedUrl.searchParams.get('editorSession') === 'true';
     const cwd = process.env.CCV_PROJECT_DIR || process.cwd();
     try {
-      const targetFile = resolveFilePath(cwd, reqPath, isEditorSession);
+      // 上传图片路径（/tmp/cc-viewer-uploads/ 或持久化目录）直接使用，跳过项目目录安全检查
+      const uploadPrefix = '/tmp/cc-viewer-uploads/';
+      const pName = _projectName || 'default';
+      const persistPrefix = join(homedir(), '.claude', 'cc-viewer', pName, 'images') + '/';
+      let targetFile;
+      if (reqPath && reqPath.startsWith(uploadPrefix)) {
+        targetFile = resolve(reqPath);
+        // /tmp 原文件不存在时，回退到持久化副本
+        if (!existsSync(targetFile)) {
+          const fileName = targetFile.split('/').pop();
+          const persistFile = join(persistPrefix, fileName);
+          if (existsSync(persistFile)) targetFile = persistFile;
+        }
+      } else if (reqPath && reqPath.startsWith(persistPrefix)) {
+        targetFile = resolve(reqPath);
+      } else {
+        targetFile = resolveFilePath(cwd, reqPath, isEditorSession);
+      }
       if (!existsSync(targetFile)) {
         res.writeHead(404, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: `File not found: ${targetFile}` }));

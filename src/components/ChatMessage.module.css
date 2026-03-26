@@ -211,6 +211,24 @@
   font-size: 12px;
 }
 
+.thinkingEmptyHint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  flex-wrap: wrap;
+}
+
+.thinkingEmptyText {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.enableThinkingBtn {
+  font-size: 12px;
+  border-radius: 4px;
+}
+
 .bashCollapseLabel {
   font-size: 12px;
   color: #9ca3af;

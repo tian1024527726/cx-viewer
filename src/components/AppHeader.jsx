@@ -534,17 +534,17 @@ class AppHeader extends React.Component {
 
     const buildPlainText = () => {
       const parts = [];
+      if (cached.tools.length > 0) {
+        parts.push(`=== ${t('ui.tools')} (${cached.tools.length}) ===`);
+        cached.tools.forEach(text => parts.push(text));
+      }
       if (cached.system.length > 0) {
-        parts.push(`=== ${t('ui.systemPrompt')} (${cached.system.length}) ===`);
+        parts.push(`\n=== ${t('ui.systemPrompt')} (${cached.system.length}) ===`);
         cached.system.forEach(text => parts.push(text));
       }
       if (cached.messages.length > 0) {
         parts.push(`\n=== ${t('ui.messages')} (${cached.messages.length}) ===`);
         cached.messages.forEach(text => parts.push(text));
-      }
-      if (cached.tools.length > 0) {
-        parts.push(`\n=== ${t('ui.tools')} (${cached.tools.length}) ===`);
-        cached.tools.forEach(text => parts.push(text));
       }
       return parts.join('\n\n');
     };
@@ -633,9 +633,9 @@ class AppHeader extends React.Component {
             requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
           }
         }}>
+          {renderSection(t('ui.tools'), cached.tools)}
           {renderSection(t('ui.systemPrompt'), cached.system, styles.cacheCodeBlockSystem)}
           {renderSection(t('ui.messages'), cached.messages)}
-          {renderSection(t('ui.tools'), cached.tools)}
         </div>
       </div>
     );

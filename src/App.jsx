@@ -15,7 +15,7 @@ import MobileGitDiff from './components/MobileGitDiff';
 import MobileStats from './components/MobileStats';
 import WorkspaceList from './components/WorkspaceList';
 import { t, getLang, setLang } from './i18n';
-import { formatTokenCount, filterRelevantRequests, findPrevMainAgentTimestamp, appendCacheLossMap } from './utils/helpers';
+import { formatTokenCount, filterRelevantRequests, findPrevMainAgentTimestamp, appendCacheLossMap, extractCachedContent } from './utils/helpers';
 import { isMainAgent, isSystemText, classifyUserContent } from './utils/contentFilter';
 import { classifyRequest } from './utils/requestType';
 import styles from './App.module.css';
@@ -59,6 +59,7 @@ class App extends React.Component {
       collapseToolResults: true,
       expandThinking: true,
       expandDiff: false,
+      showThinkingSummaries: false,
       fileLoading: false,
       fileLoadingCount: 0,
       isDragging: false,
@@ -89,6 +90,8 @@ class App extends React.Component {
     this._cacheLossProcessedCount = 0;
     this._cacheLossLastMainAgent = null;
     this._cacheLossShowAll = undefined;
+    // 增量维护的 KV-Cache 缓存内容（稳定引用，不受 inProgress 闪烁影响）
+    this._lastKvCacheContent = null;
     // P0 perf: 实时 SSE 增量剪枝（默认关闭，localStorage ccv_sseSlim=true 启用）
     this._sseSlimEnabled = !isMobile && localStorage.getItem('ccv_sseSlim') === 'true';
     this._sseSlimmer = null;
@@ -105,6 +108,7 @@ class App extends React.Component {
     this._cacheLossProcessedCount = 0;
     this._cacheLossLastMainAgent = null;
     this._cacheLossMap = new Map();
+    this._lastKvCacheContent = null;
     this._sseSlimmer = null;
   }
 
@@ -127,6 +131,11 @@ class App extends React.Component {
       window.visualViewport.addEventListener('scroll', this._onVisualViewportChange);
       this._onVisualViewportChange();
     }
+
+    // 获取 claude settings（showThinkingSummaries 等）
+    fetch(apiUrl('/api/claude-settings')).then(r => r.json()).then(data => {
+      if (data.showThinkingSummaries) this.setState({ showThinkingSummaries: true });
+    }).catch(() => {});
 
     // 获取用户偏好设置（包含 filterIrrelevant）
     // 用 Promise 保存，供 initSSE 等待（resume_prompt 需要知道 resumeAutoChoice）
@@ -470,7 +479,10 @@ class App extends React.Component {
       this.eventSource.addEventListener('kv_cache_content', (event) => {
         try {
           const cached = JSON.parse(event.data);
-          this.setState({ serverCachedContent: cached });
+          // 防御：忽略无实际内容的 kv_cache_content（避免空数据覆盖有效缓存）
+          if (cached && (cached.system?.length > 0 || cached.messages?.length > 0 || cached.tools?.length > 0)) {
+            this.setState({ serverCachedContent: cached });
+          }
         } catch (err) {
           console.error('Failed to parse kv_cache_content:', err);
         }
@@ -589,9 +601,19 @@ class App extends React.Component {
           const newIdx = requests.length;
           // processEntry 在 push 前调用：slimmer 需要修改 requests 中的 prev entry，
           // _fullEntryIndex = newIdx 指向即将 push 的位置，push 紧随其后保证索引有效
+          // IMPORTANT: processEntry sets _fullEntryIndex = requests.length (current newIdx).
+          // The push below MUST follow immediately — do NOT insert code between these two lines.
           if (this._sseSlimmer) this._sseSlimmer.processEntry(entry, requests, newIdx);
           this._requestIndexMap.set(key, newIdx);
           requests.push(entry);
+        }
+
+        // 增量维护 KV-Cache 缓存内容：只在 completed MainAgent（有 usage）时更新，避免 inProgress 闪烁
+        if (isMainAgent(entry) && !entry.inProgress && entry.response?.body?.usage) {
+          const kvCached = extractCachedContent([entry]);
+          if (kvCached && (kvCached.system.length > 0 || kvCached.messages.length > 0 || kvCached.tools.length > 0)) {
+            this._lastKvCacheContent = kvCached;
+          }
         }
 
         // 记录 mainAgent 缓存信息
@@ -1484,8 +1506,11 @@ class App extends React.Component {
     });
   };
 
+  _isInternalDrag = (e) => e.dataTransfer.types.includes('text/x-preset-reorder');
+
   _onDragOver = (e) => {
     e.preventDefault();
+    if (this._isInternalDrag(e)) return; // 忽略内部预置拖拽排序
     if (!this.state.isDragging) this.setState({ isDragging: true });
   };
 
@@ -1499,6 +1524,7 @@ class App extends React.Component {
 
   _onDrop = (e) => {
     e.preventDefault();
+    if (this._isInternalDrag(e)) return; // 忽略内部预置拖拽排序
     this.setState({ isDragging: false });
     const files = Array.from(e.dataTransfer.files);
     if (!files.length) return;
@@ -1753,6 +1779,7 @@ class App extends React.Component {
                     userProfile={this.state.userProfile}
                     collapseToolResults={this.state.collapseToolResults}
                     expandThinking={this.state.expandThinking}
+                    showThinkingSummaries={this.state.showThinkingSummaries}
                     onViewRequest={null}
                     scrollToTimestamp={null}
                     onScrollTsDone={() => {}}
@@ -1971,7 +1998,7 @@ class App extends React.Component {
               onReturnToWorkspaces={this.state.cliMode ? this.handleReturnToWorkspaces : null}
               contextWindow={this.state.contextWindow}
               onNavigateCacheMsg={this.handleNavigateCacheMsg}
-              serverCachedContent={this.state.serverCachedContent}
+              serverCachedContent={this.state.serverCachedContent || this._lastKvCacheContent}
               resumeAutoChoice={this.state.resumeAutoChoice}
               onResumeAutoChoiceToggle={this.handleResumeAutoChoiceToggle}
               onResumeAutoChoiceChange={this.handleResumeAutoChoiceChange}
@@ -2052,7 +2079,7 @@ class App extends React.Component {
               )
             )}
             <div style={{ display: viewMode === 'chat' ? 'flex' : 'none', height: '100%', flexDirection: 'column' }}>
-              <ChatView requests={filteredRequests} mainAgentSessions={mainAgentSessions} userProfile={this.state.userProfile} collapseToolResults={this.state.collapseToolResults} expandThinking={this.state.expandThinking} onViewRequest={this.handleViewRequest} scrollToTimestamp={this.state.chatScrollToTs} onScrollTsDone={this.handleScrollTsDone} cliMode={this._isLocalLog ? false : this.state.cliMode} terminalVisible={this._isLocalLog ? false : this.state.terminalVisible} onToggleTerminal={() => this.setState(prev => ({ terminalVisible: !prev.terminalVisible }))} pendingUploadPaths={this.state.pendingUploadPaths} onUploadPathsConsumed={this.handleUploadPathsConsumed} />
+              <ChatView requests={filteredRequests} mainAgentSessions={mainAgentSessions} userProfile={this.state.userProfile} collapseToolResults={this.state.collapseToolResults} expandThinking={this.state.expandThinking} showThinkingSummaries={this.state.showThinkingSummaries} onViewRequest={this.handleViewRequest} scrollToTimestamp={this.state.chatScrollToTs} onScrollTsDone={this.handleScrollTsDone} cliMode={this._isLocalLog ? false : this.state.cliMode} terminalVisible={this._isLocalLog ? false : this.state.terminalVisible} onToggleTerminal={() => this.setState(prev => ({ terminalVisible: !prev.terminalVisible }))} pendingUploadPaths={this.state.pendingUploadPaths} onUploadPathsConsumed={this.handleUploadPathsConsumed} />
             </div>
           </Layout.Content>
           <div className={styles.footer}>

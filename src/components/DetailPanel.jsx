@@ -1,5 +1,5 @@
 import React from 'react';
-import { Tabs, Typography, Button, Tag, Empty, Space, Select, Popover, message } from 'antd';
+import { Tabs, Typography, Button, Tag, Empty, Space, Select, Popover, Tooltip, message } from 'antd';
 import { CopyOutlined, FileTextOutlined, CodeOutlined, RightOutlined, DownOutlined } from '@ant-design/icons';
 import JsonViewer from './JsonViewer';
 import ConceptHelp from './ConceptHelp';
@@ -26,6 +26,7 @@ class DetailPanel extends React.Component {
       reminderFilters: null,
       cacheHighlightIdx: null,
       cacheHighlightFading: false,
+      cacheCollapsed: { tools: false, system: false, messages: false },
     };
   }
 
@@ -138,7 +139,8 @@ class DetailPanel extends React.Component {
       nextState.diffExpanded !== this.state.diffExpanded ||
       nextState.requestHeadersExpanded !== this.state.requestHeadersExpanded ||
       nextState.responseHeadersExpanded !== this.state.responseHeadersExpanded ||
-      nextState.reminderFilters !== this.state.reminderFilters
+      nextState.reminderFilters !== this.state.reminderFilters ||
+      (onCacheTab && nextState.cacheCollapsed !== this.state.cacheCollapsed)
     );
   }
 
@@ -596,9 +598,9 @@ class DetailPanel extends React.Component {
               }
               const buildPlainText = () => {
                 const parts = [];
-                if (cached.system.length > 0) { parts.push(`=== ${t('ui.systemPrompt')} ===`); cached.system.forEach(t => parts.push(t)); }
+                if (cached.tools.length > 0) { parts.push(`=== ${t('ui.tools')} ===`); cached.tools.forEach(t => parts.push(t)); }
+                if (cached.system.length > 0) { parts.push(`\n=== ${t('ui.systemPrompt')} ===`); cached.system.forEach(t => parts.push(t)); }
                 if (cached.messages.length > 0) { parts.push(`\n=== ${t('ui.messages')} ===`); cached.messages.forEach(t => parts.push(t)); }
-                if (cached.tools.length > 0) { parts.push(`\n=== ${t('ui.tools')} ===`); cached.tools.forEach(t => parts.push(t)); }
                 return parts.join('\n\n');
               };
               const userPrompts = cached.messages
@@ -644,14 +646,16 @@ class DetailPanel extends React.Component {
                         {t('ui.tokens')}: <span style={{ color: '#faad14' }}>write {formatTokenCount(displayTokens.cacheCreateTokens)}</span>
                         {' / '}
                         <span style={{ color: '#52c41a' }}>read {formatTokenCount(displayTokens.cacheReadTokens)}</span>
-                        <CopyOutlined
-                          style={{ marginLeft: 8, cursor: 'pointer', color: '#888', transition: 'color 0.2s' }}
-                          onClick={() => {
-                            navigator.clipboard.writeText(buildPlainText()).then(() => {
-                              message.success(t('ui.copied'));
-                            }).catch(() => {});
-                          }}
-                        />
+                        <Tooltip title={t('ui.copyAllCacheText')}>
+                          <CopyOutlined
+                            style={{ marginLeft: 8, cursor: 'pointer', color: '#888', transition: 'color 0.2s' }}
+                            onClick={() => {
+                              navigator.clipboard.writeText(buildPlainText()).then(() => {
+                                message.success(t('ui.copied'));
+                              }).catch(() => {});
+                            }}
+                          />
+                        </Tooltip>
                       </>}
                       {userPromptNavList && (
                         <Popover content={userPromptNavList} trigger="hover" placement="left">
@@ -662,18 +666,35 @@ class DetailPanel extends React.Component {
                     ) : null;
                   })()}
                   <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }} ref={el => { this._cacheScrollEl = el; }}>
+                    {cached.tools.length > 0 && (
+                      <div style={{ marginBottom: 12 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e5e5', marginBottom: 6, cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => this.setState(prev => ({ cacheCollapsed: { ...prev.cacheCollapsed, tools: !prev.cacheCollapsed.tools } }))}>
+                          <span style={{ display: 'inline-block', transition: 'transform 0.2s', transform: this.state.cacheCollapsed.tools ? 'rotate(-90deg)' : 'rotate(0deg)', fontSize: 10 }}>▼</span>
+                          {t('ui.tools')} ({cached.tools.length})
+                        </div>
+                        {!this.state.cacheCollapsed.tools && cached.tools.map((text, i) => (
+                          <pre key={i} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 12, lineHeight: 1.5, color: '#ccc', background: '#111', border: '1px solid #2a2a2a', borderRadius: 4, padding: 8, margin: '4px 0', fontFamily: 'Menlo, Monaco, monospace' }}>{text}</pre>
+                        ))}
+                      </div>
+                    )}
                     {cached.system.length > 0 && (
                       <div style={{ marginBottom: 12 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e5e5', marginBottom: 6 }}>{t('ui.systemPrompt')} ({cached.system.length})</div>
-                        {cached.system.map((text, i) => (
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e5e5', marginBottom: 6, cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => this.setState(prev => ({ cacheCollapsed: { ...prev.cacheCollapsed, system: !prev.cacheCollapsed.system } }))}>
+                          <span style={{ display: 'inline-block', transition: 'transform 0.2s', transform: this.state.cacheCollapsed.system ? 'rotate(-90deg)' : 'rotate(0deg)', fontSize: 10 }}>▼</span>
+                          {t('ui.systemPrompt')} ({cached.system.length})
+                        </div>
+                        {!this.state.cacheCollapsed.system && cached.system.map((text, i) => (
                           <pre key={i} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 12, lineHeight: 1.5, color: '#ccc', background: '#0d1b2a', border: '1px solid #1b3a5c', borderRadius: 4, padding: 8, margin: '4px 0', fontFamily: 'Menlo, Monaco, monospace' }}>{text}</pre>
                         ))}
                       </div>
                     )}
                     {cached.messages.length > 0 && (
                       <div style={{ marginBottom: 12 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e5e5', marginBottom: 6 }}>{t('ui.messages')} ({cached.messages.length})</div>
-                        {cached.messages.map((text, i) => {
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e5e5', marginBottom: 6, cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: 4 }} onClick={() => this.setState(prev => ({ cacheCollapsed: { ...prev.cacheCollapsed, messages: !prev.cacheCollapsed.messages } }))}>
+                          <span style={{ display: 'inline-block', transition: 'transform 0.2s', transform: this.state.cacheCollapsed.messages ? 'rotate(-90deg)' : 'rotate(0deg)', fontSize: 10 }}>▼</span>
+                          {t('ui.messages')} ({cached.messages.length})
+                        </div>
+                        {!this.state.cacheCollapsed.messages && cached.messages.map((text, i) => {
                           const isHl = i === this.state.cacheHighlightIdx;
                           const hlStyle = isHl
                             ? (this.state.cacheHighlightFading
@@ -694,14 +715,6 @@ class DetailPanel extends React.Component {
                             </pre>
                           );
                         })}
-                      </div>
-                    )}
-                    {cached.tools.length > 0 && (
-                      <div style={{ marginBottom: 12 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: '#e5e5e5', marginBottom: 6 }}>{t('ui.tools')} ({cached.tools.length})</div>
-                        {cached.tools.map((text, i) => (
-                          <pre key={i} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: 12, lineHeight: 1.5, color: '#ccc', background: '#111', border: '1px solid #2a2a2a', borderRadius: 4, padding: 8, margin: '4px 0', fontFamily: 'Menlo, Monaco, monospace' }}>{text}</pre>
-                        ))}
                       </div>
                     )}
                   </div>

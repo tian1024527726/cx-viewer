@@ -284,4 +284,34 @@ describe('restoreSlimmedEntry', () => {
     const requests = [entry];
     assert.equal(restoreSlimmedEntry(entry, requests), entry);
   });
+
+  it('should restore cascaded slimmed entry using cascaded _fullEntryIndex', () => {
+    // Build entries via the slimmer so cascade is applied correctly
+    const slimmer = createIncrementalSlimmer(isMainAgent);
+    const requests = [];
+
+    // Entry 0: MainAgent, 10 messages
+    const e0 = makeMainAgent(10);
+    slimmer.processEntry(e0, requests, 0);
+    requests.push(e0);
+
+    // Entry 1: non-MainAgent — should not affect slim state
+    const e1 = makeSubAgent(5);
+    slimmer.processEntry(e1, requests, 1);
+    requests.push(e1);
+
+    // Entry 2: MainAgent, 20 messages — slims entry 0 and cascades _fullEntryIndex to 2
+    const e2 = makeMainAgent(20);
+    slimmer.processEntry(e2, requests, 2);
+    requests.push(e2);
+
+    // Verify cascade happened: entry 0 points to entry 2
+    assert.equal(requests[0]._slimmed, true);
+    assert.equal(requests[0]._fullEntryIndex, 2, 'entry 0 should cascade to entry 2');
+
+    // restoreSlimmedEntry should slice entry 2's messages down to entry 0's original count (10)
+    const restored = restoreSlimmedEntry(requests[0], requests);
+    assert.notEqual(restored, requests[0], 'should return new object');
+    assert.equal(restored.body.messages.length, 10, 'restored entry should have original 10 messages sliced from entry 2');
+  });
 });

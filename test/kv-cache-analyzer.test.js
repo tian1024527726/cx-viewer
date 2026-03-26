@@ -252,14 +252,14 @@ describe('extractCachedContent', () => {
     assert.equal(result.messages[1], '[assistant] reply');
   });
 
-  it('extracts tools when any tool has cache_control', () => {
+  it('extracts tools when system has cache_control (tools are implicitly cached as prefix)', () => {
     const tools = [
-      { name: 'Edit', description: 'Edit files', cache_control: { type: 'ephemeral' } },
+      { name: 'Edit', description: 'Edit files' },
       { name: 'Bash', description: 'Run commands' },
     ];
     const entry = makeMainAgentEntry({
       body: {
-        system: [{ type: 'text', text: 'You are Claude Code.' }],
+        system: [{ type: 'text', text: 'You are Claude Code.', cache_control: { type: 'ephemeral' } }],
         tools,
         messages: [],
       },

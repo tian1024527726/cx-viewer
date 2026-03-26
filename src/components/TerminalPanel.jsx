@@ -736,6 +736,56 @@ class TerminalPanel extends React.Component {
     });
   };
 
+  // --- 拖拽排序 ---
+  _dragIdx = null;
+  _dragOverIdx = null;
+
+  handleDragStart = (idx, e) => {
+    e.stopPropagation();
+    this._dragIdx = idx;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/x-preset-reorder', String(idx));
+    requestAnimationFrame(() => this.forceUpdate());
+  };
+
+  handleDragOver = (idx, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+    if (this._dragOverIdx !== idx) {
+      this._dragOverIdx = idx;
+      this.forceUpdate();
+    }
+  };
+
+  handleDragEnd = (e) => {
+    if (e) e.stopPropagation();
+    this._dragIdx = null;
+    this._dragOverIdx = null;
+    this.forceUpdate();
+  };
+
+  handleDragLeave = (idx, e) => {
+    e.stopPropagation();
+    if (this._dragOverIdx === idx) {
+      this._dragOverIdx = null;
+      this.forceUpdate();
+    }
+  };
+
+  handleDrop = (idx, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const from = this._dragIdx;
+    if (from === null || from === idx) { this.handleDragEnd(); return; }
+    const items = [...this.state.presetItems];
+    const [moved] = items.splice(from, 1);
+    items.splice(from < idx ? idx - 1 : idx, 0, moved);
+    this.setState({ presetItems: items });
+    this._savePresetShortcuts(items);
+    this.handleDragEnd();
+  };
+
   handlePresetSend = (description) => {
     if (!description) return;
     this.setState({ agentTeamPopoverOpen: false });
@@ -859,23 +909,43 @@ class TerminalPanel extends React.Component {
           <div style={{ marginBottom: 8 }}>
             <span style={{ fontSize: 14, fontWeight: 600, color: '#e5e5e5' }}>{t('ui.terminal.agentTeamCustom')}</span>
           </div>
-          <div className={styles.presetList}>
+          <div className={styles.presetList} onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }} onDrop={(e) => { e.preventDefault(); e.stopPropagation(); }}>
             {this.state.presetItems.length === 0 ? (
               <div style={{ color: '#666', fontSize: 13, padding: '12px 0', textAlign: 'center' }}>—</div>
             ) : (
-              this.state.presetItems.map(item => {
+              this.state.presetItems.map((item, idx) => {
                 const isBuiltinRaw = item.builtinId && !item.modified;
                 const name = isBuiltinRaw ? t(item.teamName) : item.teamName;
                 const desc = isBuiltinRaw ? t(item.description) : item.description;
+                const isDragging = this._dragIdx === idx;
+                const isDragOver = this._dragOverIdx === idx && this._dragIdx !== idx;
                 return (
-                  <div key={item.id} className={styles.presetRow}>
+                  <div
+                    key={item.id}
+                    className={`${styles.presetRow} ${isDragging ? styles.presetRowDragging : ''} ${isDragOver ? styles.presetRowDragOver : ''}`}
+                    onDragOver={(e) => this.handleDragOver(idx, e)}
+                    onDragLeave={(e) => this.handleDragLeave(idx, e)}
+                    onDrop={(e) => this.handleDrop(idx, e)}
+                    onDragEnd={this.handleDragEnd}
+                  >
+                    <span
+                      className={styles.dragHandle}
+                      draggable
+                      onDragStart={(e) => this.handleDragStart(idx, e)}
+                    >
+                      <svg viewBox="0 0 10 16" width="10" height="16" fill="currentColor">
+                        <circle cx="3" cy="3" r="1.2"/><circle cx="7" cy="3" r="1.2"/>
+                        <circle cx="3" cy="8" r="1.2"/><circle cx="7" cy="8" r="1.2"/>
+                        <circle cx="3" cy="13" r="1.2"/><circle cx="7" cy="13" r="1.2"/>
+                      </svg>
+                    </span>
                     <Checkbox
                       checked={this.state.presetSelected.has(item.id)}
                       onChange={() => this.handlePresetToggle(item.id)}
                     />
                     <span className={styles.presetName} title={name}>{name || '—'}</span>
                     <span className={styles.presetText} title={desc}>{desc}</span>
-                    <Button size="small" type="link" onClick={() => this.setState({ presetAddVisible: true, presetAddName: item.teamName, presetAddText: item.description, presetEditId: item.id })}>{t('ui.terminal.editItem')}</Button>
+                    <Button size="small" type="link" onClick={() => this.setState({ presetAddVisible: true, presetAddName: isBuiltinRaw ? t(item.teamName) : item.teamName, presetAddText: isBuiltinRaw ? t(item.description) : item.description, presetEditId: item.id })}>{t('ui.terminal.editItem')}</Button>
                   </div>
                 );
               })

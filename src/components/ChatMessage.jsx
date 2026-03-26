@@ -1,8 +1,9 @@
 import React from 'react';
-import { Collapse, Typography, Radio, Checkbox, Input } from 'antd';
+import { Collapse, Typography, Radio, Checkbox, Input, Button, Tooltip, message } from 'antd';
 import { renderMarkdown } from '../utils/markdown';
 import { escapeHtml, truncateText, getSvgAvatar } from '../utils/helpers';
 import { renderAssistantText } from '../utils/systemTags';
+import { apiUrl } from '../utils/apiUrl';
 import AskQuestionForm from './AskQuestionForm';
 import { t } from '../i18n';
 import { isPlanApprovalPrompt } from './ChatView';
@@ -14,6 +15,22 @@ import defaultModelAvatarUrl from '../img/default-model-avatar.svg';
 import styles from './ChatMessage.module.css';
 
 const { Text } = Typography;
+
+function ChatImage({ src, alt, fallbackText }) {
+  const [failed, setFailed] = React.useState(false);
+  if (failed) {
+    return <span style={{ color: '#888', fontSize: 12 }}>{fallbackText}</span>;
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      style={{ maxWidth: '100%', maxHeight: 300, borderRadius: 6, margin: '6px 0', display: 'block', cursor: 'pointer' }}
+      onClick={() => window.open(src, '_blank')}
+      onError={() => setFailed(true)}
+    />
+  );
+}
 
 function nameToColor(name) {
   let hash = 0;
@@ -562,11 +579,43 @@ class ChatMessage extends React.Component {
             {this.renderViewRequestBtn()}
             <Text type="secondary" className={styles.labelTextRight}>{userName}</Text>
           </div>
-          {this.renderHighlightBubble(styles.bubbleUser, escapeHtml(text))}
+          {this.renderHighlightBubble(styles.bubbleUser, this.renderUserTextWithImages(text))}
         </div>
         {this.renderUserAvatar('#1e40af')}
       </div>
     );
+  }
+
+  renderUserTextWithImages(text) {
+    if (!text) return escapeHtml(text);
+    // 匹配 [Image: source: /path/to/file.ext] 或 [Image #N] 后跟的图片路径
+    const imagePattern = /\[Image(?:\s*#\d+)?(?::?\s*source)?:\s*([^\]]+)\]/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+    while ((match = imagePattern.exec(text)) !== null) {
+      const filePath = match[1].trim();
+      // 只处理看起来像图片路径的（以常见图片扩展名结尾）
+      if (!/\.(png|jpe?g|gif|webp|svg|bmp|ico)$/i.test(filePath)) continue;
+      if (match.index > lastIndex) {
+        parts.push(<span key={`t-${lastIndex}`} dangerouslySetInnerHTML={{ __html: escapeHtml(text.slice(lastIndex, match.index)) }} />);
+      }
+      const originalText = match[0];
+      parts.push(
+        <ChatImage
+          key={`img-${match.index}`}
+          src={apiUrl(`/api/file-raw?path=${encodeURIComponent(filePath)}`)}
+          alt={filePath.split('/').pop()}
+          fallbackText={originalText}
+        />
+      );
+      lastIndex = match.index + match[0].length;
+    }
+    if (parts.length === 0) return escapeHtml(text);
+    if (lastIndex < text.length) {
+      parts.push(<span key={`t-${lastIndex}`} dangerouslySetInnerHTML={{ __html: escapeHtml(text.slice(lastIndex)) }} />);
+    }
+    return <>{parts}</>;
   }
 
   renderToolResult(tr) {
@@ -584,6 +633,8 @@ class ChatMessage extends React.Component {
     let innerContent = [];
 
     thinkingBlocks.forEach((tb, i) => {
+      const thinkingText = tb.thinking || '';
+      const isEmpty = !thinkingText.trim();
       innerContent.push(
         <Collapse
           key={`think-${i}-${this.props.expandThinking ? 'e' : 'c'}`}
@@ -593,7 +644,38 @@ class ChatMessage extends React.Component {
           items={[{
             key: '1',
             label: <Text type="secondary" className={styles.thinkingLabel}>{t('ui.thinking')}</Text>,
-            children: <div className="chat-md" dangerouslySetInnerHTML={{ __html: renderMarkdown(tb.thinking || '') }} />,
+            children: isEmpty ? (
+              <div className={styles.thinkingEmptyHint}>
+                <Text type="secondary" className={styles.thinkingEmptyText}>{t('ui.thinkingEmpty')}</Text>
+                {!this.props.showThinkingSummaries && (
+                  <Tooltip title={t('ui.enableThinkingSummariesTip')}>
+                    <Button
+                      size="small"
+                      type="primary"
+                      ghost
+                      className={styles.enableThinkingBtn}
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          const res = await fetch('/api/claude-settings', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ showThinkingSummaries: true }),
+                          });
+                          if (res.ok) {
+                            message.success(t('ui.enableThinkingSummariesTip'));
+                          }
+                        } catch { message.error('Failed to save setting'); }
+                      }}
+                    >
+                      {t('ui.enableThinkingSummaries')}
+                    </Button>
+                  </Tooltip>
+                )}
+              </div>
+            ) : (
+              <div className="chat-md" dangerouslySetInnerHTML={{ __html: renderMarkdown(thinkingText) }} />
+            ),
           }]}
           className={styles.collapseMargin}
         />

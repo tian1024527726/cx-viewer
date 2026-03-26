@@ -589,14 +589,13 @@ export function extractCachedContent(requests) {
     }
   }
 
-  // 提取 tools：如果任何 tool 带 cache_control，则整个 tools 数组都被缓存
-  if (Array.isArray(body.tools)) {
-    const hasCache = body.tools.some(tool => tool.cache_control);
-    if (hasCache) {
-      for (const tool of body.tools) {
-        const toolStr = `${tool.name}: ${tool.description || ''}`;
-        result.tools.push(toolStr);
-      }
+  // 提取 tools：API 缓存顺序为 tools → system → messages，
+  // tools 作为 cache 前缀的一部分隐式被缓存（不需要自身有 cache_control 标记）。
+  // 只要 system 有缓存内容（说明 cache 前缀存在），tools 就应被展示。
+  // Keep in sync with lib/kv-cache-analyzer.js extractCachedContent
+  if (Array.isArray(body.tools) && body.tools.length > 0 && result.system.length > 0) {
+    for (const tool of body.tools) {
+      result.tools.push(`${tool.name}: ${tool.description || ''}`);
     }
   }
 
