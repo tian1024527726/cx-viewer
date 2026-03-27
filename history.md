@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.44 (2026-03-27)
+
+- Fix: teammate fallback rendering now works — noData guard checks allItems to avoid Empty blocking fallback content
+- Fix: remove redundant Divider if/else branch in teammate fallback
+
 ## 1.6.43 (2026-03-27)
 
 - Fix: eliminate ChatView initialization flickering — delay SSE client broadcast registration until historical load completes (server.js)

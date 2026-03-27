@@ -859,19 +859,11 @@ class ChatView extends React.Component {
     const allItems = [];
     let si = 0;
     for (const [name, session] of teammateMap) {
-      if (si > 0) {
-        allItems.push(
-          <Divider key={`tm-div-${si}`} style={{ borderColor: '#333', margin: '16px 0' }}>
-            <Text className={styles.sessionDividerText}>{name}</Text>
-          </Divider>
-        );
-      } else {
-        allItems.push(
-          <Divider key={`tm-div-${si}`} style={{ borderColor: '#333', margin: '16px 0' }}>
-            <Text className={styles.sessionDividerText}>{name}</Text>
-          </Divider>
-        );
-      }
+      allItems.push(
+        <Divider key={`tm-div-${si}`} style={{ borderColor: '#333', margin: '16px 0' }}>
+          <Text className={styles.sessionDividerText}>{name}</Text>
+        </Divider>
+      );
       const msgs = this.renderSessionMessages(session.messages, `tm${si}`, modelInfo, {});
       allItems.push(...msgs);
 
@@ -2460,7 +2452,8 @@ class ChatView extends React.Component {
     const { mainAgentSessions, cliMode, terminalVisible, onToggleTerminal } = this.props;
     const { allItems, visibleCount, loading, terminalWidth, lastResponseItems } = this.state;
 
-    const noData = !mainAgentSessions || mainAgentSessions.length === 0;
+    const noMainAgent = !mainAgentSessions || mainAgentSessions.length === 0;
+    const noData = noMainAgent && (!allItems || allItems.length === 0);
 
     if (noData && !cliMode) {
       // 初始 SSE 加载期间不显示"暂无对话"，避免 Empty→内容 的两阶段闪烁
