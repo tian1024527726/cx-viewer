@@ -56,7 +56,7 @@ function buildMultiSelectChunks(answer, prompt, isMultiQuestion = false) {
   return chunks;
 }
 
-function buildOtherChunks(answer, prompt) {
+function buildOtherChunks(answer, prompt, isMultiQuestion = false) {
   const chunks = [];
   let currentIdx = getCursorIdx(prompt);
   const targetIdx = answer.optionIndex;
@@ -64,12 +64,33 @@ function buildOtherChunks(answer, prompt) {
   const text = answer.text || '';
   for (const ch of text) chunks.push(ch);
   chunks.push(ENTER);
+  if (isMultiQuestion && answer.isLast) chunks.push(ENTER);
+  return chunks;
+}
+
+function buildMultiSelectOtherChunks(answer, prompt, isMultiQuestion = false) {
+  const chunks = [];
+  let currentIdx = getCursorIdx(prompt);
+  const targetIdx = answer.optionIndex;
+  chunks.push(...buildArrows(currentIdx, targetIdx));
+  const text = answer.text || '';
+  for (const ch of text) chunks.push(ch);
+  // ONE sacrifice char: only ↓ drops a char (→ is a true no-op in text input mode)
+  if (text.length > 0) {
+    const chars = [...text];
+    chunks.push(chars[chars.length - 1]); // sacrifice for ↓
+  }
+  chunks.push(ARROW_RIGHT); // no-op (cursor at end), provides settle delay
+  chunks.push(ARROW_DOWN);  // exits text input, drops sacrifice char
+  chunks.push(ARROW_RIGHT); // go to Submit tab
+  chunks.push(ENTER);       // confirm Submit answers
   return chunks;
 }
 
 function buildChunksForAnswer(answer, prompt, isMultiQuestion = false) {
   if (answer.type === 'multi') return buildMultiSelectChunks(answer, prompt, isMultiQuestion);
-  if (answer.type === 'other') return buildOtherChunks(answer, prompt);
+  if (answer.type === 'other' && answer.isMultiSelect) return buildMultiSelectOtherChunks(answer, prompt, isMultiQuestion);
+  if (answer.type === 'other') return buildOtherChunks(answer, prompt, isMultiQuestion);
   return buildSingleSelectChunks(answer, prompt, isMultiQuestion);
 }
 
@@ -260,6 +281,103 @@ describe('ptyChunkBuilder', () => {
       const answer = { type: 'other', optionIndex: 2, text: '' };
       const chunks = buildOtherChunks(answer, prompt);
       assert.deepEqual(chunks, [ARROW_DOWN, ARROW_DOWN, ENTER]);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // TC-11: 单题多选 Other (Case 11)
+  // --------------------------------------------------------------------------
+  describe('multi-select Other — single question (Case 11)', () => {
+    it('types text with 1 sacrifice char (↓ drops it), Review Enter confirms', () => {
+      const prompt = makePrompt(3, 0); // Other at index 2
+      const answer = { type: 'other', isMultiSelect: true, optionIndex: 2, text: '测试', isLast: true };
+      const chunks = buildMultiSelectOtherChunks(answer, prompt);
+      // ↓↓ navigate, '测','试','试'(sacrifice), →(no-op), ↓(drops sacrifice), →(Submit tab), Enter
+      assert.deepEqual(chunks, [
+        ARROW_DOWN, ARROW_DOWN,
+        '测', '试', '试',
+        ARROW_RIGHT, ARROW_DOWN, ARROW_RIGHT, ENTER,
+      ]);
+    });
+
+    it('single ASCII char: one sacrifice copy', () => {
+      const prompt = makePrompt(2, 0);
+      const answer = { type: 'other', isMultiSelect: true, optionIndex: 1, text: 'a', isLast: true };
+      const chunks = buildMultiSelectOtherChunks(answer, prompt);
+      assert.deepEqual(chunks, [
+        ARROW_DOWN,
+        'a', 'a',
+        ARROW_RIGHT, ARROW_DOWN, ARROW_RIGHT, ENTER,
+      ]);
+    });
+
+    it('multi-char ASCII text: last char duplicated once as sacrifice', () => {
+      const prompt = makePrompt(3, 0);
+      const answer = { type: 'other', isMultiSelect: true, optionIndex: 2, text: 'hello', isLast: true };
+      const chunks = buildMultiSelectOtherChunks(answer, prompt);
+      assert.deepEqual(chunks, [
+        ARROW_DOWN, ARROW_DOWN,
+        'h', 'e', 'l', 'l', 'o', 'o',
+        ARROW_RIGHT, ARROW_DOWN, ARROW_RIGHT, ENTER,
+      ]);
+    });
+
+    it('empty text: no sacrifice char', () => {
+      const prompt = makePrompt(2, 0);
+      const answer = { type: 'other', isMultiSelect: true, optionIndex: 1, text: '', isLast: true };
+      const chunks = buildMultiSelectOtherChunks(answer, prompt);
+      assert.deepEqual(chunks, [
+        ARROW_DOWN,
+        ARROW_RIGHT, ARROW_DOWN, ARROW_RIGHT, ENTER,
+      ]);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // TC-12: 多题混合含多选 Other (Case 12)
+  // --------------------------------------------------------------------------
+  describe('multi-question with multi-select Other (Case 12)', () => {
+    it('Q1 single Other (not last): navigates, types, Enter (auto-advances)', () => {
+      const prompt = makePrompt(3, 0);
+      const answer = { type: 'other', isMultiSelect: false, optionIndex: 2, text: '测试', isLast: false };
+      const chunks = buildOtherChunks(answer, prompt, true);
+      assert.deepEqual(chunks, [
+        ARROW_DOWN, ARROW_DOWN,
+        '测', '试',
+        ENTER,
+        // no extra Enter — not last
+      ]);
+    });
+
+    it('Q2 multi-select Other (not last): 1 sacrifice char, ↓ exit, → tab (no Enter)', () => {
+      const prompt = makePrompt(3, 0);
+      const answer = { type: 'other', isMultiSelect: true, optionIndex: 2, text: '测试', isLast: false };
+      // When not last, buildMultiSelectOtherChunks still sends full sequence
+      // (multi-select Other is always a single PTY submission)
+      const chunks = buildMultiSelectOtherChunks(answer, prompt, true);
+      assert.deepEqual(chunks, [
+        ARROW_DOWN, ARROW_DOWN,
+        '测', '试', '试',
+        ARROW_RIGHT, ARROW_DOWN, ARROW_RIGHT, ENTER,
+      ]);
+    });
+
+    it('Q3 single select (last): ↓↓ Enter Enter', () => {
+      const prompt = makePrompt(3, 0);
+      const answer = { type: 'single', optionIndex: 2, isLast: true };
+      const chunks = buildSingleSelectChunks(answer, prompt, true);
+      assert.deepEqual(chunks, [ARROW_DOWN, ARROW_DOWN, ENTER, ENTER]);
+    });
+
+    it('buildChunksForAnswer dispatches multi-select Other correctly', () => {
+      const prompt = makePrompt(3, 0);
+      const answer = { type: 'other', isMultiSelect: true, optionIndex: 2, text: 'abc', isLast: true };
+      const chunks = buildChunksForAnswer(answer, prompt, false);
+      assert.deepEqual(chunks, [
+        ARROW_DOWN, ARROW_DOWN,
+        'a', 'b', 'c', 'c',
+        ARROW_RIGHT, ARROW_DOWN, ARROW_RIGHT, ENTER,
+      ]);
     });
   });
 

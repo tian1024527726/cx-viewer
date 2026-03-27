@@ -141,8 +141,8 @@ export function buildOtherChunks(answer, prompt, isMultiQuestion = false) {
 /**
  * Build chunks for a multi-select "Other" (Type something) answer.
  * "Type something" is a text-input option in the checkbox list.
- * Sequence: navigate → type text → Enter (confirm text) → → Enter (submit form)
- * Enter confirms the typed text; → then exits the text field to Submit; Enter submits.
+ * Sequence: navigate → type text + sacrifice_char → → (settle) → ↓ (exit, drops sacrifice_char) → → (Submit tab) → Enter
+ * inquirer drops the last char on ↓/↑ exit; sacrifice char absorbs the loss.
  * @param {object} answer - { optionIndex, text, isLast }
  * @param {object} prompt - ptyPrompt with options
  * @param {boolean} isMultiQuestion - whether part of multi-question form
@@ -161,11 +161,17 @@ export function buildMultiSelectOtherChunks(answer, prompt, isMultiQuestion = fa
     chunks.push(ch);
   }
 
-  // → at end of text is a no-op but provides settleMs delay
-  // to ensure the last character is fully processed before exiting
+  // Sacrifice char: ↓ drops exactly one character when exiting text input mode.
+  // → is a true no-op in text input mode (cursor right at end of text, no drop).
+  // Append ONE duplicate of the last char so ↓ drops the sacrifice, not the real text.
+  if (text.length > 0) {
+    const chars = [...text]; // handle multi-byte (e.g. CJK) correctly
+    chunks.push(chars[chars.length - 1]); // sacrifice for ↓
+  }
+
+  // → in text input mode: no-op (cursor already at end), provides settleMs delay
   chunks.push(ARROW_RIGHT);
-  // ↓ exits text input mode by navigating to next item
-  // (text and checkbox state are preserved)
+  // ↓ exits text input mode — drops one char (the sacrifice above), real text preserved
   chunks.push(ARROW_DOWN);
   // → goes to Submit tab (shows Review page)
   chunks.push(ARROW_RIGHT);
