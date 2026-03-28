@@ -55,10 +55,41 @@ function extractTeamSessions(requests) {
         teams.push(team);
         currentTeamIdx = teams.length - 1;
       } else if (name === 'TeamDelete') {
-        if (currentTeamIdx < 0) continue;
         const resultText = findToolResult(block.id, i);
         if (!isDeleteSuccessful(resultText)) continue;
         const ts = req.timestamp || req.response?.timestamp;
+        if (currentTeamIdx < 0) {
+          let teamName = 'unknown';
+          try { const parsed = JSON.parse(resultText); teamName = parsed.team_name || teamName; } catch {}
+          let startIdx = 0;
+          let startTs = requests[0]?.timestamp || requests[0]?.response?.timestamp;
+          for (let k = 0; k < i; k++) {
+            const kResp = requests[k]?.response?.body?.content;
+            if (!Array.isArray(kResp)) continue;
+            for (const kb of kResp) {
+              if (kb.type === 'tool_use' && kb.name === 'Agent') {
+                const kInp = typeof kb.input === 'string' ? (() => { try { return JSON.parse(kb.input); } catch { return {}; } })() : (kb.input || {});
+                if ((kInp.team_name || kInp.teamName) === teamName) { startIdx = k; startTs = requests[k]?.timestamp || requests[k]?.response?.timestamp; break; }
+              }
+            }
+            if (startIdx > 0) break;
+          }
+          const team = { name: teamName, startTime: startTs, endTime: ts, requestIndex: startIdx, endRequestIndex: i, taskCount: 0, teammateCount: 0, _teammates: new Set(), _inferredStart: true };
+          for (let k = startIdx; k < i; k++) {
+            const kResp = requests[k]?.response?.body?.content;
+            if (!Array.isArray(kResp)) continue;
+            for (const kb of kResp) {
+              if (kb.type !== 'tool_use') continue;
+              if (kb.name === 'Agent') {
+                const kInp = typeof kb.input === 'string' ? (() => { try { return JSON.parse(kb.input); } catch { return {}; } })() : (kb.input || {});
+                const an = kInp.name || '';
+                if (!team._teammates.has(an)) { team._teammates.add(an); team.teammateCount++; }
+              } else if (kb.name === 'TaskCreate' || kb.name === 'TaskUpdate') { team.taskCount++; }
+            }
+          }
+          teams.push(team);
+          continue;
+        }
         teams[currentTeamIdx].endTime = ts;
         teams[currentTeamIdx].endRequestIndex = i;
         currentTeamIdx = -1;
@@ -363,5 +394,39 @@ describe('extractTeamSessions', () => {
       makeReq({ ts: '200' }),
     ];
     assert.deepEqual(extractTeamSessions(requests), []);
+  });
+
+  it('T15: cross-file — TeamDelete without TeamCreate reconstructs team from result', () => {
+    // Simulates a JSONL file where TeamCreate happened in a previous file.
+    // This file only has Agent calls and TeamDelete.
+    const requests = [
+      makeReq({ ts: '2026-01-01T00:00:00Z' }), // no team tools, just filler
+      makeReq({ ts: '2026-01-01T00:01:00Z', toolUses: [
+        toolUse('a1', 'Agent', { team_name: 'my-team', name: 'worker-1' }),
+        toolUse('a2', 'Agent', { team_name: 'my-team', name: 'worker-2' }),
+      ] }),
+      makeReq({ ts: '2026-01-01T00:02:00Z', toolUses: [toolUse('t1', 'TaskCreate', { subject: 'task 1' })] }),
+      makeReq({ ts: '2026-01-01T00:05:00Z', toolUses: [toolUse('td1', 'TeamDelete', {})] }),
+      makeReq({ ts: '2026-01-01T00:05:01Z', resultPairs: [['td1', '{"success":true,"message":"Cleaned up","team_name":"my-team"}']] }),
+    ];
+    const teams = extractTeamSessions(requests);
+    assert.equal(teams.length, 1);
+    assert.equal(teams[0].name, 'my-team');
+    assert.equal(teams[0]._inferredStart, true);
+    assert.equal(teams[0].startTime, '2026-01-01T00:01:00Z'); // first Agent call
+    assert.equal(teams[0].endTime, '2026-01-01T00:05:00Z');
+    assert.equal(teams[0].teammateCount, 2); // worker-1, worker-2
+    assert.equal(teams[0].taskCount, 1); // 1 TaskCreate backfilled
+  });
+
+  it('T16: cross-file — failed TeamDelete without TeamCreate is still skipped', () => {
+    const requests = [
+      makeReq({ ts: '100', toolUses: [toolUse('a1', 'Agent', { team_name: 'x', name: 'w1' })] }),
+      makeReq({ ts: '200', toolUses: [toolUse('td1', 'TeamDelete', {})] }),
+      makeReq({ ts: '201', resultPairs: [['td1', '{"success":false,"message":"Cannot cleanup team with 2 active member(s)"}']] }),
+    ];
+    const teams = extractTeamSessions(requests);
+    // Failed delete should NOT create a team entry
+    assert.equal(teams.length, 0);
   });
 });

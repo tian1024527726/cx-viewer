@@ -90,10 +90,50 @@ function extractTeamSessions(requests) {
         teams.push(team);
         currentTeamIdx = teams.length - 1;
       } else if (name === 'TeamDelete') {
-        if (currentTeamIdx < 0) continue;
         const resultText = findToolResult(block.id, i);
         if (!isDeleteSuccessful(resultText)) continue; // 失败的 TeamDelete 不关闭 team
         const ts = req.timestamp || req.response?.timestamp;
+        if (currentTeamIdx < 0) {
+          // Cross-file: TeamCreate 在上一个 JSONL 中，从 tool_result 反向推断 team
+          let teamName = 'unknown';
+          try { const parsed = JSON.parse(resultText); teamName = parsed.team_name || teamName; } catch {}
+          // 回溯寻找最早的关联 Agent 调用作为 startTime
+          let startIdx = 0;
+          let startTs = requests[0]?.timestamp || requests[0]?.response?.timestamp;
+          for (let k = 0; k < i; k++) {
+            const kResp = requests[k]?.response?.body?.content;
+            if (!Array.isArray(kResp)) continue;
+            for (const kb of kResp) {
+              if (kb.type === 'tool_use' && kb.name === 'Agent') {
+                const kInp = typeof kb.input === 'string' ? (() => { try { return JSON.parse(kb.input); } catch { return {}; } })() : (kb.input || {});
+                if ((kInp.team_name || kInp.teamName) === teamName) {
+                  startIdx = k;
+                  startTs = requests[k]?.timestamp || requests[k]?.response?.timestamp;
+                  break;
+                }
+              }
+            }
+            if (startIdx > 0) break;
+          }
+          const team = { name: teamName, startTime: startTs, endTime: ts, requestIndex: startIdx, endRequestIndex: i, taskCount: 0, teammateCount: 0, _teammates: new Set(), _inferredStart: true };
+          // 回填 teammate 和 task 计数
+          for (let k = startIdx; k < i; k++) {
+            const kResp = requests[k]?.response?.body?.content;
+            if (!Array.isArray(kResp)) continue;
+            for (const kb of kResp) {
+              if (kb.type !== 'tool_use') continue;
+              if (kb.name === 'Agent') {
+                const kInp = typeof kb.input === 'string' ? (() => { try { return JSON.parse(kb.input); } catch { return {}; } })() : (kb.input || {});
+                const an = kInp.name || '';
+                if (!team._teammates.has(an)) { team._teammates.add(an); team.teammateCount++; }
+              } else if (kb.name === 'TaskCreate' || kb.name === 'TaskUpdate') {
+                team.taskCount++;
+              }
+            }
+          }
+          teams.push(team);
+          continue;
+        }
         teams[currentTeamIdx].endTime = ts;
         teams[currentTeamIdx].endRequestIndex = i;
         currentTeamIdx = -1; // 清理：team 已关闭
@@ -394,6 +434,7 @@ class ChatView extends React.Component {
     this._processedToolIds = new Set();
     this._teamModalBodyRef = React.createRef();
     this._ganttIndicatorRef = React.createRef();
+    this._ganttWrapRef = React.createRef();
     this._teamTotalStart = 0;
     this._teamTotalEnd = 0;
     this._teamScrollRaf = null;
@@ -1895,9 +1936,52 @@ class ChatView extends React.Component {
           onClick={() => this.setState(prev => ({ teamGanttOpen: !prev.teamGanttOpen }))}
         >
           {this.state.teamGanttOpen ? '▼' : '▶'} Timeline
+          {this.state.teamGanttOpen && (
+            <span
+              className={styles.ganttExportBtn}
+              title={t('ui.exportTimelinePng') || 'Export as PNG'}
+              onClick={(e) => {
+                e.stopPropagation();
+                const wrap = this._ganttWrapRef.current;
+                if (!wrap) return;
+                // 临时展开到全高，截图后恢复
+                const prevMaxH = wrap.style.maxHeight;
+                const prevH = wrap.style.height;
+                const prevOverflow = wrap.style.overflow;
+                wrap.style.maxHeight = 'none';
+                wrap.style.height = 'auto';
+                wrap.style.overflow = 'visible';
+                import('html2canvas').then(({ default: html2canvas }) => {
+                  html2canvas(wrap, { backgroundColor: '#0a0a0a', scale: 2, useCORS: true }).then(canvas => {
+                    wrap.style.maxHeight = prevMaxH;
+                    wrap.style.height = prevH;
+                    wrap.style.overflow = prevOverflow;
+                    const link = document.createElement('a');
+                    link.download = `team-timeline-${Date.now()}.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                  }).catch(() => {
+                    wrap.style.maxHeight = prevMaxH;
+                    wrap.style.height = prevH;
+                    wrap.style.overflow = prevOverflow;
+                  });
+                }).catch(() => {
+                  wrap.style.maxHeight = prevMaxH;
+                  wrap.style.height = prevH;
+                  wrap.style.overflow = prevOverflow;
+                });
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+            </span>
+          )}
         </div>
-        {this.state.teamGanttOpen && (
-          <div className={styles.teamGanttWrap}>
+        {this.state.teamGanttOpen && (<>
+          <div ref={this._ganttWrapRef} className={styles.teamGanttWrap} style={this.state._ganttHeight ? { maxHeight: 'none', height: this.state._ganttHeight } : undefined}>
             {/* team-lead 行：分段显示活动 */}
             <div className={styles.teamGanttRow}>
               <div className={`${styles.teamGanttLabel} ${styles.ganttLabelLead}`}>team-lead</div>
@@ -1992,7 +2076,27 @@ class ChatView extends React.Component {
             {/* 滚动位置指示线 — 跨越所有 track 行 */}
             <div ref={this._ganttIndicatorRef} className={`${styles.teamGanttIndicator} ${styles.ganttIndicatorInitial}`} />
           </div>
-        )}
+          <div
+            className={styles.teamGanttResizer}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              const wrap = this._ganttWrapRef.current;
+              if (!wrap) return;
+              const startY = e.clientY;
+              const startH = wrap.getBoundingClientRect().height;
+              const onMove = (ev) => {
+                const h = Math.max(60, startH + ev.clientY - startY);
+                this.setState({ _ganttHeight: h });
+              };
+              const onUp = () => {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+              };
+              document.addEventListener('mousemove', onMove);
+              document.addEventListener('mouseup', onUp);
+            }}
+          />
+        </>)}
       </div>
     );
   }

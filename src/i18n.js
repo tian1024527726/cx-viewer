@@ -1557,6 +1557,26 @@ const i18nData = {
     "tr": "Takım oturumları",
     "uk": "Сесії команди"
   },
+  "ui.exportTimelinePng": {
+    "zh": "导出为 PNG",
+    "en": "Export as PNG",
+    "zh-TW": "匯出為 PNG",
+    "ko": "PNG로 내보내기",
+    "ja": "PNGとして書き出し",
+    "de": "Als PNG exportieren",
+    "es": "Exportar como PNG",
+    "fr": "Exporter en PNG",
+    "it": "Esporta come PNG",
+    "da": "Eksporter som PNG",
+    "pl": "Eksportuj jako PNG",
+    "ru": "Экспорт в PNG",
+    "ar": "تصدير كـ PNG",
+    "no": "Eksporter som PNG",
+    "pt-BR": "Exportar como PNG",
+    "th": "ส่งออกเป็น PNG",
+    "tr": "PNG olarak dışa aktar",
+    "uk": "Експорт у PNG"
+  },
   "ui.gitChanges": {
     "zh": "Git 变更",
     "en": "Git Changes",

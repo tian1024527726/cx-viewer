@@ -635,14 +635,42 @@
   color: #ccc;
 }
 
+.ganttExportBtn {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 4px;
+  color: #666;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.ganttExportBtn:hover {
+  color: #ccc;
+  background: #2a2a2a;
+}
+
 .teamGanttWrap {
   --gantt-label-width: 110px;
   padding: 8px 16px 4px;
-  border-bottom: 1px solid #1e1e1e;
   position: relative;
   max-height: 120px;
   overflow-y: auto;
   flex-shrink: 0;
+}
+
+.teamGanttResizer {
+  height: 5px;
+  cursor: ns-resize;
+  background: transparent;
+  border-bottom: 1px solid #1e1e1e;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.teamGanttResizer:hover {
+  background: #333;
 }
 
 .teamGanttRow {
