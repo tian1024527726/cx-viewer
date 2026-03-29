@@ -259,9 +259,8 @@ function TeamModal({ session, requests, mainAgentSessions, collapseToolResults, 
     return result;
   }, [session, requests, mainAgentSessions]);
 
-  if (!session) return null;
-
-  const { entries, teamAgents, leadSegments, teamTotalStart, teamTotalEnd, modelInfo } = modalData;
+  const teamTotalStart = modalData ? modalData.teamTotalStart : 0;
+  const teamTotalEnd = modalData ? modalData.teamTotalEnd : 0;
 
   const onScroll = useCallback(() => {
     if (scrollRafRef.current) return;
@@ -298,6 +297,10 @@ function TeamModal({ session, requests, mainAgentSessions, collapseToolResults, 
       }
     });
   }, [teamTotalStart, teamTotalEnd]);
+
+  if (!session) return null;
+
+  const { entries, teamAgents, leadSegments, modelInfo } = modalData;
 
   return (
     <Modal

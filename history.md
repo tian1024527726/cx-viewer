@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.58 (2026-03-29)
+
+- Fix: React hooks order violation in TeamModal — move early return after all hooks to prevent "Rendered more hooks than during the previous render" error (#310)
+
 ## 1.6.57 (2026-03-29)
 
 - Refactor: split ChatView.jsx (2562 lines) into 5 isolated components — TeamSessionPanel, SnapLineOverlay, PtyPromptBubbles, RoleFilterBar, ChatInputBar — each with its own CSS module
