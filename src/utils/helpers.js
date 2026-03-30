@@ -12,6 +12,8 @@ import modelDeepseekUrl from '../img/model-deepseek.svg';
 const MODEL_CONTEXT_SIZES = [
   // Explicit 1M context annotation: [1m] suffix in model descriptor
   { match: /\[1m\]/i, tokens: 1000000 },
+  // Opus defaults to 1M context (no 200K variant exists)
+  { match: /opus/i, tokens: 1000000 },
   { match: /claude/i, tokens: 200000 },
   { match: /gpt-4o|o1|o3|o4/i, tokens: 128000 },
   { match: /gpt-4/i, tokens: 128000 },

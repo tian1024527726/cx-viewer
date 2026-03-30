@@ -87,6 +87,20 @@ describe('context-watcher: readModelContextSize', () => {
     }
   });
 
+  it('defaults Opus to 1M when no size tag in model.id', () => {
+    backupContextFile();
+    try {
+      mkdirSync(CLAUDE_DIR, { recursive: true });
+      writeFileSync(CONTEXT_WINDOW_FILE, JSON.stringify({
+        model: { id: 'claude-opus-4-6' },
+      }) + '\n');
+      const result = readModelContextSize();
+      assert.equal(result.contextSize, 1000000);
+    } finally {
+      restoreContextFile();
+    }
+  });
+
   it('returns default 200k when model.id has no size tag and no context_window field', () => {
     backupContextFile();
     try {

@@ -58,6 +58,7 @@ function isMainAgent(req) {
 
 const MODEL_CONTEXT_SIZES = [
   { match: /\[1m\]/i, tokens: 1000000 },
+  { match: /opus/i, tokens: 1000000 },
   { match: /claude/i, tokens: 200000 },
   { match: /gpt-4o|o1|o3|o4/i, tokens: 128000 },
   { match: /gpt-4/i, tokens: 128000 },
@@ -294,9 +295,10 @@ function makeMainReq(overrides = {}) {
 
 describe('helpers', () => {
   describe('getModelMaxTokens', () => {
-    it('returns 200000 for claude models', () => { assert.equal(getModelMaxTokens('claude-opus-4-6'), 200000); });
-    it('returns 1000000 for claude model with [1m] suffix', () => { assert.equal(getModelMaxTokens('claude-opus-4-6[1m]'), 1000000); });
-    it('returns 200000 for claude model without [1m]', () => { assert.equal(getModelMaxTokens('claude-opus-4-6-20250514'), 200000); });
+    it('returns 1000000 for opus models (default 1M)', () => { assert.equal(getModelMaxTokens('claude-opus-4-6'), 1000000); });
+    it('returns 1000000 for opus model with date suffix', () => { assert.equal(getModelMaxTokens('claude-opus-4-6-20250514'), 1000000); });
+    it('returns 1000000 for opus model with [1m] suffix', () => { assert.equal(getModelMaxTokens('claude-opus-4-6[1m]'), 1000000); });
+    it('returns 200000 for non-opus claude models', () => { assert.equal(getModelMaxTokens('claude-sonnet-4-6'), 200000); });
     it('returns 128000 for gpt-4o', () => { assert.equal(getModelMaxTokens('gpt-4o'), 128000); });
     it('returns 128000 for deepseek', () => { assert.equal(getModelMaxTokens('deepseek-v3'), 128000); });
     it('returns 16000 for gpt-3', () => { assert.equal(getModelMaxTokens('gpt-3.5-turbo'), 16000); });

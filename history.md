@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.70 (2026-03-30)
+
+- Fix: Opus model defaults to 1M context — removed obsolete "Opus 4.6" (200K) and "Sonnet 4.6 (1M)" calibration options
+- Fix: auto mode context bar now correctly identifies Opus as 1M across all code paths (readModelContextSize, getContextSizeForModel, getModelMaxTokens)
+- Fix: localStorage graceful degradation — stale calibration values from removed options fall back to "Auto" on upgrade
+
 ## 1.6.69 (2026-03-30)
 
 - Feature: sidebar user prompt navigation — hover user avatar icon to browse all user messages, click to scroll and highlight with blue dashed border animation
