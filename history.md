@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.6.78 (2026-04-01)
+
+- Feature: print all LAN IP addresses on startup (Vite-style multi-line output)
+  - New `getAllLocalIps()` returns all non-internal IPv4 addresses
+  - Console output now shows Local + all Network addresses with access token
+  - CLI mode and Workspace mode both display the same format
+  - i18n: `server.startedLocal` / `server.startedNetwork` keys (18 languages)
+
 ## 1.6.76 (2026-04-01)
 
 - Refactor: CSS color consolidation — 203 unique colors reduced to 102 (-49%)

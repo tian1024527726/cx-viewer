@@ -362,7 +362,13 @@ async function runCliMode(extraClaudeArgs = [], cwd) {
     execSync(`${cmd} ${url}`, { stdio: 'ignore', timeout: 5000 });
   } catch {}
 
-  console.log(`CC Viewer: ${url}`);
+  console.log(`CC Viewer:`);
+  console.log(`  ➜ Local:   ${url}`);
+  const _lanIps = serverMod.getAllLocalIps();
+  const _token = serverMod.getAccessToken();
+  for (const _ip of _lanIps) {
+    console.log(`  ➜ Network: ${protocol}://${_ip}:${port}?token=${_token}`);
+  }
 
   // 5. 注册退出处理
   const cleanup = () => {
@@ -418,7 +424,13 @@ async function runCliModeWorkspaceSelector(extraClaudeArgs = []) {
     execSync(`${cmd} ${url}`, { stdio: 'ignore', timeout: 5000 });
   } catch {}
 
-  console.log(`CC Viewer (Workspace): ${url}`);
+  console.log(`CC Viewer (Workspace):`);
+  console.log(`  ➜ Local:   ${url}`);
+  const _lanIps = serverMod.getAllLocalIps();
+  const _token = serverMod.getAccessToken();
+  for (const _ip of _lanIps) {
+    console.log(`  ➜ Network: ${wsProtocol}://${_ip}:${port}?token=${_token}`);
+  }
 
   // 注册退出处理
   const { killPty } = await import('./pty-manager.js');

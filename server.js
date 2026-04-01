@@ -203,6 +203,17 @@ function getLocalIp() {
   return '127.0.0.1';
 }
 
+function getAllLocalIps() {
+  const ips = [];
+  const nets = networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name]) {
+      if (net.family === 'IPv4' && !net.internal) ips.push(net.address);
+    }
+  }
+  return ips;
+}
+
 async function handleRequest(req, res) {
   const parsedUrl = new URL(req.url, `${serverProtocol}://${req.headers.host}`);
   const url = parsedUrl.pathname;
@@ -1921,7 +1932,12 @@ export async function startViewer() {
           server = currentServer;
           actualPort = port;
           const url = `${serverProtocol}://127.0.0.1:${port}`;
-          console.error(t('server.started', { host: '127.0.0.1', port, protocol: serverProtocol }));
+          console.error(t('server.started'));
+          console.error(t('server.startedLocal', { protocol: serverProtocol, port }));
+          const _ips = getAllLocalIps();
+          for (const _ip of _ips) {
+            console.error(t('server.startedNetwork', { protocol: serverProtocol, ip: _ip, port, token: ACCESS_TOKEN }));
+          }
           // v2.0.69 之前的版本会清空控制台，自动打开浏览器确保用户能看到界面
           try {
             const ccPkgPath = join(__dirname, '..', '@anthropic-ai', 'claude-code', 'package.json');
@@ -2144,6 +2160,12 @@ export function getPort() {
 
 export function getProtocol() {
   return serverProtocol;
+}
+
+export { getAllLocalIps };
+
+export function getAccessToken() {
+  return ACCESS_TOKEN;
 }
 
 // 流式状态 SSE 推送定时器：检测 streamingState 变化并广播给所有客户端
