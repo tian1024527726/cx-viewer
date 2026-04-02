@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.89 (2026-04-03)
+
+- Fix: TeamDelete detection — treat missing tool_result as success (entry-slim clears messages, making tool_result unreachable)
+- Fix: test suite hang — cleanup interceptor StatWatcher in stopViewer and streaming-state test teardown
+- Fix: stopViewer — call closeAllConnections() before server.close() to prevent keep-alive connections blocking exit
+
 ## 1.6.88 (2026-04-03)
 
 - Fix: delta reconstruction — skip orphaned inProgress entries to prevent accumulated message offset (align reconstructEntries/reconstructSegment with createIncrementalReconstructor)

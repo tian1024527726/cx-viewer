@@ -2603,6 +2603,8 @@ async function _doStop() {
   clients.forEach(client => client.end());
   clients = [];
   if (server) {
+    // 销毁所有活跃连接，防止 keep-alive 阻止进程退出
+    server.closeAllConnections();
     server.close();
   }
   if (statsWorker) {
@@ -2614,6 +2616,7 @@ async function _doStop() {
     _streamingStatusTimer = null;
   }
   resetStreamingState();
+  try { unwatchFile(PROFILE_PATH); } catch {} // 清理 interceptor 的 StatWatcher
 }
 
 // Auto-start the viewer after log file init completes

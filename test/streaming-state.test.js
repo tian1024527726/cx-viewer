@@ -1,6 +1,10 @@
-import { describe, it } from 'node:test';
+import { describe, it, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { streamingState, resetStreamingState } from '../interceptor.js';
+import { unwatchFile } from 'node:fs';
+import { streamingState, resetStreamingState, PROFILE_PATH } from '../interceptor.js';
+
+// interceptor.js 模块顶层 watchFile(PROFILE_PATH) 会阻止进程退出
+after(() => { try { unwatchFile(PROFILE_PATH); } catch {} });
 
 describe('streamingState', () => {
   it('initial state should be inactive', () => {

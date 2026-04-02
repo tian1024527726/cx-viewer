@@ -27,7 +27,9 @@ export function extractTeamSessions(requests) {
   }
 
   function isDeleteSuccessful(resultText) {
-    if (!resultText) return false;
+    // tool_result 可能因 entry-slim/delta 压缩而不可达，默认视为成功
+    // 只有明确包含 "Cannot cleanup" 才判定失败
+    if (!resultText) return true;
     if (resultText.includes('"success":true') || resultText.includes('"success": true')) return true;
     if (resultText.includes('Cleaned up')) return true;
     if (resultText.includes('Cannot cleanup')) return false;
