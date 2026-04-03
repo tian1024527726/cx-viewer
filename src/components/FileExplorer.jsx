@@ -79,6 +79,19 @@ function TreeNode({ item, path, depth, onFileClick, expandedPaths, onToggleExpan
 
   const toggle = useCallback(async () => {
     if (item.type !== 'directory') {
+      const ext = (childPath || '').split('.').pop().toLowerCase();
+      // .html/.htm 文件直接在浏览器中打开
+      if (ext === 'html' || ext === 'htm') {
+        window.open(`/api/file-raw?path=${encodeURIComponent(childPath)}`, '_blank');
+        return;
+      }
+      // Office 文件用系统默认应用打开
+      const officeExts = new Set(['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp', 'pdf']);
+      if (officeExts.has(ext)) {
+        fetch('/api/open-file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: childPath }) })
+          .catch(() => {});
+        return;
+      }
       // 点击文件，触发回调
       if (onFileClick) onFileClick(childPath);
       return;

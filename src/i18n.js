@@ -4209,6 +4209,30 @@ const i18nData = {
     "ar": "إرسال", "no": "Send", "pt-BR": "Enviar",
     "th": "ส่ง", "tr": "Gönder", "uk": "Надіслати"
   },
+  "ui.permission.approvalRequired": {
+    "zh": "待审批", "en": "Approval Required", "zh-TW": "待審批",
+    "ko": "승인 필요", "ja": "承認が必要", "de": "Genehmigung erforderlich",
+    "es": "Aprobación requerida", "fr": "Approbation requise", "it": "Approvazione richiesta",
+    "da": "Godkendelse påkrævet", "pl": "Wymagana akceptacja", "ru": "Требуется одобрение",
+    "ar": "موافقة مطلوبة", "no": "Godkjenning påkrevd", "pt-BR": "Aprovação necessária",
+    "th": "ต้องการการอนุมัติ", "tr": "Onay gerekli", "uk": "Потрібне схвалення"
+  },
+  "ui.permission.allow": {
+    "zh": "允许", "en": "Allow", "zh-TW": "允許",
+    "ko": "허용", "ja": "許可", "de": "Erlauben",
+    "es": "Permitir", "fr": "Autoriser", "it": "Consenti",
+    "da": "Tillad", "pl": "Zezwól", "ru": "Разрешить",
+    "ar": "سماح", "no": "Tillat", "pt-BR": "Permitir",
+    "th": "อนุญาต", "tr": "İzin ver", "uk": "Дозволити"
+  },
+  "ui.permission.deny": {
+    "zh": "拒绝", "en": "Deny", "zh-TW": "拒絕",
+    "ko": "거부", "ja": "拒否", "de": "Ablehnen",
+    "es": "Denegar", "fr": "Refuser", "it": "Nega",
+    "da": "Afvis", "pl": "Odmów", "ru": "Отклонить",
+    "ar": "رفض", "no": "Avslå", "pt-BR": "Negar",
+    "th": "ปฏิเสธ", "tr": "Reddet", "uk": "Відхилити"
+  },
   "ui.dangerApproval": {
     "zh": "操作待审批", "en": "Approval Required", "zh-TW": "操作待審批",
     "ko": "승인 필요", "ja": "承認が必要", "de": "Genehmigung erforderlich",

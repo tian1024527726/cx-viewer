@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.6.93 (2026-04-03)
+
+- Feat: tool permission approval panel — floating overlay above chat input for Bash/Write/Edit/NotebookEdit approval via PreToolUse hook bridge
+- Feat: open HTML/HTM files in browser via file-raw API with CSP sandbox protection
+- Feat: open Office files (doc/xlsx/ppt/pdf etc.) with system default application
+- Feat: /api/open-file endpoint for launching local files with OS default app
+- Feat: /api/perm-hook endpoint with long-poll + WebSocket for permission bridge
+- Security: add Content-Security-Policy: sandbox header when serving HTML files to prevent same-origin XSS
+- Security: require strict ID matching for perm-hook-answer WebSocket messages
+- Fix: clear pending permission state on WebSocket disconnect to prevent stale approval panel
+
 ## 1.6.92 (2026-04-03)
 
 - Fix: hide empty "Last Response" section when filtered content has no visible blocks

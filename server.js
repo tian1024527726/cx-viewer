@@ -101,6 +101,9 @@ let _workspaceLaunched = false; // 工作区是否已经启动了会话
 // At most one pending request at a time (Claude Code is single-threaded)
 let pendingAskHook = null; // { questions, res, timer, createdAt }
 
+// Permission hook bridge state (for PreToolUse permission approval)
+let pendingPermHook = null; // { toolName, input, res, timer, createdAt }
+
 // Editor session state (for $EDITOR intercept)
 const editorSessions = new Map(); // sessionId → { filePath, done, createdAt }
 // Periodically clean up abandoned editor sessions (older than 1 hour)
@@ -1200,6 +1203,61 @@ async function handleRequest(req, res) {
     return;
   }
 
+  // 用系统默认应用打开文件
+  if (url === '/api/open-file' && method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; if (body.length > MAX_POST_BODY) req.destroy(); });
+    req.on('end', () => {
+      let parsed;
+      try { parsed = JSON.parse(body); } catch {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid request body' }));
+        return;
+      }
+      try {
+        const { path: filePath } = parsed;
+        if (!filePath) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Missing path' }));
+          return;
+        }
+        if (filePath.startsWith('/') || filePath.includes('..')) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid path' }));
+          return;
+        }
+        const cwd = process.env.CCV_PROJECT_DIR || process.cwd();
+        const fullPath = join(cwd, filePath);
+        if (!existsSync(fullPath)) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'File not found' }));
+          return;
+        }
+        const realFull = realpathSync(fullPath);
+        const realCwd = realpathSync(cwd);
+        if (!realFull.startsWith(realCwd + '/')) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Path traversal not allowed' }));
+          return;
+        }
+        const plat = process.platform;
+        if (plat === 'darwin') {
+          execFile('open', [fullPath], () => {});
+        } else if (plat === 'win32') {
+          execFile('cmd.exe', ['/c', 'start', '', fullPath], () => {});
+        } else {
+          execFile('xdg-open', [fullPath], () => {});
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      }
+    });
+    return;
+  }
+
   // 解析相对路径为绝对路径（不触发任何副作用）
   if (url === '/api/resolve-path' && method === 'POST') {
     let body = '';
@@ -1605,6 +1663,90 @@ async function handleRequest(req, res) {
     return;
   }
 
+  // Permission hook bridge: receive tool permission request from perm-bridge.js, long-poll for user decision
+  if (url === '/api/perm-hook' && method === 'POST') {
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk;
+      if (body.length > 1000000) {
+        res.writeHead(413, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Request body too large' }));
+        return;
+      }
+    });
+    req.on('end', () => {
+      try {
+        const { toolName, input } = JSON.parse(body);
+        if (!toolName) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Missing toolName' }));
+          return;
+        }
+
+        // Cancel any previous pending permission request
+        if (pendingPermHook) {
+          try {
+            if (!pendingPermHook.res.headersSent) {
+              pendingPermHook.res.writeHead(409, { 'Content-Type': 'application/json' });
+              pendingPermHook.res.end(JSON.stringify({ error: 'Superseded' }));
+            }
+          } catch {}
+          clearTimeout(pendingPermHook.timer);
+        }
+
+        const HOOK_TIMEOUT = 5 * 60 * 1000;
+        const id = `perm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const timer = setTimeout(() => {
+          if (pendingPermHook && pendingPermHook.id === id) {
+            pendingPermHook = null;
+            try {
+              if (!res.headersSent) {
+                res.writeHead(408, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Timeout' }));
+              }
+            } catch {}
+            if (terminalWss) {
+              const tmsg = JSON.stringify({ type: 'perm-hook-timeout' });
+              terminalWss.clients.forEach((c) => {
+                if (c.readyState === 1) try { c.send(tmsg); } catch {}
+              });
+            }
+          }
+        }, HOOK_TIMEOUT);
+
+        pendingPermHook = { id, toolName, input, res, timer, createdAt: Date.now() };
+
+        // Broadcast to all terminal WS clients
+        if (terminalWss) {
+          const pmsg = JSON.stringify({ type: 'perm-hook-pending', id, toolName, input });
+          terminalWss.clients.forEach((client) => {
+            if (client.readyState === 1) {
+              try { client.send(pmsg); } catch {}
+            }
+          });
+        }
+
+        // Handle perm-bridge.js disconnection
+        res.on('close', () => {
+          if (pendingPermHook && pendingPermHook.id === id) {
+            clearTimeout(pendingPermHook.timer);
+            pendingPermHook = null;
+            if (terminalWss) {
+              const tmsg = JSON.stringify({ type: 'perm-hook-timeout' });
+              terminalWss.clients.forEach((c) => {
+                if (c.readyState === 1) try { c.send(tmsg); } catch {}
+              });
+            }
+          }
+        });
+      } catch {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid request body' }));
+      }
+    });
+    return;
+  }
+
   // 读取文件内容 API
   if (url === '/api/file-content' && method === 'GET') {
     const reqPath = parsedUrl.searchParams.get('path');
@@ -1678,13 +1820,16 @@ async function handleRequest(req, res) {
       const extMime = {
         '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
         '.gif': 'image/gif', '.svg': 'image/svg+xml', '.ico': 'image/x-icon',
-        '.webp': 'image/webp',
+        '.webp': 'image/webp', '.html': 'text/html', '.htm': 'text/html',
       };
       const ext = (targetFile.match(/\.[^.]+$/) || [''])[0].toLowerCase();
       const mime = extMime[ext] || 'application/octet-stream';
       const data = method === 'HEAD' ? null : readFileSync(targetFile);
       const size = method === 'HEAD' ? stat.size : data.length;
-      res.writeHead(200, { 'Content-Type': mime, 'Content-Length': size });
+      const headers = { 'Content-Type': mime, 'Content-Length': size };
+      // 防止用户项目中的恶意 HTML 在同源下执行脚本（XSS 防护）
+      if (mime === 'text/html') headers['Content-Security-Policy'] = 'sandbox';
+      res.writeHead(200, headers);
       res.end(data);
     } catch (err) {
       const status = ERROR_STATUS_MAP[err.code] || 500;
@@ -2492,6 +2637,19 @@ async function setupTerminalWebSocket(httpServer) {
                 if (!hookRes.headersSent) {
                   hookRes.writeHead(200, { 'Content-Type': 'application/json' });
                   hookRes.end(JSON.stringify({ answers: msg.answers }));
+                }
+              } catch {}
+            }
+          } else if (msg.type === 'perm-hook-answer') {
+            // Client answered permission approval via hook bridge
+            if (pendingPermHook && msg.id && msg.id === pendingPermHook.id) {
+              const { res: hookRes, timer } = pendingPermHook;
+              clearTimeout(timer);
+              pendingPermHook = null;
+              try {
+                if (!hookRes.headersSent) {
+                  hookRes.writeHead(200, { 'Content-Type': 'application/json' });
+                  hookRes.end(JSON.stringify({ decision: msg.decision || 'deny' }));
                 }
               } catch {}
             }

@@ -8,6 +8,7 @@ import ImageViewer from './ImageViewer';
 import ImageLightbox from './ImageLightbox';
 import GitChanges from './GitChanges';
 import GitDiffView from './GitDiffView';
+import ToolApprovalPanel from './ToolApprovalPanel';
 import { getModelInfo } from '../utils/helpers';
 import { getTeammateAvatar } from '../utils/teammateAvatars';
 import { isSystemText, classifyUserContent, isMainAgent, isTeammate, resolveTeammateNames } from '../utils/contentFilter';
@@ -107,6 +108,7 @@ class ChatView extends React.Component {
       streamingFading: false,
       presetItems: [],
       localAskAnswers: {}, // 提交后的本地答案映射，用于 Last Response 立即切换到非交互式
+      pendingPermission: null, // { id, toolName, input } — active permission approval request
     };
     this._processedToolIds = new Set();
     this._projectDirCache = null; // 缓存项目目录绝对路径
@@ -1102,10 +1104,16 @@ class ChatView extends React.Component {
         } else if (msg.type === 'ask-hook-timeout') {
           this._askHookActive = false;
           this._askHookQuestions = null;
+        } else if (msg.type === 'perm-hook-pending') {
+          this.setState({ pendingPermission: { id: msg.id, toolName: msg.toolName, input: msg.input } });
+        } else if (msg.type === 'perm-hook-timeout') {
+          this.setState({ pendingPermission: null });
         }
       } catch {}
     };
     this._inputWs.onclose = () => {
+      // 清除可能残留的权限审批面板（WS 断连后无法响应）
+      if (this.state.pendingPermission) this.setState({ pendingPermission: null });
       this._wsReconnectTimer = setTimeout(() => {
         if (!this._unmounted && this.splitContainerRef.current && this.props.cliMode) {
           this.connectInputWs();
@@ -1303,6 +1311,22 @@ class ChatView extends React.Component {
     this._ptyBuffer = '';
     if (this._ptyDebounceTimer) clearTimeout(this._ptyDebounceTimer);
     setTimeout(() => { this._promptSubmitting = false; }, 500);
+  };
+
+  handlePermissionAllow = (id) => {
+    const ws = this._inputWs;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'perm-hook-answer', id, decision: 'allow' }));
+    }
+    this.setState({ pendingPermission: null });
+  };
+
+  handlePermissionDeny = (id) => {
+    const ws = this._inputWs;
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: 'perm-hook-answer', id, decision: 'deny' }));
+    }
+    this.setState({ pendingPermission: null });
   };
 
   handlePlanFeedbackSubmit = (number, text) => {
@@ -2406,6 +2430,14 @@ class ChatView extends React.Component {
               </div>
             )}
             {messageList}
+            <ToolApprovalPanel
+              toolName={this.state.pendingPermission?.toolName}
+              toolInput={this.state.pendingPermission?.input}
+              requestId={this.state.pendingPermission?.id}
+              onAllow={this.handlePermissionAllow}
+              onDeny={this.handlePermissionDeny}
+              visible={!!this.state.pendingPermission}
+            />
             <ChatInputBar
               inputRef={this._inputRef}
               inputEmpty={this.state.inputEmpty}

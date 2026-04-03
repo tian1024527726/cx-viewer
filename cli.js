@@ -266,28 +266,52 @@ function ensureAskHook() {
       return;
     }
 
-    const askBridgePath = resolve(__dirname, 'lib', 'ask-bridge.js');
-    const expectedCmd = `node "${askBridgePath}"`;
-
     if (!settings.hooks) settings.hooks = {};
     if (!Array.isArray(settings.hooks.PreToolUse)) settings.hooks.PreToolUse = [];
 
-    const existing = settings.hooks.PreToolUse.find(h => h.matcher === 'AskUserQuestion');
-    if (existing) {
-      const cmd = existing.hooks?.[0]?.command || '';
-      if (cmd === expectedCmd) return;
-      existing.hooks = [{ type: 'command', command: expectedCmd }];
+    let changed = false;
+
+    // AskUserQuestion hook → ask-bridge.js
+    const askBridgePath = resolve(__dirname, 'lib', 'ask-bridge.js');
+    const askCmd = `node "${askBridgePath}"`;
+    const askExisting = settings.hooks.PreToolUse.find(h => h.matcher === 'AskUserQuestion');
+    if (askExisting) {
+      if ((askExisting.hooks?.[0]?.command || '') !== askCmd) {
+        askExisting.hooks = [{ type: 'command', command: askCmd }];
+        changed = true;
+      }
     } else {
       settings.hooks.PreToolUse.push({
         matcher: 'AskUserQuestion',
-        hooks: [{ type: 'command', command: expectedCmd }]
+        hooks: [{ type: 'command', command: askCmd }]
       });
+      changed = true;
     }
 
-    mkdirSync(claudeDir, { recursive: true });
-    writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+    // Permission approval hook → perm-bridge.js (for write/dangerous tools)
+    const permBridgePath = resolve(__dirname, 'lib', 'perm-bridge.js');
+    const permCmd = `node "${permBridgePath}"`;
+    const permMatcher = 'Bash|Write|Edit|NotebookEdit';
+    const permExisting = settings.hooks.PreToolUse.find(h => h.matcher === permMatcher);
+    if (permExisting) {
+      if ((permExisting.hooks?.[0]?.command || '') !== permCmd) {
+        permExisting.hooks = [{ type: 'command', command: permCmd }];
+        changed = true;
+      }
+    } else {
+      settings.hooks.PreToolUse.push({
+        matcher: permMatcher,
+        hooks: [{ type: 'command', command: permCmd }]
+      });
+      changed = true;
+    }
+
+    if (changed) {
+      mkdirSync(claudeDir, { recursive: true });
+      writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+    }
   } catch (err) {
-    console.warn('[CC Viewer] Failed to ensure AskUserQuestion hook:', err.message);
+    console.warn('[CC Viewer] Failed to ensure hooks:', err.message);
   }
 }
 
