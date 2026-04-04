@@ -121,7 +121,7 @@
 }
 
 .rowDel {
-  background: #ef44444d;
+  background: #ef44441d;
   color: #fca5a5;
 }
 .rowDel.gutterRow .prefix {
@@ -129,7 +129,7 @@
 }
 
 .rowAdd {
-  background: #22c55e4d;
+  background: #22c55e1d;
   color: #4ade80;
 }
 .rowAdd.gutterRow .prefix {

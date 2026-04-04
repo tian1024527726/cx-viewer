@@ -376,7 +376,7 @@
 }
 
 .kvKey {
-  color: #7dd3fc;
+  color: #fff;
 }
 
 .kvValue {
@@ -434,7 +434,7 @@
 }
 
 .optionDesc {
-  color: #555;
+  color: #464;
   margin-left: 6px;
   font-weight: normal;
 }
@@ -472,7 +472,7 @@
 .askQuestionHeader {
   display: inline-block;
   background: #1a3a1a;
-  color: #4ade80;
+  color: #2ea043;
   font-size: 10px;
   padding: 1px 6px;
   border-radius: 4px;
@@ -488,7 +488,7 @@
 
 .askOptionItem {
   font-size: 12px;
-  color: #999;
+  color: #464;
   padding: 1px 0;
   display: flex;
   align-items: center;
@@ -496,8 +496,12 @@
 }
 
 .askOptionSelected {
-  color: #e5e5e5;
+  color: #fff;
   font-weight: 600;
+}
+
+.askOptionSelected .optionDesc {
+  color: #fff;
 }
 
 .askCheckSvg {
@@ -653,7 +657,7 @@
 }
 
 .dangerApprovalBox {
-  background: #2a2000;
+  background: #220000;
   border: 1px solid #f59e0b;
   border-radius: 6px;
   padding: 8px 12px;
@@ -747,7 +751,7 @@
 .dangerDeniedDetail {
   margin-top: 6px;
   font-size: 11px;
-  color: #999;
+  color: #a33;
   line-height: 1.5;
   white-space: pre-wrap;
   max-height: 80px;
