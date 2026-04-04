@@ -295,6 +295,8 @@ class App extends AppBase {
               onExpandDiffChange={this.handleExpandDiffChange}
               filterIrrelevant={!this.state.showAll}
               onFilterIrrelevantChange={this.handleFilterIrrelevantChange}
+              logDir={this.state.logDir}
+              onLogDirChange={this.handleLogDirChange}
               updateInfo={this.state.updateInfo}
               onDismissUpdate={() => this.setState({ updateInfo: null })}
               cliMode={this.state.cliMode}

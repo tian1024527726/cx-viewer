@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { apiUrl } from '../utils/apiUrl';
 import CodeMirror from '@uiw/react-codemirror';
 import { EditorView } from '@codemirror/view';
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language';
@@ -305,7 +306,7 @@ export default function FileContentView({ filePath, onClose, editorSession, scro
     if (!isDirty) return;
     setSaveStatus('saving');
     try {
-      const res = await fetch('/api/file-content', {
+      const res = await fetch(apiUrl('/api/file-content'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: filePath, content: currentContent, ...(editorSession ? { editorSession: true } : {}) }),
@@ -371,7 +372,7 @@ export default function FileContentView({ filePath, onClose, editorSession, scro
     setLoading(true);
     setLineCount(0);
 
-    fetch(`/api/file-content?path=${encodeURIComponent(filePath)}${editorSession ? '&editorSession=true' : ''}`)
+    fetch(apiUrl(`/api/file-content?path=${encodeURIComponent(filePath)}${editorSession ? '&editorSession=true' : ''}`))
       .then((r) => {
         if (!r.ok) {
           return r

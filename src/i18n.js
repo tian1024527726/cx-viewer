@@ -2677,6 +2677,14 @@ const i18nData = {
     "tr": "Body Diff JSON'u varsayılan olarak genişlet",
     "uk": "Розгортати Body Diff JSON за замовчуванням"
   },
+  "ui.logDirTitle": {
+    "zh": "日志目录设置", "en": "Log directory", "zh-TW": "日誌目錄設定",
+    "ko": "로그 디렉토리 설정", "ja": "ログディレクトリ設定", "de": "Protokollverzeichnis",
+    "es": "Directorio de registros", "fr": "Répertoire de journaux", "it": "Directory dei log",
+    "da": "Logmappe", "pl": "Katalog logów", "ru": "Каталог журналов",
+    "ar": "دليل السجلات", "no": "Loggkatalog", "pt-BR": "Diretório de logs",
+    "th": "ไดเรกทอรีบันทึก", "tr": "Günlük dizini", "uk": "Каталог журналів"
+  },
   "ui.globalSettings": {
     "zh": "全局设置",
     "en": "Global Settings",

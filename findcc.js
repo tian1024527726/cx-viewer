@@ -24,7 +24,23 @@ function resolveLogDir() {
 }
 
 // 日志存储根目录（所有项目日志、偏好设置均存放于此）
-export const LOG_DIR = resolveLogDir();
+// 使用 let 以支持运行时通过 setLogDir() 修改（ES module live binding）
+export let LOG_DIR = resolveLogDir();
+
+/**
+ * 运行时修改日志存储根目录。
+ * 支持 ~/... 展开。所有通过 `import { LOG_DIR }` 引用的模块会自动看到新值。
+ */
+export function setLogDir(dir) {
+  if (!dir || typeof dir !== 'string') return;
+  const raw = dir.trim();
+  if (!raw) return;
+  const resolved = resolve(raw.startsWith('~/') ? join(homedir(), raw.slice(2)) : raw);
+  // 安全：限制在 home 目录或 /tmp 下，防止写入系统目录
+  const home = homedir();
+  if (!resolved.startsWith(home) && !resolved.startsWith('/tmp/')) return;
+  LOG_DIR = resolved;
+}
 
 // npm 包名候选列表（按优先级排列）
 export const PACKAGES = ['@anthropic-ai/claude-code', '@ali/claude-code'];

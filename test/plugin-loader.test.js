@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { writeFileSync, mkdirSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  PLUGINS_DIR,
+  getPluginsDir,
   loadPlugins,
   runWaterfallHook,
   runParallelHook,
@@ -11,6 +11,7 @@ import {
 } from '../lib/plugin-loader.js';
 import { LOG_DIR } from '../findcc.js';
 
+const PLUGINS_DIR = getPluginsDir();
 const PREFS_FILE = join(LOG_DIR, 'preferences.json');
 
 // Track files we create so we can clean up

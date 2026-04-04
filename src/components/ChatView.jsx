@@ -2606,7 +2606,7 @@ class ChatView extends React.Component {
                     editorSession={!!this.state.editorSessionId}
                     onClose={() => {
                       if (this.state.editorSessionId) {
-                        fetch('/api/editor-done', {
+                        fetch(apiUrl('/api/editor-done'), {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ sessionId: this.state.editorSessionId }),
@@ -2623,7 +2623,7 @@ class ChatView extends React.Component {
                     editorSession={!!this.state.editorSessionId}
                     onClose={() => {
                       if (this.state.editorSessionId) {
-                        fetch('/api/editor-done', {
+                        fetch(apiUrl('/api/editor-done'), {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({ sessionId: this.state.editorSessionId }),

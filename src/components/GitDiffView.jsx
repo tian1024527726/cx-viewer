@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { apiUrl } from '../utils/apiUrl';
 import { t } from '../i18n';
 import FullFileDiffView from './FullFileDiffView';
 import styles from './GitDiffView.module.css';
@@ -37,7 +38,7 @@ export default function GitDiffView({ filePath, onClose, onOpenFile }) {
     setDiffData(null);
     setError(null);
 
-    fetch(`/api/git-diff?files=${encodeURIComponent(filePath)}`)
+    fetch(apiUrl(`/api/git-diff?files=${encodeURIComponent(filePath)}`))
       .then(r => {
         if (!r.ok) {
           return r.json().then(err => {

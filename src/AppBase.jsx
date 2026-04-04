@@ -54,6 +54,7 @@ class AppBase extends React.Component {
       collapseToolResults: true,
       expandThinking: true,
       expandDiff: false,
+      logDir: '',
       showFullToolContent: false,
       showThinkingSummaries: false,
       fileLoading: false,
@@ -216,6 +217,9 @@ class AppBase extends React.Component {
         // filterIrrelevant 默认 true，showAll = !filterIrrelevant
         const filterIrrelevant = data.filterIrrelevant !== undefined ? !!data.filterIrrelevant : true;
         this.setState({ showAll: !filterIrrelevant });
+        if (data.logDir) {
+          this.setState({ logDir: data.logDir });
+        }
         return data;
       })
       .catch(() => ({}));
@@ -1202,6 +1206,20 @@ class AppBase extends React.Component {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ expandDiff: checked }),
+    }).catch(() => { });
+  };
+
+  handleLogDirChange = (value) => {
+    if (!value || typeof value !== 'string') return;
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    this.setState({ logDir: trimmed });
+    fetch(apiUrl('/api/preferences'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ logDir: trimmed }),
+    }).then(r => r.json()).then(data => {
+      if (data.logDir) this.setState({ logDir: data.logDir });
     }).catch(() => { });
   };
 

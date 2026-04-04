@@ -4,8 +4,9 @@ import { join, basename, resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { LOG_DIR } from './findcc.js';
 
-const WORKSPACES_FILE = join(LOG_DIR, 'workspaces.json');
-const LOCK_FILE = join(LOG_DIR, 'workspaces.lock');
+// 动态获取（LOG_DIR 可能在运行时被 setLogDir 修改）
+function getWorkspacesFile() { return join(LOG_DIR, 'workspaces.json'); }
+function getLockFile() { return join(LOG_DIR, 'workspaces.lock'); }
 
 function sleep(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
@@ -19,7 +20,7 @@ function withLock(fn) {
 
   while (true) {
     try {
-      const fd = openSync(LOCK_FILE, 'wx');
+      const fd = openSync(getLockFile(), 'wx');
       closeSync(fd);
       break;
     } catch (err) {
@@ -27,10 +28,10 @@ function withLock(fn) {
         if (Date.now() < deadline) {
           // 检查是否为陈旧锁
           try {
-            const stats = statSync(LOCK_FILE);
+            const stats = statSync(getLockFile());
             if (Date.now() - stats.mtimeMs > STALE_THRESHOLD) {
               // 尝试强制移除锁
-              try { unlinkSync(LOCK_FILE); } catch { }
+              try { unlinkSync(getLockFile()); } catch { }
               // 立即重试获取
               continue;
             }
@@ -48,14 +49,14 @@ function withLock(fn) {
   try {
     return fn();
   } finally {
-    try { unlinkSync(LOCK_FILE); } catch { }
+    try { unlinkSync(getLockFile()); } catch { }
   }
 }
 
 export function loadWorkspaces() {
   try {
-    if (!existsSync(WORKSPACES_FILE)) return [];
-    const data = JSON.parse(readFileSync(WORKSPACES_FILE, 'utf-8'));
+    if (!existsSync(getWorkspacesFile())) return [];
+    const data = JSON.parse(readFileSync(getWorkspacesFile(), 'utf-8'));
     return Array.isArray(data.workspaces) ? data.workspaces : [];
   } catch {
     return [];
@@ -63,7 +64,7 @@ export function loadWorkspaces() {
 }
 
 export function saveWorkspaces(list) {
-  const tmpFile = `${WORKSPACES_FILE}.tmp-${process.pid}-${randomBytes(4).toString('hex')}`;
+  const tmpFile = `${getWorkspacesFile()}.tmp-${process.pid}-${randomBytes(4).toString('hex')}`;
   try {
     mkdirSync(LOG_DIR, { recursive: true });
     writeFileSync(tmpFile, JSON.stringify({ workspaces: list }, null, 2));
@@ -73,7 +74,7 @@ export function saveWorkspaces(list) {
     let retries = 3;
     while (retries > 0) {
       try {
-        renameSync(tmpFile, WORKSPACES_FILE);
+        renameSync(tmpFile, getWorkspacesFile());
         break;
       } catch (err) {
         if (retries === 1) throw err;

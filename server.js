@@ -35,10 +35,10 @@ function execWithStdin(cmd, args, input, options) {
   });
 }
 import { LOG_FILE, _initPromise, _resumeState, resolveResumeChoice, _projectName, _logDir, _cachedApiKey, _cachedAuthHeader, _cachedHaikuModel, initForWorkspace, resetWorkspace, streamingState, resetStreamingState, _loadProxyProfile, PROFILE_PATH, _defaultConfig } from './interceptor.js';
-import { LOG_DIR } from './findcc.js';
+import { LOG_DIR, setLogDir } from './findcc.js';
 import { t, detectLanguage } from './i18n.js';
 import { checkAndUpdate } from './lib/updater.js';
-import { loadPlugins, runWaterfallHook, runParallelHook, getPluginsInfo, PLUGINS_DIR } from './lib/plugin-loader.js';
+import { loadPlugins, runWaterfallHook, runParallelHook, getPluginsInfo, getPluginsDir } from './lib/plugin-loader.js';
 import { uploadPlugins, installPluginFromUrl } from './lib/plugin-manager.js';
 import { getUserProfile } from './lib/user-profile.js';
 import { getGitDiffs } from './lib/git-diff.js';
@@ -49,7 +49,8 @@ import { listLocalLogs, deleteLogFiles, mergeLogFiles } from './lib/log-manageme
 import { countLogEntries, streamRawEntriesAsync, readPagedEntries } from './lib/log-stream.js';
 
 
-const PREFS_FILE = join(LOG_DIR, 'preferences.json');
+// 动态获取 getPrefsFile()（LOG_DIR 可能在运行时被 setLogDir 修改）
+function getPrefsFile() { return join(LOG_DIR, 'preferences.json'); }
 
 // 启动时一次性读取 ~/.claude/settings.json（不 watch）
 let claudeSettings = {};
@@ -331,7 +332,8 @@ async function handleRequest(req, res) {
 
   if (url === '/api/preferences' && method === 'GET') {
     let prefs = {};
-    try { if (existsSync(PREFS_FILE)) prefs = JSON.parse(readFileSync(PREFS_FILE, 'utf-8')); } catch { }
+    try { if (existsSync(getPrefsFile())) prefs = JSON.parse(readFileSync(getPrefsFile(), 'utf-8')); } catch { }
+    prefs.logDir = LOG_DIR; // 始终返回当前运行时的日志目录
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(prefs));
     return;
@@ -343,10 +345,19 @@ async function handleRequest(req, res) {
     req.on('end', () => {
       try {
         const incoming = JSON.parse(body);
+        // 如果修改了日志目录，先切换再保存到新位置（新目录下生成 preferences.json）
+        if (incoming.logDir && typeof incoming.logDir === 'string') {
+          setLogDir(incoming.logDir);
+        }
         let prefs = {};
-        try { if (existsSync(PREFS_FILE)) prefs = JSON.parse(readFileSync(PREFS_FILE, 'utf-8')); } catch { }
+        try { if (existsSync(getPrefsFile())) prefs = JSON.parse(readFileSync(getPrefsFile(), 'utf-8')); } catch { }
         Object.assign(prefs, incoming);
-        writeFileSync(PREFS_FILE, JSON.stringify(prefs, null, 2));
+        // 确保目录存在
+        const prefsFile = getPrefsFile();
+        const prefsDir = dirname(prefsFile);
+        if (!existsSync(prefsDir)) mkdirSync(prefsDir, { recursive: true });
+        writeFileSync(prefsFile, JSON.stringify(prefs, null, 2));
+        prefs.logDir = LOG_DIR;
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(prefs));
       } catch {
@@ -1972,7 +1983,7 @@ async function handleRequest(req, res) {
   if (url === '/api/plugins' && method === 'GET') {
     const plugins = getPluginsInfo();
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ plugins, pluginsDir: PLUGINS_DIR }));
+    res.end(JSON.stringify({ plugins, pluginsDir: getPluginsDir() }));
     return;
   }
 
@@ -1983,7 +1994,7 @@ async function handleRequest(req, res) {
       res.end(JSON.stringify({ error: 'Invalid file name' }));
       return;
     }
-    const filePath = join(PLUGINS_DIR, file);
+    const filePath = join(getPluginsDir(), file);
     try {
       if (!existsSync(filePath)) {
         res.writeHead(404, { 'Content-Type': 'application/json' });
@@ -1994,7 +2005,7 @@ async function handleRequest(req, res) {
       await loadPlugins();
       const plugins = getPluginsInfo();
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ ok: true, plugins, pluginsDir: PLUGINS_DIR }));
+      res.end(JSON.stringify({ ok: true, plugins, pluginsDir: getPluginsDir() }));
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: err.message }));
@@ -2007,7 +2018,7 @@ async function handleRequest(req, res) {
       await loadPlugins();
       const plugins = getPluginsInfo();
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ ok: true, plugins, pluginsDir: PLUGINS_DIR }));
+      res.end(JSON.stringify({ ok: true, plugins, pluginsDir: getPluginsDir() }));
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: err.message }));
@@ -2021,11 +2032,11 @@ async function handleRequest(req, res) {
     req.on('end', async () => {
       try {
         const { files: fileList } = JSON.parse(body);
-        uploadPlugins(PLUGINS_DIR, fileList);
+        uploadPlugins(getPluginsDir(), fileList);
         await loadPlugins();
         const plugins = getPluginsInfo();
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true, plugins, pluginsDir: PLUGINS_DIR }));
+        res.end(JSON.stringify({ ok: true, plugins, pluginsDir: getPluginsDir() }));
       } catch (err) {
         const status = err.statusCode || 500;
         res.writeHead(status, { 'Content-Type': 'application/json' });
@@ -2042,11 +2053,11 @@ async function handleRequest(req, res) {
       try {
         const { url: fileUrl } = JSON.parse(body);
         const extractScript = join(__dirname, 'lib', 'extract-plugin-name.mjs');
-        await installPluginFromUrl(PLUGINS_DIR, fileUrl, extractScript);
+        await installPluginFromUrl(getPluginsDir(), fileUrl, extractScript);
         await loadPlugins();
         const plugins = getPluginsInfo();
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ ok: true, plugins, pluginsDir: PLUGINS_DIR }));
+        res.end(JSON.stringify({ ok: true, plugins, pluginsDir: getPluginsDir() }));
       } catch (err) {
         const status = err.statusCode || 500;
         res.writeHead(status, { 'Content-Type': 'application/json' });

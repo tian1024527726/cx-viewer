@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.6.98 (2026-04-05)
+
+- Feat: global settings log directory config — runtime `setLogDir()` with preferences UI, dynamic `getPrefsFile()`/`getPluginsDir()`/`getWorkspacesFile()`
+- Feat: GlobalSettings concept doc (?) — 13-section configuration reference in 18 languages
+- Feat: perm-bridge merge git/npm guard — eliminate Bash matcher hook conflict, `ensureHooks()` auto-cleanup
+- Feat: WebFetch/WebSearch added to APPROVAL_TOOLS — external access tools now require Web UI approval
+- Feat: explicit allow for non-APPROVAL_TOOLS — prevent Claude Code terminal fallback for safe tools
+- Feat: approval panel positioned inside chat area — `position: absolute` relative to `messageListWrap`, dynamic width
+- Fix: 7 `apiUrl()` omissions fixed — FileExplorer, ChatView, ChatMessage, FileContentView, GitDiffView, ConceptHelp
+- Fix: `setLogDir()` path traversal protection — restrict to `homedir()` or `/tmp/`
+- Fix: ES module live binding — `workspace-registry.js` and `plugin-loader.js` use getter functions for `LOG_DIR`-derived paths
+- Test: 7 git guard tests (3 deny + 4 pass-through), plugin-loader test updated for `getPluginsDir()`
+
 ## 1.6.97 (2026-04-04)
 
 - Feat: terminal-chat image awareness bridge — `pendingImages` state with preview strip (thumbnails for images, file chips for non-images)

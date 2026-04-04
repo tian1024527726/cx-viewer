@@ -72,32 +72,42 @@ describe('perm-bridge.js', () => {
     assert.equal(output.hookSpecificOutput.permissionDecision, undefined);
   });
 
-  it('returns no-decision for Read (not in APPROVAL_TOOLS)', async () => {
+  it('returns explicit allow for Read (not in APPROVAL_TOOLS)', async () => {
     const input = JSON.stringify({ tool_name: 'Read', tool_input: { file_path: '/tmp/x' } });
     const { code, stdout } = await runBridge(input, { CCVIEWER_PORT: '9999' });
     assert.equal(code, 0);
     const output = JSON.parse(stdout.trim());
     assert.equal(output.hookSpecificOutput.hookEventName, 'PreToolUse');
-    assert.equal(output.hookSpecificOutput.permissionDecision, undefined);
+    assert.equal(output.hookSpecificOutput.permissionDecision, 'allow');
   });
 
-  for (const tool of ['Glob', 'Grep', 'WebSearch', 'WebFetch', 'Agent', 'TaskCreate', 'TaskUpdate',
+  for (const tool of ['Glob', 'Grep', 'Agent', 'TaskCreate', 'TaskUpdate',
     'TaskList', 'TaskGet', 'CronCreate', 'CronDelete', 'CronList', 'SendMessage',
     'EnterPlanMode', 'ExitPlanMode', 'Skill', 'EnterWorktree', 'ExitWorktree']) {
-    it(`returns no-decision for ${tool} (not in APPROVAL_TOOLS)`, async () => {
+    it(`returns explicit allow for ${tool} (not in APPROVAL_TOOLS)`, async () => {
       const input = JSON.stringify({ tool_name: tool, tool_input: { x: 1 } });
       const { code, stdout } = await runBridge(input, { CCVIEWER_PORT: '9999' });
       assert.equal(code, 0);
       const output = JSON.parse(stdout.trim());
-      assert.equal(output.hookSpecificOutput.permissionDecision, undefined);
+      assert.equal(output.hookSpecificOutput.permissionDecision, 'allow');
     });
   }
 
-  for (const tool of ['Bash', 'Edit', 'Write', 'NotebookEdit']) {
+  for (const tool of ['Bash', 'Edit', 'Write', 'NotebookEdit', 'WebFetch', 'WebSearch']) {
     it(`forwards ${tool} to server for approval (exits 1 when server unreachable)`, async () => {
       const input = JSON.stringify({ tool_name: tool, tool_input: { command: 'test' } });
       const { code } = await runBridge(input, { CCVIEWER_PORT: '19999' });
       // Server unreachable → catch block → exit 1 (fallback to Claude Code UI)
+      assert.equal(code, 1);
+    });
+  }
+
+  // git commit/push/npm publish 不再直接 deny，和其他 Bash 命令一样走 Web UI 审批
+  for (const cmd of ['git commit -m "test"', 'git push origin main', 'npm publish']) {
+    it(`forwards "${cmd}" to server for approval (no auto-deny)`, async () => {
+      const input = JSON.stringify({ tool_name: 'Bash', tool_input: { command: cmd } });
+      const { code } = await runBridge(input, { CCVIEWER_PORT: '19999' });
+      // Forwards to server → unreachable → exit 1 (same as any other Bash command)
       assert.equal(code, 1);
     });
   }

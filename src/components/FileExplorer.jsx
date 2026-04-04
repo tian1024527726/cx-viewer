@@ -88,7 +88,7 @@ function TreeNode({ item, path, depth, onFileClick, expandedPaths, onToggleExpan
       // Office 文件用系统默认应用打开
       const officeExts = new Set(['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp', 'pdf']);
       if (officeExts.has(ext)) {
-        fetch('/api/open-file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: childPath }) })
+        fetch(apiUrl('/api/open-file'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: childPath }) })
           .catch(() => {});
         return;
       }

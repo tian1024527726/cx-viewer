@@ -292,7 +292,8 @@ function ensureHooks() {
     const permBridgePath = resolve(__dirname, 'lib', 'perm-bridge.js');
     const permCmd = `node "${permBridgePath}"`;
     const permMatcher = '';
-    // Clean up legacy entries: old narrow matchers, null matchers (invalid JSON)
+    // Clean up legacy entries: old narrow matchers, null matchers (invalid JSON),
+    // and conflicting Bash-specific hooks (git guard now merged into perm-bridge.js)
     for (let i = settings.hooks.PreToolUse.length - 1; i >= 0; i--) {
       const h = settings.hooks.PreToolUse[i];
       const cmd = h.hooks?.[0]?.command || '';
@@ -300,6 +301,10 @@ function ensureHooks() {
         settings.hooks.PreToolUse.splice(i, 1);
         changed = true;
       } else if ((h.matcher === null || h.matcher === undefined) && cmd.includes('perm-bridge.js')) {
+        settings.hooks.PreToolUse.splice(i, 1);
+        changed = true;
+      } else if (h.matcher === 'Bash' && cmd.includes('grep') && /git|npm/.test(cmd)) {
+        // Remove legacy standalone Bash git/npm guard — now handled inside perm-bridge.js
         settings.hooks.PreToolUse.splice(i, 1);
         changed = true;
       }
