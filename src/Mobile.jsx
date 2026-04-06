@@ -1,5 +1,5 @@
 import React from 'react';
-import { ConfigProvider, Spin, Button, Badge, Switch } from 'antd';
+import { ConfigProvider, Spin, Button, Badge, Switch, Select } from 'antd';
 import { BranchesOutlined, DownloadOutlined, DeleteOutlined, RollbackOutlined, ReloadOutlined } from '@ant-design/icons';
 import AppBase, { styles } from './AppBase';
 import { isIOS } from './env';
@@ -460,6 +460,19 @@ class Mobile extends AppBase {
                 <Switch
                   checked={!!this.state.showFullToolContent}
                   onChange={this.handleShowFullToolContentChange}
+                />
+              </div>
+              <div className={styles.mobileSettingsSectionTitle}>{t('ui.themeColor')}</div>
+              <div className={styles.mobileSettingsRow}>
+                <Select
+                  size="small"
+                  value={this.state.themeColor || 'dark'}
+                  onChange={this.handleThemeColorChange}
+                  options={[
+                    { label: t('ui.themeColor.dark'), value: 'dark' },
+                    { label: t('ui.themeColor.light'), value: 'light' },
+                  ]}
+                  style={{ width: 140 }}
                 />
               </div>
             </div>

@@ -58,6 +58,7 @@ class AppBase extends React.Component {
       logDir: '',
       showFullToolContent: false,
       showThinkingSummaries: false,
+      themeColor: 'dark',
       fileLoading: false,
       fileLoadingCount: 0,
       isDragging: false,
@@ -217,6 +218,9 @@ class AppBase extends React.Component {
         }
         if (data.resumeAutoChoice) {
           this.setState({ resumeAutoChoice: data.resumeAutoChoice });
+        }
+        if (data.themeColor) {
+          this.setState({ themeColor: data.themeColor });
         }
         // filterIrrelevant 默认 true，showAll = !filterIrrelevant
         const filterIrrelevant = data.filterIrrelevant !== undefined ? !!data.filterIrrelevant : true;
@@ -1184,6 +1188,15 @@ class AppBase extends React.Component {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ expandDiff: checked }),
+    }).catch(() => { });
+  };
+
+  handleThemeColorChange = (value) => {
+    this.setState({ themeColor: value });
+    fetch(apiUrl('/api/preferences'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ themeColor: value }),
     }).catch(() => { });
   };
 

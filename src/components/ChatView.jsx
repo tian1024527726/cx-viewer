@@ -695,7 +695,16 @@ class ChatView extends React.Component {
       cached = this._incToolState;
       setToolResultCache(messages, cached);
     }
-    const { toolUseMap, toolResultMap, readContentMap, editSnapshotMap, askAnswerMap, planApprovalMap, latestPlanContent } = cached;
+    const { toolUseMap, toolResultMap, readContentMap, editSnapshotMap, askAnswerMap, latestPlanContent } = cached;
+    // planApprovalMap 是同一对象引用被原地修改，需要在 _planDirty 变化时创建新引用
+    // 以触发 ChatMessage shouldComponentUpdate 检测到变化
+    const _planDirty = cached._planDirty || 0;
+    if (this._prevPlanCache !== cached.planApprovalMap || this._prevPlanDirty !== _planDirty) {
+      this._mergedPlanApprovalMap = { ...cached.planApprovalMap };
+      this._prevPlanCache = cached.planApprovalMap;
+      this._prevPlanDirty = _planDirty;
+    }
+    const planApprovalMap = this._mergedPlanApprovalMap || cached.planApprovalMap;
 
     const activePlanPrompt = this.props.cliMode
       ? this.state.ptyPromptHistory.slice().reverse().find(p => isPlanApprovalPrompt(p) && p.status === 'active') || null

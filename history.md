@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.6.111 (2026-04-06)
+
+- Feat: theme color selector in preferences — dropdown with "Standard Dark" / "Standard Light", persisted via /api/preferences
+- Feat: mobile settings panel also supports theme color selection
+- Fix: ExitPlanMode approval not updating without page refresh — added _planDirty counter for planApprovalMap cache invalidation (same pattern as _askDirty)
+- i18n: added ui.themeColor / ui.themeColor.dark / ui.themeColor.light keys (18 languages)
+
 ## 1.6.110 (2026-04-06)
 
 - Feat: git diff image preview — image files show inline preview with click-to-zoom lightbox

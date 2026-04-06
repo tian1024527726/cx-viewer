@@ -1173,7 +1173,7 @@ class AppHeader extends React.Component {
   }
 
   render() {
-    const { requestCount, requests = [], viewMode, cacheType, onToggleViewMode, onImportLocalLogs, onLangChange, isLocalLog, localLogFile, projectName, collapseToolResults, onCollapseToolResultsChange, expandThinking, onExpandThinkingChange, showFullToolContent, onShowFullToolContentChange, expandDiff, onExpandDiffChange, filterIrrelevant, onFilterIrrelevantChange, logDir, onLogDirChange, updateInfo, onDismissUpdate, cliMode, terminalVisible, onToggleTerminal, onReturnToWorkspaces, contextWindow, serverCachedContent, resumeAutoChoice, onResumeAutoChoiceToggle, onResumeAutoChoiceChange } = this.props;
+    const { requestCount, requests = [], viewMode, cacheType, onToggleViewMode, onImportLocalLogs, onLangChange, isLocalLog, localLogFile, projectName, collapseToolResults, onCollapseToolResultsChange, expandThinking, onExpandThinkingChange, showFullToolContent, onShowFullToolContentChange, expandDiff, onExpandDiffChange, filterIrrelevant, onFilterIrrelevantChange, logDir, onLogDirChange, updateInfo, onDismissUpdate, cliMode, terminalVisible, onToggleTerminal, onReturnToWorkspaces, contextWindow, serverCachedContent, resumeAutoChoice, onResumeAutoChoiceToggle, onResumeAutoChoiceChange, themeColor, onThemeColorChange } = this.props;
     const { countdownText } = this.state;
 
     const menuItems = [
@@ -1576,6 +1576,21 @@ class AppHeader extends React.Component {
                 </Radio.Group>
               </div>
             )}
+          </div>
+          <div className={styles.settingsGroupBox}>
+            <div className={styles.settingsItem}>
+              <span className={styles.settingsLabel}>{t('ui.themeColor')}</span>
+              <Select
+                size="small"
+                value={themeColor || 'dark'}
+                onChange={(value) => onThemeColorChange && onThemeColorChange(value)}
+                options={[
+                  { label: t('ui.themeColor.dark'), value: 'dark' },
+                  { label: t('ui.themeColor.light'), value: 'light' },
+                ]}
+                style={{ width: 140 }}
+              />
+            </div>
           </div>
         </Drawer>
         <Drawer

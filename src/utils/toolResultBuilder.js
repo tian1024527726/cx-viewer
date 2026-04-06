@@ -159,6 +159,7 @@ export function appendToolResultMap(state, messages, startIndex) {
           }
           if (matchedTool && matchedTool.name === 'ExitPlanMode') {
             planApprovalMap[block.tool_use_id] = parsePlanApproval(resultText);
+            state._planDirty = (state._planDirty || 0) + 1;
             // Plan 审批完成（approved/rejected）后重置 latestPlanContent，
             // 防止下一个 plan 周期显示旧内容
             state.latestPlanContent = null;
