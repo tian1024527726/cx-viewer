@@ -81,6 +81,10 @@ export function appendToolResultMap(state, messages, startIndex) {
                     ...entry.lineNums.slice(lineOffset + oldLineCount).map(n => n + lineDelta),
                   ];
                 }
+                // Edit plan 文件时同步 latestPlanContent（Write 只追踪全量写入，Edit 追踪增量编辑后的完整内容）
+                if (/\.claude\/plans\//i.test(fp)) {
+                  state.latestPlanContent = entry.plainText;
+                }
               }
             }
           }

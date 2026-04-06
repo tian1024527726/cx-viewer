@@ -59,9 +59,9 @@ class AppHeader extends React.Component {
     fetch(apiUrl('/api/claude-settings')).then(r => r.json()).then(data => {
       if (data.model) this.setState({ settingsModel: data.model });
     }).catch(() => {});
-    fetch('https://ipinfo.io/json').then(r => r.json()).then(data => {
+    fetch('https://ipinfo.io/json', { signal: AbortSignal.timeout(5000) }).then(r => r.json()).then(data => {
       if (data.country) this.setState({ countryFlag: countryToFlag(data.country), countryInfo: data });
-    }).catch(() => { this.setState({ countryFlag: countryToFlag('CN') }); });
+    }).catch(() => {});
   }
 
   componentDidUpdate(prevProps) {

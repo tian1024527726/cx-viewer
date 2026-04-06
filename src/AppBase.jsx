@@ -10,6 +10,7 @@ import { isMainAgent } from './utils/contentFilter';
 import { apiUrl } from './utils/apiUrl';
 import { saveEntries, loadEntries, clearEntries, getCacheMeta, saveSessionEntries, loadSessionEntries, saveSessionIndex } from './utils/entryCache';
 import { buildSessionIndex, splitHotCold, mergeSessionIndices, HOT_SESSION_COUNT } from './utils/sessionManager';
+import { mergeMainAgentSessions as _mergeMainAgentSessions } from './utils/sessionMerge';
 import { reconstructEntries } from '../lib/delta-reconstructor.js';
 import { createEntrySlimmer, createIncrementalSlimmer } from './utils/entry-slim.js';
 import styles from './App.module.css';
@@ -159,7 +160,10 @@ class AppBase extends React.Component {
           (count < prevCount * 0.5 && (prevCount - count) > 4) ||
           (prevUserId && userId && userId !== prevUserId)
         );
-        if (isNewSession) {
+        // Transient 保护：极短 entry（<=4 msgs）在长对话后不应重置 timestamps 累积
+        // 这些通常是中间态请求（request body 只有 user message，尚未拿到 response）
+        const isTransient = isNewSession && count <= 4 && prevCount > 4;
+        if (isNewSession && !isTransient) {
           currentSessionId = timestamp;
           timestamps = [];
         } else if (currentSessionId === null) {
@@ -1089,33 +1093,7 @@ class AppBase extends React.Component {
   // ─── 数据处理 ───────────────────────────────────────────
 
   mergeMainAgentSessions(prevSessions, entry) {
-    const newMessages = entry.body.messages;
-    const newResponse = entry.response;
-    const userId = entry.body.metadata?.user_id || null;
-
-    const entryTimestamp = entry.timestamp || null;
-
-    if (prevSessions.length === 0) {
-      return [{ userId, messages: newMessages, response: newResponse, entryTimestamp }];
-    }
-
-    const lastSession = prevSessions[prevSessions.length - 1];
-
-    const prevMsgCount = lastSession.messages ? lastSession.messages.length : 0;
-    const isNewConversation = prevMsgCount > 0 && newMessages.length < prevMsgCount * 0.5 && (prevMsgCount - newMessages.length) > 4;
-    const sameUser = userId !== null && userId === lastSession.userId;
-
-    if (isNewConversation && newMessages.length <= 4 && prevMsgCount > 4) {
-      return prevSessions;
-    }
-
-    if (sameUser || (userId === lastSession.userId && !isNewConversation)) {
-      const updated = [...prevSessions];
-      updated[updated.length - 1] = { userId, messages: newMessages, response: newResponse, entryTimestamp };
-      return updated;
-    } else {
-      return [...prevSessions, { userId, messages: newMessages, response: newResponse, entryTimestamp }];
-    }
+    return _mergeMainAgentSessions(prevSessions, entry);
   }
 
   // ─── 选中 & 导航 ───────────────────────────────────────

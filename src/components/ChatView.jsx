@@ -332,13 +332,20 @@ class ChatView extends React.Component {
       if (this.props.onUploadPathsConsumed) this.props.onUploadPathsConsumed();
     }
     if (prevProps.mainAgentSessions !== this.props.mainAgentSessions) {
-      // sessions 引用变化 → 重置增量状态
+      // sessions 引用变化 → 仅在 session 对象真正变化时重置增量状态
+      // Plan 1 的 push 模式下，外层数组是浅拷贝（新引用），但 session 对象不变 → 保留增量状态
       if (this.props.mainAgentSessions !== this._prevSessions) {
-        this._incToolState = null;
-        this._incToolProcessedCount = 0;
-        this._incToolSessionIdx = -1;
+        const prev = this._prevSessions || [];
+        const next = this.props.mainAgentSessions || [];
+        const sessionsActuallyChanged = prev.length !== next.length ||
+          prev.some((s, i) => s !== next[i]);
+        if (sessionsActuallyChanged) {
+          this._incToolState = null;
+          this._incToolProcessedCount = 0;
+          this._incToolSessionIdx = -1;
+          this._reqScanCache = { tsToIndex: {}, modelName: null, subAgentEntries: [], processedCount: 0, subAgentProcessedCount: 0 };
+        }
         this._prevSessions = this.props.mainAgentSessions;
-        this._reqScanCache = { tsToIndex: {}, modelName: null, subAgentEntries: [], processedCount: 0, subAgentProcessedCount: 0 };
       }
       if (isMobile) this._mobileExtraItems = 0;
       this.startRender();
@@ -664,6 +671,11 @@ class ChatView extends React.Component {
     const { userProfile, collapseToolResults, expandThinking, showFullToolContent, showThinkingSummaries, onViewRequest } = this.props;
     // 增量 / WeakMap 缓存
     let cached = getToolResultCache(messages);
+    if (cached && messages.length > this._incToolProcessedCount) {
+      // WeakMap 命中但 messages 增长了（push 模式增量追加）→ 只处理新增消息的 tool 映射
+      appendToolResultMap(cached, messages, this._incToolProcessedCount);
+      this._incToolProcessedCount = messages.length;
+    }
     if (!cached) {
       const si = parseInt(keyPrefix.slice(1), 10);
       if (this._incToolSessionIdx === si && messages.length >= this._incToolProcessedCount && this._incToolProcessedCount > 0) {
@@ -693,10 +705,16 @@ class ChatView extends React.Component {
     // 收集历史中所有 AskUserQuestion block ID，用于 Last Response 去重
     const historyAskIds = new Set();
     // 合并 localAskAnswers 到历史 askAnswerMap，使提交后立即显示已回答
+    // 缓存引用：只在 _localAsk 或 askAnswerMap 变化时重建，避免每次创建新对象导致 shouldComponentUpdate 级联触发
     const _localAsk = this.state.localAskAnswers || {};
-    const mergedAskAnswerMap = Object.keys(_localAsk).length > 0
-      ? { ...askAnswerMap, ..._localAsk }
-      : askAnswerMap;
+    if (this._prevAskCache !== askAnswerMap || this._prevLocalAsk !== _localAsk) {
+      this._mergedAskAnswerMap = Object.keys(_localAsk).length > 0
+        ? { ...askAnswerMap, ..._localAsk }
+        : askAnswerMap;
+      this._prevAskCache = askAnswerMap;
+      this._prevLocalAsk = _localAsk;
+    }
+    const mergedAskAnswerMap = this._mergedAskAnswerMap;
     for (const msg of messages) {
       if (msg.role === 'assistant' && Array.isArray(msg.content)) {
         for (const block of msg.content) {
@@ -764,13 +782,16 @@ class ChatView extends React.Component {
           );
         }
       } else if (msg.role === 'assistant') {
+        // 定向传递 lastPendingAskId/PlanId：只传给包含匹配 block 的消息，避免全量 re-render
+        const msgLastAskId = lastPendingAskId && Array.isArray(content) && content.some(b => b.type === 'tool_use' && b.name === 'AskUserQuestion' && b.id === lastPendingAskId) ? lastPendingAskId : null;
+        const msgLastPlanId = lastPendingPlanId && Array.isArray(content) && content.some(b => b.type === 'tool_use' && b.name === 'ExitPlanMode' && b.id === lastPendingPlanId) ? lastPendingPlanId : null;
         if (Array.isArray(content)) {
           renderedMessages.push(
-            <ChatMessage key={`${keyPrefix}-asst-${mi}`} role="assistant" content={content} toolResultMap={toolResultMap} readContentMap={readContentMap} editSnapshotMap={editSnapshotMap} askAnswerMap={mergedAskAnswerMap} planApprovalMap={planApprovalMap} latestPlanContent={latestPlanContent} timestamp={ts} modelInfo={modelInfo} collapseToolResults={collapseToolResults} expandThinking={expandThinking} showFullToolContent={showFullToolContent} showThinkingSummaries={showThinkingSummaries} ptyPrompt={this.state.ptyPrompt} activePlanPrompt={activePlanPrompt} activeDangerousPrompt={activeDangerousPrompt} lastPendingPlanId={lastPendingPlanId} lastPendingAskId={lastPendingAskId} onPlanApprovalClick={this.handlePromptOptionClick} onPlanFeedbackSubmit={this.handlePlanFeedbackSubmit} onDangerousApprovalClick={this.handlePromptOptionClick} onAskQuestionSubmit={this.handleAskQuestionSubmit} cliMode={this.props.cliMode} onOpenFile={this.handleOpenToolFilePath} {...viewReqProps} />
+            <ChatMessage key={`${keyPrefix}-asst-${mi}`} role="assistant" content={content} toolResultMap={toolResultMap} readContentMap={readContentMap} editSnapshotMap={editSnapshotMap} askAnswerMap={mergedAskAnswerMap} planApprovalMap={planApprovalMap} latestPlanContent={latestPlanContent} timestamp={ts} modelInfo={modelInfo} collapseToolResults={collapseToolResults} expandThinking={expandThinking} showFullToolContent={showFullToolContent} showThinkingSummaries={showThinkingSummaries} ptyPrompt={this.state.ptyPrompt} activePlanPrompt={activePlanPrompt} activeDangerousPrompt={activeDangerousPrompt} lastPendingPlanId={msgLastPlanId} lastPendingAskId={msgLastAskId} onPlanApprovalClick={this.handlePromptOptionClick} onPlanFeedbackSubmit={this.handlePlanFeedbackSubmit} onDangerousApprovalClick={this.handlePromptOptionClick} onAskQuestionSubmit={this.handleAskQuestionSubmit} cliMode={this.props.cliMode} onOpenFile={this.handleOpenToolFilePath} {...viewReqProps} />
           );
         } else if (typeof content === 'string') {
           renderedMessages.push(
-            <ChatMessage key={`${keyPrefix}-asst-${mi}`} role="assistant" content={[{ type: 'text', text: content }]} toolResultMap={toolResultMap} readContentMap={readContentMap} editSnapshotMap={editSnapshotMap} askAnswerMap={mergedAskAnswerMap} planApprovalMap={planApprovalMap} latestPlanContent={latestPlanContent} timestamp={ts} modelInfo={modelInfo} collapseToolResults={collapseToolResults} expandThinking={expandThinking} showFullToolContent={showFullToolContent} showThinkingSummaries={showThinkingSummaries} ptyPrompt={this.state.ptyPrompt} activePlanPrompt={activePlanPrompt} activeDangerousPrompt={activeDangerousPrompt} lastPendingPlanId={lastPendingPlanId} lastPendingAskId={lastPendingAskId} onPlanApprovalClick={this.handlePromptOptionClick} onPlanFeedbackSubmit={this.handlePlanFeedbackSubmit} onDangerousApprovalClick={this.handlePromptOptionClick} onAskQuestionSubmit={this.handleAskQuestionSubmit} cliMode={this.props.cliMode} onOpenFile={this.handleOpenToolFilePath} {...viewReqProps} />
+            <ChatMessage key={`${keyPrefix}-asst-${mi}`} role="assistant" content={[{ type: 'text', text: content }]} toolResultMap={toolResultMap} readContentMap={readContentMap} editSnapshotMap={editSnapshotMap} askAnswerMap={mergedAskAnswerMap} planApprovalMap={planApprovalMap} latestPlanContent={latestPlanContent} timestamp={ts} modelInfo={modelInfo} collapseToolResults={collapseToolResults} expandThinking={expandThinking} showFullToolContent={showFullToolContent} showThinkingSummaries={showThinkingSummaries} ptyPrompt={this.state.ptyPrompt} activePlanPrompt={activePlanPrompt} activeDangerousPrompt={activeDangerousPrompt} lastPendingPlanId={msgLastPlanId} lastPendingAskId={msgLastAskId} onPlanApprovalClick={this.handlePromptOptionClick} onPlanFeedbackSubmit={this.handlePlanFeedbackSubmit} onDangerousApprovalClick={this.handlePromptOptionClick} onAskQuestionSubmit={this.handleAskQuestionSubmit} cliMode={this.props.cliMode} onOpenFile={this.handleOpenToolFilePath} {...viewReqProps} />
           );
         }
       }

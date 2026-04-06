@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.6.108 (2026-04-06)
+
+- Perf: incremental chat rendering — session.messages uses push instead of full array replacement, keeping WeakMap cache stable
+- Perf: ChatView smart reset — only resets incremental state when session objects actually change, not on every shallow copy
+- Perf: targeted lastPendingAskId/PlanId delivery — only the matching ChatMessage receives the ID, eliminating cascade re-renders
+- Perf: cached mergedAskAnswerMap reference — avoids new object creation per render cycle
+- Fix: historical log timestamps — added transient protection in batch loading to prevent timestamps[] reset by short intermediate entries
+- Fix: plan preview missing when plan file updated via Edit tool (was only tracked for Write)
+- Fix: ipinfo geolocation — added 5s timeout, fail/timeout hides flag instead of showing default
+
 ## 1.6.107 (2026-04-06)
 
 - Feat: ToolApprovalPanel exit animation (slideDown on dismiss)
