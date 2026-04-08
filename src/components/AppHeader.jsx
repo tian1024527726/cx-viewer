@@ -1176,7 +1176,7 @@ class AppHeader extends React.Component {
   }
 
   render() {
-    const { requestCount, requests = [], viewMode, cacheType, onToggleViewMode, onImportLocalLogs, onLangChange, isLocalLog, localLogFile, projectName, collapseToolResults, onCollapseToolResultsChange, expandThinking, onExpandThinkingChange, showFullToolContent, onShowFullToolContentChange, expandDiff, onExpandDiffChange, filterIrrelevant, onFilterIrrelevantChange, logDir, onLogDirChange, updateInfo, onDismissUpdate, cliMode, terminalVisible, onToggleTerminal, onReturnToWorkspaces, contextWindow, serverCachedContent, resumeAutoChoice, onResumeAutoChoiceToggle, onResumeAutoChoiceChange, themeColor, onThemeColorChange } = this.props;
+    const { requestCount, requests = [], viewMode, cacheType, onToggleViewMode, onImportLocalLogs, onLangChange, isLocalLog, localLogFile, projectName, collapseToolResults, onCollapseToolResultsChange, expandThinking, onExpandThinkingChange, showFullToolContent, onShowFullToolContentChange, expandDiff, onExpandDiffChange, filterIrrelevant, onFilterIrrelevantChange, logDir, onLogDirChange, updateInfo, onDismissUpdate, cliMode, terminalVisible, onToggleTerminal, onReturnToWorkspaces, contextWindow, serverCachedContent, resumeAutoChoice, onResumeAutoChoiceToggle, onResumeAutoChoiceChange, themeColor, onThemeColorChange, autoApproveSeconds, onAutoApproveChange } = this.props;
     const { countdownText } = this.state;
 
     const menuItems = [
@@ -1579,6 +1579,25 @@ class AppHeader extends React.Component {
                 </Radio.Group>
               </div>
             )}
+            <div className={styles.settingsItem}>
+              <span className={styles.settingsLabel}>{t('ui.permission.autoApprove.setting')}</span>
+              <Select
+                size="small"
+                value={autoApproveSeconds || 0}
+                onChange={(value) => onAutoApproveChange && onAutoApproveChange(value)}
+                options={[
+                  { label: t('ui.permission.autoApprove.off'), value: 0 },
+                  { label: '3s', value: 3 },
+                  { label: '5s', value: 5 },
+                  { label: '10s', value: 10 },
+                  { label: '15s', value: 15 },
+                  { label: '20s', value: 20 },
+                  { label: '30s', value: 30 },
+                  { label: '60s', value: 60 },
+                ]}
+                style={{ width: 100 }}
+              />
+            </div>
           </div>
           <div className={styles.settingsGroupBox}>
             <div className={styles.settingsItem}>

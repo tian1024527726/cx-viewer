@@ -141,3 +141,23 @@
 .arrowIcon {
   transition: transform 0.15s;
 }
+
+.fileExplorerDragOver {
+  outline: 2px dashed var(--color-success);
+  outline-offset: -2px;
+}
+
+.importOverlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px 8px;
+  color: var(--color-success);
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--color-success-bg-light);
+  border-bottom: 1px solid var(--border-primary);
+  pointer-events: none;
+}

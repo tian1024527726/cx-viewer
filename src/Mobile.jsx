@@ -28,6 +28,7 @@ class Mobile extends AppBase {
       mobileTerminalVisible: false,
       globalPermission: null,     // { permission, handlers } — 全局权限审批浮层
       globalPlanApproval: null,   // { plan, handlers } — 全局计划审批浮层
+      autoApproveSeconds: 0,
     });
   }
 
@@ -192,6 +193,15 @@ class Mobile extends AppBase {
 
   handlePendingPermission = (data) => { this.setState({ globalPermission: data }); };
   handlePendingPlanApproval = (data) => { this.setState({ globalPlanApproval: data }); };
+
+  handleAutoApproveChange = (seconds) => {
+    this.setState({ autoApproveSeconds: seconds });
+    fetch(apiUrl('/api/preferences'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ autoApproveSeconds: seconds }),
+    }).catch(() => {});
+  };
 
   render() {
     const { filteredRequests, fileLoading, fileLoadingCount, mainAgentSessions } = this.renderPrepare();
@@ -475,6 +485,25 @@ class Mobile extends AppBase {
                   style={{ width: 140 }}
                 />
               </div>
+              <div className={styles.mobileSettingsSectionTitle}>{t('ui.permission.autoApprove.setting')}</div>
+              <div className={styles.mobileSettingsRow}>
+                <Select
+                  size="small"
+                  value={this.state.autoApproveSeconds || 0}
+                  onChange={this.handleAutoApproveChange}
+                  options={[
+                    { label: t('ui.permission.autoApprove.off'), value: 0 },
+                    { label: '3s', value: 3 },
+                    { label: '5s', value: 5 },
+                    { label: '10s', value: 10 },
+                    { label: '15s', value: 15 },
+                    { label: '20s', value: 20 },
+                    { label: '30s', value: 30 },
+                    { label: '60s', value: 60 },
+                  ]}
+                  style={{ width: 100 }}
+                />
+              </div>
             </div>
           </div>
           <div className={`${styles.mobilePromptOverlay} ${this.state.mobilePromptVisible ? styles.mobilePromptOverlayVisible : ''}`}>
@@ -540,6 +569,8 @@ class Mobile extends AppBase {
             onDeny={this.state.globalPermission.handlers.deny}
             visible={true}
             global={true}
+            autoApproveSeconds={this.state.autoApproveSeconds}
+            onAutoApproveChange={this.handleAutoApproveChange}
           />
         )}
         {this.state.globalPlanApproval && (

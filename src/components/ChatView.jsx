@@ -2865,6 +2865,8 @@ class ChatView extends React.Component {
                 onAllowSession={this.props.sdkMode ? this.handlePermissionAllowSession : null}
                 onDeny={this.handlePermissionDeny}
                 visible={!!this.state.pendingPermission}
+                autoApproveSeconds={this.props.autoApproveSeconds}
+                onAutoApproveChange={this.props.onAutoApproveChange}
               />
             )}
             {!this.props.onPendingPlanApproval && this.state.pendingPlanApproval && (

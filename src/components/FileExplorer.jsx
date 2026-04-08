@@ -6,7 +6,11 @@ import { getFileIcon } from '../utils/fileIcons';
 import OpenFolderIcon from './OpenFolderIcon';
 import styles from './FileExplorer.module.css';
 
-function TreeNode({ item, path, depth, onFileClick, expandedPaths, onToggleExpand, currentFile, onFileRenamed, refreshTrigger, onHtmlPreview, onAttachToChat }) {
+function isExternalFileDrag(e) {
+  return e.dataTransfer.types.includes('Files') && !e.dataTransfer.types.includes('text/x-internal-move');
+}
+
+function TreeNode({ item, path, depth, onFileClick, expandedPaths, onToggleExpand, currentFile, onFileRenamed, refreshTrigger, onHtmlPreview, onAttachToChat, onImportFiles }) {
   const [children, setChildren] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -181,6 +185,7 @@ function TreeNode({ item, path, depth, onFileClick, expandedPaths, onToggleExpan
   const handleDragStart = useCallback((e) => {
     if (editing) { e.preventDefault(); return; }
     e.dataTransfer.setData('text/plain', childPath);
+    e.dataTransfer.setData('text/x-internal-move', '1');
     e.dataTransfer.effectAllowed = 'move';
     setDragging(true);
   }, [childPath, editing]);
@@ -191,8 +196,11 @@ function TreeNode({ item, path, depth, onFileClick, expandedPaths, onToggleExpan
 
   const handleDragOver = useCallback((e) => {
     if (!isDir) return;
+    const isExternal = isExternalFileDrag(e);
+    const isInternal = e.dataTransfer.types.includes('text/x-internal-move');
+    if (!isExternal && !isInternal) return;
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
+    e.dataTransfer.dropEffect = isExternal ? 'copy' : 'move';
     setDragOver(true);
   }, [isDir]);
 
@@ -206,6 +214,15 @@ function TreeNode({ item, path, depth, onFileClick, expandedPaths, onToggleExpan
   const handleDrop = useCallback(async (e) => {
     e.preventDefault();
     setDragOver(false);
+    // External file drop
+    if (isExternalFileDrag(e) && e.dataTransfer.files.length > 0) {
+      e.stopPropagation();
+      if (!isDir) return;
+      const files = Array.from(e.dataTransfer.files);
+      if (onImportFiles) onImportFiles(files, childPath);
+      return;
+    }
+    // Internal move
     const fromPath = e.dataTransfer.getData('text/plain');
     if (!fromPath || !isDir) return;
     // 不能拖到自身
@@ -230,7 +247,7 @@ function TreeNode({ item, path, depth, onFileClick, expandedPaths, onToggleExpan
     } catch (err) {
       message.error(err.message || 'Move failed');
     }
-  }, [childPath, isDir, onFileRenamed]);
+  }, [childPath, isDir, onFileRenamed, onImportFiles]);
 
   // 右键菜单项
   const contextMenuItems = useMemo(() => {
@@ -407,7 +424,7 @@ function TreeNode({ item, path, depth, onFileClick, expandedPaths, onToggleExpan
         <div className={styles.error} style={{ paddingLeft: 24 + depth * 16 }}>{error}</div>
       )}
       {expanded && children && children.map(child => (
-        <TreeNode key={child.name} item={child} path={childPath} depth={depth + 1} onFileClick={onFileClick} expandedPaths={expandedPaths} onToggleExpand={onToggleExpand} currentFile={currentFile} onFileRenamed={onFileRenamed} refreshTrigger={refreshTrigger} onHtmlPreview={onHtmlPreview} onAttachToChat={onAttachToChat} />
+        <TreeNode key={child.name} item={child} path={childPath} depth={depth + 1} onFileClick={onFileClick} expandedPaths={expandedPaths} onToggleExpand={onToggleExpand} currentFile={currentFile} onFileRenamed={onFileRenamed} refreshTrigger={refreshTrigger} onHtmlPreview={onHtmlPreview} onAttachToChat={onAttachToChat} onImportFiles={onImportFiles} />
       ))}
     </>
   );
@@ -417,7 +434,9 @@ export default function FileExplorer({ style, onClose, onFileClick, expandedPath
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
   const [htmlPreviewPath, setHtmlPreviewPath] = useState(null);
+  const [externalDragOver, setExternalDragOver] = useState(false);
   const mounted = useRef(true);
+  const containerRef = useRef(null);
 
   // 重新加载根目录
   const refreshRoot = useCallback(() => {
@@ -526,8 +545,68 @@ export default function FileExplorer({ style, onClose, onFileClick, expandedPath
     }
   }, [onFileRenamed]);
 
+  // Import external files to project directory
+  const importFiles = useCallback(async (files, targetDir) => {
+    const results = await Promise.all(
+      files.map(async (file) => {
+        const form = new FormData();
+        form.append('file', file);
+        try {
+          const res = await fetch(apiUrl(`/api/import-file?dir=${encodeURIComponent(targetDir)}`), { method: 'POST', body: form });
+          const data = await res.json();
+          if (!res.ok) { message.error(`${file.name}: ${data.error || 'Import failed'}`); return null; }
+          return data;
+        } catch (err) { message.error(`${file.name}: ${err.message}`); return null; }
+      })
+    );
+    const ok = results.filter(Boolean);
+    if (ok.length > 0) {
+      if (ok.length === 1) {
+        message.success(t('ui.fileImported', { name: ok[0].relPath }));
+      } else {
+        message.success(t('ui.filesImported', { count: ok.length }));
+      }
+      if (onFileRenamed) onFileRenamed(null, ok[0].relPath);
+    }
+  }, [onFileRenamed]);
+
+  // Container-level drag events for external files
+  // 用计数器追踪 dragenter/dragleave 配对，解决子元素冒泡和拖拽取消时状态残留问题
+  const dragCounterRef = useRef(0);
+
+  const handleContainerDragEnter = useCallback((e) => {
+    if (!isExternalFileDrag(e)) return;
+    dragCounterRef.current++;
+    if (dragCounterRef.current === 1) setExternalDragOver(true);
+  }, []);
+
+  const handleContainerDragOver = useCallback((e) => {
+    if (!isExternalFileDrag(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  }, []);
+
+  const handleContainerDragLeave = useCallback((e) => {
+    if (!isExternalFileDrag(e)) return;
+    dragCounterRef.current--;
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0;
+      setExternalDragOver(false);
+    }
+  }, []);
+
+  const handleContainerDrop = useCallback((e) => {
+    dragCounterRef.current = 0;
+    if (!isExternalFileDrag(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setExternalDragOver(false);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) importFiles(files, '');
+  }, [importFiles]);
+
   return (
-    <div className={styles.fileExplorer} style={style}>
+    <div ref={containerRef} className={`${styles.fileExplorer}${externalDragOver ? ' ' + styles.fileExplorerDragOver : ''}`} style={style} data-file-explorer onDragEnter={handleContainerDragEnter} onDragOver={handleContainerDragOver} onDragLeave={handleContainerDragLeave} onDrop={handleContainerDrop}>
       <div className={styles.header}>
         <Dropdown menu={{ items: headerMenuItems, onClick: handleHeaderMenuClick }} trigger={['contextMenu']}>
           <span className={styles.headerTitle}>
@@ -542,11 +621,21 @@ export default function FileExplorer({ style, onClose, onFileClick, expandedPath
           </svg>
         </button>
       </div>
+      {externalDragOver && (
+        <div className={styles.importOverlay}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          <span>{t('ui.importToProject')}</span>
+        </div>
+      )}
       <div className={styles.treeContainer}>
         {error && <div className={styles.error}>{error}</div>}
         {!items && !error && <div className={styles.loading}>Loading...</div>}
         {items && items.map(item => (
-          <TreeNode key={item.name} item={item} path="" depth={0} onFileClick={onFileClick} expandedPaths={expandedPaths} onToggleExpand={onToggleExpand} currentFile={currentFile} onFileRenamed={onFileRenamed} refreshTrigger={refreshTrigger} onHtmlPreview={setHtmlPreviewPath} onAttachToChat={onAttachToChat} />
+          <TreeNode key={item.name} item={item} path="" depth={0} onFileClick={onFileClick} expandedPaths={expandedPaths} onToggleExpand={onToggleExpand} currentFile={currentFile} onFileRenamed={onFileRenamed} refreshTrigger={refreshTrigger} onHtmlPreview={setHtmlPreviewPath} onAttachToChat={onAttachToChat} onImportFiles={importFiles} />
         ))}
       </div>
       {htmlPreviewPath && (

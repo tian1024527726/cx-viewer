@@ -53,6 +53,7 @@ class AppBase extends React.Component {
       resumeFileName: '',
       resumeRememberChoice: false,
       resumeAutoChoice: null, // null | "continue" | "new"
+      autoApproveSeconds: 0, // 自动审批倒计时秒数，0=关闭
       collapseToolResults: true,
       expandThinking: true,
       expandDiff: false,
@@ -224,6 +225,9 @@ class AppBase extends React.Component {
         }
         if (data.resumeAutoChoice) {
           this.setState({ resumeAutoChoice: data.resumeAutoChoice });
+        }
+        if (typeof data.autoApproveSeconds === 'number') {
+          this.setState({ autoApproveSeconds: data.autoApproveSeconds });
         }
         if (data.themeColor) {
           this.setState({ themeColor: data.themeColor });
@@ -1210,6 +1214,15 @@ class AppBase extends React.Component {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ expandDiff: checked }),
     }).catch(() => { });
+  };
+
+  handleAutoApproveChange = (seconds) => {
+    this.setState({ autoApproveSeconds: seconds });
+    fetch(apiUrl('/api/preferences'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ autoApproveSeconds: seconds }),
+    }).catch(() => {});
   };
 
   handleThemeColorChange = (value) => {

@@ -301,6 +301,54 @@ const i18nData = {
     "tr": "Dosyaları yüklemek için buraya bırakın",
     "uk": "Перетягніть файли сюди для завантаження"
   },
+  "ui.importToProject": {
+    "zh": "拖放文件到此处导入项目", "en": "Drop files here to import", "zh-TW": "拖放檔案到此處匯入專案",
+    "ko": "여기에 파일을 놓아 가져오기", "ja": "ファイルをここにドロップしてインポート", "de": "Dateien hier ablegen zum Importieren",
+    "es": "Suelta archivos aquí para importar", "fr": "Déposez les fichiers ici pour importer", "it": "Rilascia file qui per importare",
+    "da": "Slip filer her for at importere", "pl": "Upuść pliki tutaj, aby zaimportować", "ru": "Перетащите файлы сюда для импорта",
+    "ar": "أسقط الملفات هنا للاستيراد", "no": "Slipp filer her for å importere", "pt-BR": "Solte arquivos aqui para importar",
+    "th": "วางไฟล์ที่นี่เพื่อนำเข้า", "tr": "Dosyaları içe aktarmak için buraya bırakın", "uk": "Перетягніть файли сюди для імпорту"
+  },
+  "ui.fileImported": {
+    "zh": "已导入文件: {name}",
+    "en": "File imported: {name}",
+    "zh-TW": "已匯入檔案: {name}",
+    "ko": "파일 가져옴: {name}",
+    "ja": "ファイルをインポートしました: {name}",
+    "de": "Datei importiert: {name}",
+    "es": "Archivo importado: {name}",
+    "fr": "Fichier importé : {name}",
+    "it": "File importato: {name}",
+    "da": "Fil importeret: {name}",
+    "pl": "Zaimportowano plik: {name}",
+    "ru": "Файл импортирован: {name}",
+    "ar": "تم استيراد الملف: {name}",
+    "no": "Fil importert: {name}",
+    "pt-BR": "Arquivo importado: {name}",
+    "th": "นำเข้าไฟล์แล้ว: {name}",
+    "tr": "Dosya içe aktarıldı: {name}",
+    "uk": "Файл імпортовано: {name}"
+  },
+  "ui.filesImported": {
+    "zh": "已导入 {count} 个文件",
+    "en": "{count} files imported",
+    "zh-TW": "已匯入 {count} 個檔案",
+    "ko": "{count}개 파일 가져옴",
+    "ja": "{count} 件のファイルをインポートしました",
+    "de": "{count} Dateien importiert",
+    "es": "{count} archivos importados",
+    "fr": "{count} fichiers importés",
+    "it": "{count} file importati",
+    "da": "{count} filer importeret",
+    "pl": "Zaimportowano {count} plików",
+    "ru": "{count} файлов импортировано",
+    "ar": "تم استيراد {count} ملفات",
+    "no": "{count} filer importert",
+    "pt-BR": "{count} arquivos importados",
+    "th": "นำเข้า {count} ไฟล์แล้ว",
+    "tr": "{count} dosya içe aktarıldı",
+    "uk": "Імпортовано {count} файлів"
+  },
   "ui.exportPrompts": {
     "zh": "查看用户 Prompt",
     "en": "Export user prompts",
@@ -4344,6 +4392,54 @@ const i18nData = {
     "da": "Afvis", "pl": "Odmów", "ru": "Отклонить",
     "ar": "رفض", "no": "Avslå", "pt-BR": "Negar",
     "th": "ปฏิเสธ", "tr": "Reddet", "uk": "Відхилити"
+  },
+  "ui.permission.allowCountdown": {
+    "zh": "允许({seconds}s)", "en": "Allow({seconds}s)", "zh-TW": "允許({seconds}s)",
+    "ko": "허용({seconds}s)", "ja": "許可({seconds}s)", "de": "Erlauben({seconds}s)",
+    "es": "Permitir({seconds}s)", "fr": "Autoriser({seconds}s)", "it": "Consenti({seconds}s)",
+    "da": "Tillad({seconds}s)", "pl": "Zezwól({seconds}s)", "ru": "Разрешить({seconds}s)",
+    "ar": "سماح({seconds}s)", "no": "Tillat({seconds}s)", "pt-BR": "Permitir({seconds}s)",
+    "th": "อนุญาต({seconds}s)", "tr": "İzin ver({seconds}s)", "uk": "Дозволити({seconds}s)"
+  },
+  "ui.permission.autoApprove.enable": {
+    "zh": "开启 {seconds}s 自动审批", "en": "Auto-approve {seconds}s", "zh-TW": "開啟 {seconds}s 自動審批",
+    "ko": "{seconds}s 자동 승인", "ja": "{seconds}s 自動承認", "de": "Auto-Genehmigung {seconds}s",
+    "es": "Auto-aprobar {seconds}s", "fr": "Auto-approuver {seconds}s", "it": "Auto-approva {seconds}s",
+    "da": "Auto-godkend {seconds}s", "pl": "Auto-akceptacja {seconds}s", "ru": "Авто-одобрение {seconds}s",
+    "ar": "موافقة تلقائية {seconds}s", "no": "Auto-godkjenn {seconds}s", "pt-BR": "Auto-aprovar {seconds}s",
+    "th": "อนุมัติอัตโนมัติ {seconds}s", "tr": "Otomatik onayla {seconds}s", "uk": "Авто-схвалення {seconds}s"
+  },
+  "ui.permission.autoApprove.active": {
+    "zh": "自动审批 {seconds}s", "en": "Auto-approve {seconds}s", "zh-TW": "自動審批 {seconds}s",
+    "ko": "자동 승인 {seconds}s", "ja": "自動承認 {seconds}s", "de": "Auto-Genehmigung {seconds}s",
+    "es": "Auto-aprobar {seconds}s", "fr": "Auto-approuver {seconds}s", "it": "Auto-approva {seconds}s",
+    "da": "Auto-godkend {seconds}s", "pl": "Auto-akceptacja {seconds}s", "ru": "Авто-одобрение {seconds}s",
+    "ar": "موافقة تلقائية {seconds}s", "no": "Auto-godkjenn {seconds}s", "pt-BR": "Auto-aprovar {seconds}s",
+    "th": "อนุมัติอัตโนมัติ {seconds}s", "tr": "Otomatik onayla {seconds}s", "uk": "Авто-схвалення {seconds}s"
+  },
+  "ui.permission.autoApprove.disable": {
+    "zh": "关闭自动审批", "en": "Disable auto-approve", "zh-TW": "關閉自動審批",
+    "ko": "자동 승인 끄기", "ja": "自動承認を無効化", "de": "Auto-Genehmigung deaktivieren",
+    "es": "Desactivar auto-aprobar", "fr": "Désactiver auto-approuver", "it": "Disattiva auto-approva",
+    "da": "Deaktiver auto-godkend", "pl": "Wyłącz auto-akceptację", "ru": "Выключить авто-одобрение",
+    "ar": "إيقاف الموافقة التلقائية", "no": "Deaktiver auto-godkjenn", "pt-BR": "Desativar auto-aprovar",
+    "th": "ปิดอนุมัติอัตโนมัติ", "tr": "Otomatik onayı kapat", "uk": "Вимкнути авто-схвалення"
+  },
+  "ui.permission.autoApprove.off": {
+    "zh": "关闭", "en": "Off", "zh-TW": "關閉",
+    "ko": "끄기", "ja": "オフ", "de": "Aus",
+    "es": "Desactivar", "fr": "Désactiver", "it": "Disattiva",
+    "da": "Sluk", "pl": "Wyłącz", "ru": "Выкл",
+    "ar": "إيقاف", "no": "Av", "pt-BR": "Desativar",
+    "th": "ปิด", "tr": "Kapat", "uk": "Вимк"
+  },
+  "ui.permission.autoApprove.setting": {
+    "zh": "自动审批", "en": "Auto-approve", "zh-TW": "自動審批",
+    "ko": "자동 승인", "ja": "自動承認", "de": "Auto-Genehmigung",
+    "es": "Auto-aprobar", "fr": "Auto-approuver", "it": "Auto-approva",
+    "da": "Auto-godkend", "pl": "Auto-akceptacja", "ru": "Авто-одобрение",
+    "ar": "موافقة تلقائية", "no": "Auto-godkjenn", "pt-BR": "Auto-aprovar",
+    "th": "อนุมัติอัตโนมัติ", "tr": "Otomatik onayla", "uk": "Авто-схвалення"
   },
   "ui.dangerApproval": {
     "zh": "操作待审批", "en": "Approval Required", "zh-TW": "操作待審批",

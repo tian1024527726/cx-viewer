@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.6.127 (2026-04-09)
+
+- Feat: auto-approve tool permissions with configurable countdown (off/3s/5s/10s/15s/20s/30s/60s)
+- Feat: import external files by dragging from OS into FileExplorer panel
+- Feat: new POST /api/import-file endpoint for direct project directory import
+- Fix: auto-approve countdown useEffect dependency array completeness
+- Fix: server error messages use generic text instead of leaking internal paths
+
 ## 1.6.126 (2026-04-09)
 
 - Feat: file explorer drag-and-drop to move files/folders between directories

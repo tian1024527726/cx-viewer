@@ -331,8 +331,97 @@ async function handleRequest(req, res) {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true, path: savePath, persistPath }));
       } catch (err) {
+        console.error('upload error:', err);
         res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: err.message }));
+        res.end(JSON.stringify({ error: 'Upload failed' }));
+      }
+    });
+    return;
+  }
+
+  // Import file directly into project directory
+  if (url.startsWith('/api/import-file') && method === 'POST') {
+    const contentType = req.headers['content-type'] || '';
+    const boundaryMatch = contentType.match(/boundary=(.+)/);
+    if (!boundaryMatch) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Missing boundary' }));
+      return;
+    }
+    const parsedUrl = new URL(url, 'http://localhost');
+    const dir = parsedUrl.searchParams.get('dir') || '';
+    // Security: reject absolute paths and path traversal
+    if (dir.startsWith('/') || dir.includes('..')) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Invalid dir parameter' }));
+      return;
+    }
+    const MAX_UPLOAD = 100 * 1024 * 1024; // 100MB
+    const contentLength = parseInt(req.headers['content-length'] || '0', 10);
+    if (contentLength > MAX_UPLOAD) {
+      res.writeHead(413, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'File too large (max 100MB)' }));
+      return;
+    }
+    const boundary = boundaryMatch[1];
+    const chunks = [];
+    let totalSize = 0;
+    let aborted = false;
+    req.on('data', chunk => {
+      totalSize += chunk.length;
+      if (totalSize > MAX_UPLOAD) {
+        aborted = true;
+        res.writeHead(413, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'File too large (max 100MB)' }));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => {
+      if (aborted) return;
+      try {
+        const cwd = process.env.CCV_PROJECT_DIR || process.cwd();
+        const targetDir = join(cwd, dir);
+        mkdirSync(targetDir, { recursive: true });
+        const realDir = realpathSync(targetDir);
+        const realCwd = realpathSync(cwd);
+        if (realDir !== realCwd && !realDir.startsWith(realCwd + '/')) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Path traversal not allowed' }));
+          return;
+        }
+        const buf = Buffer.concat(chunks);
+        const headerEnd = buf.indexOf('\r\n\r\n');
+        if (headerEnd === -1) throw new Error('Malformed multipart');
+        const headerStr = buf.slice(0, headerEnd).toString();
+        const nameMatch = headerStr.match(/filename="([^"]+)"/);
+        if (!nameMatch) throw new Error('No filename');
+        const originalName = nameMatch[1].replace(/[/\\]/g, '_');
+        const bodyStart = headerEnd + 4;
+        const closingBoundary = Buffer.from('\r\n--' + boundary);
+        const bodyEnd = buf.indexOf(closingBoundary, bodyStart);
+        const fileData = bodyEnd !== -1 ? buf.slice(bodyStart, bodyEnd) : buf.slice(bodyStart);
+        // Resolve unique filename: append -1, -2, ... if conflict
+        const dotIdx = originalName.lastIndexOf('.');
+        const stem = dotIdx > 0 ? originalName.slice(0, dotIdx) : originalName;
+        const ext = dotIdx > 0 ? originalName.slice(dotIdx) : '';
+        let finalName = originalName;
+        let savePath = join(realDir, finalName);
+        let counter = 1;
+        while (existsSync(savePath)) {
+          finalName = `${stem}-${counter}${ext}`;
+          savePath = join(realDir, finalName);
+          counter++;
+        }
+        writeFileSync(savePath, fileData);
+        const relPath = dir ? `${dir}/${finalName}` : finalName;
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, name: finalName, relPath }));
+      } catch (err) {
+        console.error('import-file error:', err);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Import failed' }));
       }
     });
     return;
