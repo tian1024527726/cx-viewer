@@ -6,7 +6,7 @@ CC Viewer starter en HTTP-server og genererer en **LAN-adresse** (f.eks. `http:/
 
 ## Hvorfor kan jeg ikke oprette forbindelse?
 
-1. **Ikke på det samme netværk** — Telefon og computer skal være på det samme WiFi
+1. **Ikke på det samme netværk** — Telefon og computer skal være på det samme WiFi (samme router/samme netværksnavn)
 2. **Firewall-blokering** — Systemets firewall kan blokere indgående forbindelser
 3. **Virksomhedsnetværk-isolation** — AP-isolation kan forhindre kommunikation mellem enheder
 4. **VPN-interferens** — En VPN kan forstyrre netværksruten

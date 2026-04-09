@@ -100,6 +100,10 @@ if (!claudePath) {
   }
 }
 
+if (!claudePath) {
+  process.env.CCV_CLAUDE_MISSING = '1';
+}
+
 // --- Management server for workspace selector ---
 process.env.CCV_CLI_MODE = '1';
 process.env.CCV_WORKSPACE_MODE = '1';

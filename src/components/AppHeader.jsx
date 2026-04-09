@@ -1430,7 +1430,7 @@ class AppHeader extends React.Component {
               content={
                 <div className={styles.qrcodePopover}>
                   <div className={styles.qrcodeTitle}>{t('ui.scanToCoding')} <ConceptHelp doc="QRCode" /></div>
-                  <QRCodeCanvas value={this.state.localUrl} size={200} bgColor="#141414" fgColor="#d9d9d9" level="M" />
+                  <QRCodeCanvas value={this.state.localUrl} size={200} bgColor={themeColor === 'light' ? '#ffffff' : '#141414'} fgColor={themeColor === 'light' ? '#1a1a1a' : '#d9d9d9'} level="M" />
                   <Input
                     readOnly
                     value={this.state.localUrl}
@@ -1618,6 +1618,25 @@ class AppHeader extends React.Component {
                 ]}
                 style={{ width: 140 }}
               />
+            </div>
+          </div>
+          <div className={styles.settingsGroupBox}>
+            <div className={styles.settingsGroupTitle}>{t('ui.languageSettings')}</div>
+            <div className={styles.langGrid}>
+              {LANG_OPTIONS.map(o => (
+                <Button
+                  key={o.value}
+                  size="small"
+                  type={o.value === getLang() ? 'primary' : 'default'}
+                  onClick={() => {
+                    setLang(o.value);
+                    if (onLangChange) onLangChange();
+                  }}
+                  className={styles.langBtn}
+                >
+                  {o.label}
+                </Button>
+              ))}
             </div>
           </div>
         </Drawer>

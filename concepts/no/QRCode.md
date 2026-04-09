@@ -6,7 +6,7 @@ CC Viewer starter en HTTP-server og genererer en **LAN-adresse** (f.eks. `http:/
 
 ## Hvorfor kan jeg ikke koble til?
 
-1. **Ikke på samme nettverk** — Telefon og datamaskin må være på samme WiFi
+1. **Ikke på samme nettverk** — Telefon og datamaskin må være på samme WiFi (samme ruter/samme nettverksnavn)
 2. **Brannmur-blokkering** — Systemets brannmur kan blokkere innkommende tilkoblinger
 3. **Bedriftsnettverk-isolasjon** — AP-isolasjon kan hindre kommunikasjon mellom enheter
 4. **VPN-forstyrrelse** — En VPN kan forstyrre nettverksruten

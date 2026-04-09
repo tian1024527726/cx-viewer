@@ -1,5 +1,5 @@
 import React from 'react';
-import { ConfigProvider, Layout, theme, Modal, Button, Checkbox, Spin, message } from 'antd';
+import { ConfigProvider, Layout, theme, Modal, Button, Checkbox, Spin, Alert, message } from 'antd';
 import { UploadOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
 import AppBase, { styles } from './AppBase';
 import { isMobile } from './env';
@@ -23,7 +23,7 @@ class App extends AppBase {
     Object.assign(this.state, {
       leftPanelWidth: 380,
       terminalVisible: true,
-      currentTab: 'request',
+      currentTab: 'context',
       pendingCacheHighlight: null,
     });
   }
@@ -326,7 +326,15 @@ class App extends AppBase {
               onProxyProfileChange={this.handleProxyProfileChange}
             />
           </Layout.Header>
-
+          {this.state.claudeMissing && (
+            <Alert
+              type="warning"
+              showIcon
+              banner
+              message={t('ui.claudeMissing.title')}
+              description={<span>{t('ui.claudeMissing.desc')}<br /><code style={{ background: 'var(--bg-code)', padding: '2px 6px', borderRadius: 3 }}>npm install -g @anthropic-ai/claude-code</code> <span style={{ color: 'var(--text-muted)', margin: '0 4px' }}>{t('ui.claudeMissing.or')}</span> <a href="https://claude.ai/download" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary-light)' }}>{t('ui.claudeMissing.native')}</a></span>}
+            />
+          )}
           <Layout.Content className={styles.content}>
             {viewMode === 'raw' && (
               filteredRequests.length === 0 ? (
@@ -411,11 +419,47 @@ class App extends AppBase {
                 GitHub{this.state.githubStars != null ? ` ★ ${this.state.githubStars}` : ''}
               </a>
               <span className={styles.footerSep}>|</span>
-              <a href="https://github.com/weiesky/cc-viewer/releases" target="_blank" rel="noopener noreferrer" className={styles.footerVersion}>v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : ''}</a>
+              <span className={`${styles.footerVersion}${this.state.updateInfo ? ` ${styles.footerVersionNew}` : ''}`} onClick={() => this.setState({ updateModalVisible: true })} style={{ cursor: 'pointer' }}>
+                v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : ''}
+                {this.state.updateInfo && (
+                  <svg className={styles.newBadge} width="28" height="12" viewBox="0 0 28 12">
+                    <rect width="28" height="12" rx="3" fill="currentColor" opacity="0.25" />
+                    <text x="14" y="9" textAnchor="middle" fill="currentColor" fontSize="8" fontWeight="600" fontFamily="system-ui">NEW</text>
+                  </svg>
+                )}
+              </span>
             </div>
           </div>
         </Layout>
 
+        <Modal
+          title={t('ui.update.title')}
+          open={this.state.updateModalVisible}
+          onCancel={() => this.setState({ updateModalVisible: false })}
+          footer={null}
+          width={480}
+        >
+          <div style={{ lineHeight: 1.8 }}>
+            <p><strong>{t('ui.update.current')}:</strong> v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : ''}</p>
+            {this.state.updateInfo && <p><strong>{t('ui.update.latest')}:</strong> v{this.state.updateInfo.version}</p>}
+            <p style={{ marginTop: 12 }}><strong>{t('ui.update.npm')}</strong></p>
+            <code style={{ display: 'block', background: 'var(--bg-code)', padding: '8px 12px', borderRadius: 6, fontSize: 13 }}>npm update -g cc-viewer</code>
+            {typeof window !== 'undefined' && window.electronAPI && (<>
+              <p style={{ marginTop: 16 }}><strong>{t('ui.update.electron')}</strong></p>
+              <p style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>{t('ui.update.electronDesc')}</p>
+              <ol style={{ color: 'var(--text-tertiary)', fontSize: 13, paddingLeft: 20, margin: '6px 0' }}>
+                <li>{t('ui.update.step1')}</li>
+                <li>{t('ui.update.step2')}</li>
+                <li>{t('ui.update.step3')}</li>
+              </ol>
+            </>)}
+            <div style={{ marginTop: 16, textAlign: 'right' }}>
+              <Button type="primary" href="https://github.com/weiesky/cc-viewer/releases" target="_blank" rel="noopener noreferrer">
+                {t('ui.update.goReleases')}
+              </Button>
+            </div>
+          </div>
+        </Modal>
         <Modal
           title={t('ui.resume.title')}
           open={this.state.resumeModalVisible}

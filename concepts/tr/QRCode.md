@@ -6,7 +6,7 @@ CC Viewer bir HTTP sunucusu başlatır ve bir **LAN adresi** oluşturur (ör: `h
 
 ## Neden bağlanamıyorum?
 
-1. **Aynı ağda değil** — Telefon ve bilgisayar aynı WiFi'ye bağlı olmalıdır
+1. **Aynı ağda değil** — Telefon ve bilgisayar aynı WiFi'ye bağlı olmalıdır (aynı yönlendirici/aynı ağ adı)
 2. **Güvenlik duvarı engeli** — Sistem güvenlik duvarı gelen bağlantıları engelleyebilir
 3. **Kurumsal ağ izolasyonu** — AP izolasyonu cihazlar arası iletişimi engelleyebilir
 4. **VPN müdahalesi** — VPN ağ yolunu bozabilir

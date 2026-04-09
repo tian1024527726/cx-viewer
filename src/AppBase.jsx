@@ -61,6 +61,8 @@ class AppBase extends React.Component {
       showFullToolContent: false,
       showThinkingSummaries: false,
       themeColor: 'dark',
+      claudeMissing: false,
+      updateModalVisible: false,
       fileLoading: false,
       fileLoadingCount: 0,
       isDragging: false,
@@ -200,6 +202,7 @@ class AppBase extends React.Component {
     // 获取 claude settings（showThinkingSummaries 等）
     fetch(apiUrl('/api/claude-settings')).then(r => r.json()).then(data => {
       if (data.showThinkingSummaries) this.setState({ showThinkingSummaries: true });
+      if (data.claudeAvailable === false) this.setState({ claudeMissing: true });
     }).catch(() => {});
 
     // 获取用户偏好设置（包含 filterIrrelevant）

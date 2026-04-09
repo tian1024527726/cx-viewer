@@ -6,7 +6,7 @@ CC Viewer startet einen HTTP-Server und generiert eine **LAN-Adresse** (z.B. `ht
 
 ## Warum kann ich keine Verbindung herstellen?
 
-1. **Nicht im selben Netzwerk** — Smartphone und Computer müssen mit demselben WiFi verbunden sein
+1. **Nicht im selben Netzwerk** — Smartphone und Computer müssen mit demselben WiFi verbunden sein (gleicher Router/gleicher Netzwerkname)
 2. **Firewall-Blockierung** — Die OS-Firewall blockiert möglicherweise eingehende Verbindungen
 3. **Unternehmensnetzwerk-Isolation** — AP-Isolation kann die Kommunikation zwischen Geräten verhindern
 4. **VPN-Störung** — Ein VPN kann den Netzwerkpfad stören

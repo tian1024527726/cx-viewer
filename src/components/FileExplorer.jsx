@@ -194,32 +194,42 @@ function TreeNode({ item, path, depth, onFileClick, expandedPaths, onToggleExpan
     setDragging(false);
   }, []);
 
+  const autoExpandTimer = useRef(null);
   const handleDragOver = useCallback((e) => {
-    if (!isDir) return;
     const isExternal = isExternalFileDrag(e);
     const isInternal = e.dataTransfer.types.includes('text/x-internal-move');
+    // 内部移动只接受目录；外部导入接受任意节点（文件节点→导入到父目录）
+    if (isInternal && !isDir) return;
     if (!isExternal && !isInternal) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = isExternal ? 'copy' : 'move';
     setDragOver(true);
-  }, [isDir]);
+    // hover 在折叠目录上 500ms → 自动展开（外部导入和内部移动都支持）
+    if (isDir && !expanded && !autoExpandTimer.current) {
+      autoExpandTimer.current = setTimeout(() => {
+        onToggleExpand(childPath);
+        autoExpandTimer.current = null;
+      }, 500);
+    }
+  }, [isDir, expanded, childPath, onToggleExpand]);
 
   const handleDragLeave = useCallback((e) => {
     // 只在真正离开此节点时才移除高亮（忽略子元素事件冒泡）
     if (itemRef.current && !itemRef.current.contains(e.relatedTarget)) {
       setDragOver(false);
+      if (autoExpandTimer.current) { clearTimeout(autoExpandTimer.current); autoExpandTimer.current = null; }
     }
   }, []);
 
   const handleDrop = useCallback(async (e) => {
     e.preventDefault();
     setDragOver(false);
-    // External file drop
+    // External file drop — 目录节点导入到该目录，文件节点导入到其父目录
     if (isExternalFileDrag(e) && e.dataTransfer.files.length > 0) {
       e.stopPropagation();
-      if (!isDir) return;
       const files = Array.from(e.dataTransfer.files);
-      if (onImportFiles) onImportFiles(files, childPath);
+      const targetDir = isDir ? childPath : (childPath.includes('/') ? childPath.substring(0, childPath.lastIndexOf('/')) : '');
+      if (onImportFiles) onImportFiles(files, targetDir);
       return;
     }
     // Internal move
@@ -571,42 +581,49 @@ export default function FileExplorer({ style, onClose, onFileClick, expandedPath
   }, [onFileRenamed]);
 
   // Container-level drag events for external files
-  // 用计数器追踪 dragenter/dragleave 配对，解决子元素冒泡和拖拽取消时状态残留问题
-  const dragCounterRef = useRef(0);
+  // dragover 定时器模式：持续收到 dragover 时保持高亮，300ms 无 dragover 则认为拖拽结束
+  const dragTimerRef = useRef(null);
 
-  const handleContainerDragEnter = useCallback((e) => {
-    if (!isExternalFileDrag(e)) return;
-    dragCounterRef.current++;
-    if (dragCounterRef.current === 1) setExternalDragOver(true);
+  const resetDragState = useCallback(() => {
+    if (dragTimerRef.current) { clearTimeout(dragTimerRef.current); dragTimerRef.current = null; }
+    setExternalDragOver(false);
   }, []);
+
+  // 全局 drop/dragend 兜底：确保任何情况下状态都能重置
+  useEffect(() => {
+    const handler = () => resetDragState();
+    document.addEventListener('drop', handler);
+    document.addEventListener('dragend', handler);
+    return () => {
+      document.removeEventListener('drop', handler);
+      document.removeEventListener('dragend', handler);
+    };
+  }, [resetDragState]);
 
   const handleContainerDragOver = useCallback((e) => {
     if (!isExternalFileDrag(e)) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
-  }, []);
-
-  const handleContainerDragLeave = useCallback((e) => {
-    if (!isExternalFileDrag(e)) return;
-    dragCounterRef.current--;
-    if (dragCounterRef.current <= 0) {
-      dragCounterRef.current = 0;
+    if (!externalDragOver) setExternalDragOver(true);
+    // 每次 dragover 重置定时器，300ms 内无新 dragover 则清除状态
+    if (dragTimerRef.current) clearTimeout(dragTimerRef.current);
+    dragTimerRef.current = setTimeout(() => {
       setExternalDragOver(false);
-    }
-  }, []);
+      dragTimerRef.current = null;
+    }, 300);
+  }, [externalDragOver]);
 
   const handleContainerDrop = useCallback((e) => {
-    dragCounterRef.current = 0;
+    resetDragState();
     if (!isExternalFileDrag(e)) return;
     e.preventDefault();
     e.stopPropagation();
-    setExternalDragOver(false);
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) importFiles(files, '');
-  }, [importFiles]);
+  }, [importFiles, resetDragState]);
 
   return (
-    <div ref={containerRef} className={`${styles.fileExplorer}${externalDragOver ? ' ' + styles.fileExplorerDragOver : ''}`} style={style} data-file-explorer onDragEnter={handleContainerDragEnter} onDragOver={handleContainerDragOver} onDragLeave={handleContainerDragLeave} onDrop={handleContainerDrop}>
+    <div ref={containerRef} className={styles.fileExplorer} style={style} data-file-explorer onDragOver={handleContainerDragOver} onDrop={handleContainerDrop}>
       <div className={styles.header}>
         <Dropdown menu={{ items: headerMenuItems, onClick: handleHeaderMenuClick }} trigger={['contextMenu']}>
           <span className={styles.headerTitle}>
@@ -621,16 +638,6 @@ export default function FileExplorer({ style, onClose, onFileClick, expandedPath
           </svg>
         </button>
       </div>
-      {externalDragOver && (
-        <div className={styles.importOverlay}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="17 8 12 3 7 8" />
-            <line x1="12" y1="3" x2="12" y2="15" />
-          </svg>
-          <span>{t('ui.importToProject')}</span>
-        </div>
-      )}
       <div className={styles.treeContainer}>
         {error && <div className={styles.error}>{error}</div>}
         {!items && !error && <div className={styles.loading}>Loading...</div>}

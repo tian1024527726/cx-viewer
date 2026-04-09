@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.6.131 (2026-04-09)
+
+- Feat: terminal panel focus border animation (4px + box-shadow glow, 0.3s ease-out)
+- Feat: QR code theme-aware colors (white/black for light, dark/gray for dark)
+- Feat: Claude Code missing detection with install guide banner (npm + native)
+- Feat: footer version display with [NEW] badge and update modal (npm + Electron steps)
+- Feat: language settings added to preferences drawer
+- Feat: file explorer drag auto-expand folders on 500ms hover (internal move + external import)
+- Fix: external file import to subdirectories (server dir parameter parsing from req.url)
+- Fix: file explorer external drag state cleanup (dragover timer + document-level fallback)
+- Fix: network packets detail panel defaults to Context tab
+- Docs: QRCode help docs add "same router/network name" note (18 languages)
+
 ## 1.6.130 (2026-04-09)
 
 - Fix: hide git changes button when project has no git repository

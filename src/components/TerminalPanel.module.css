@@ -3,6 +3,19 @@
   display: flex;
   flex-direction: column;
   background: var(--bg-base-alt);
+  border: 4px solid transparent;
+  transition: border-color 0.3s ease-out, box-shadow 0.3s ease-out;
+}
+
+.terminalPanelFocused {
+  border-color: var(--border-secondary);
+  box-shadow: 0 0 8px var(--color-primary-bg-light);
+  animation: terminalFocusIn 0.3s ease-out;
+}
+
+@keyframes terminalFocusIn {
+  from { border-color: transparent; box-shadow: none; }
+  to { border-color: var(--border-secondary); box-shadow: 0 0 8px var(--color-primary-bg-light); }
 }
 
 .terminalContainer {

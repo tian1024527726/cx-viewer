@@ -6,7 +6,7 @@ CC Viewer avvia un server HTTP e genera un **indirizzo LAN** (es: `http://192.16
 
 ## Perché non riesco a connettermi?
 
-1. **Non sulla stessa rete** — Smartphone e computer devono essere sulla stessa rete WiFi
+1. **Non sulla stessa rete** — Smartphone e computer devono essere sulla stessa rete WiFi (stesso router/stesso nome di rete)
 2. **Blocco firewall** — Il firewall del sistema potrebbe bloccare le connessioni in entrata
 3. **Isolamento rete aziendale** — L'isolamento AP può impedire la comunicazione tra dispositivi
 4. **Interferenza VPN** — Una VPN può interrompere il percorso di rete

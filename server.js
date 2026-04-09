@@ -350,8 +350,8 @@ async function handleRequest(req, res) {
       res.end(JSON.stringify({ error: 'Missing boundary' }));
       return;
     }
-    const parsedUrl = new URL(url, 'http://localhost');
-    const dir = parsedUrl.searchParams.get('dir') || '';
+    const importUrl = new URL(req.url, `${serverProtocol}://${req.headers.host}`);
+    const dir = importUrl.searchParams.get('dir') || '';
     // Security: reject absolute paths and path traversal
     if (dir.startsWith('/') || dir.includes('..')) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -1040,7 +1040,7 @@ async function handleRequest(req, res) {
     if (!env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS && process.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS) {
       env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = process.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS;
     }
-    res.end(JSON.stringify({ env, model: claudeSettings.model || null, showThinkingSummaries: claudeSettings.showThinkingSummaries || false }));
+    res.end(JSON.stringify({ env, model: claudeSettings.model || null, showThinkingSummaries: claudeSettings.showThinkingSummaries || false, claudeAvailable: process.env.CCV_CLAUDE_MISSING !== '1' }));
     return;
   }
 

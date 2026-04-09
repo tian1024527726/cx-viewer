@@ -281,6 +281,38 @@ const i18nData = {
     "tr": "Dosya boyutu 500MB'ı aşamaz",
     "uk": "Розмір файлу не може перевищувати 500МБ"
   },
+  "ui.claudeMissing.title": {
+    "zh": "未检测到 Claude Code CLI", "en": "Claude Code CLI not found", "zh-TW": "未偵測到 Claude Code CLI",
+    "ko": "Claude Code CLI를 찾을 수 없습니다", "ja": "Claude Code CLI が見つかりません", "de": "Claude Code CLI nicht gefunden",
+    "es": "Claude Code CLI no encontrado", "fr": "Claude Code CLI introuvable", "it": "Claude Code CLI non trovato",
+    "da": "Claude Code CLI ikke fundet", "pl": "Nie znaleziono Claude Code CLI", "ru": "Claude Code CLI не найден",
+    "ar": "لم يتم العثور على Claude Code CLI", "no": "Claude Code CLI ikke funnet", "pt-BR": "Claude Code CLI não encontrado",
+    "th": "ไม่พบ Claude Code CLI", "tr": "Claude Code CLI bulunamadı", "uk": "Claude Code CLI не знайдено"
+  },
+  "ui.claudeMissing.desc": {
+    "zh": "请先安装 Claude Code 才能使用本应用：", "en": "Please install Claude Code first:", "zh-TW": "請先安裝 Claude Code 才能使用本應用：",
+    "ko": "먼저 Claude Code를 설치해주세요:", "ja": "まず Claude Code をインストールしてください:", "de": "Bitte installieren Sie zuerst Claude Code:",
+    "es": "Instale Claude Code primero:", "fr": "Veuillez d'abord installer Claude Code :", "it": "Installa prima Claude Code:",
+    "da": "Installér venligst Claude Code først:", "pl": "Najpierw zainstaluj Claude Code:", "ru": "Сначала установите Claude Code:",
+    "ar": "يرجى تثبيت Claude Code أولاً:", "no": "Vennligst installer Claude Code først:", "pt-BR": "Instale o Claude Code primeiro:",
+    "th": "กรุณาติดตั้ง Claude Code ก่อน:", "tr": "Lütfen önce Claude Code'u yükleyin:", "uk": "Спочатку встановіть Claude Code:"
+  },
+  "ui.claudeMissing.or": {
+    "zh": "或", "en": "or", "zh-TW": "或",
+    "ko": "또는", "ja": "または", "de": "oder",
+    "es": "o", "fr": "ou", "it": "o",
+    "da": "eller", "pl": "lub", "ru": "или",
+    "ar": "أو", "no": "eller", "pt-BR": "ou",
+    "th": "หรือ", "tr": "veya", "uk": "або"
+  },
+  "ui.claudeMissing.native": {
+    "zh": "下载 Claude Code 桌面版", "en": "Download Claude Code Desktop", "zh-TW": "下載 Claude Code 桌面版",
+    "ko": "Claude Code 데스크톱 다운로드", "ja": "Claude Code デスクトップをダウンロード", "de": "Claude Code Desktop herunterladen",
+    "es": "Descargar Claude Code Desktop", "fr": "Télécharger Claude Code Desktop", "it": "Scarica Claude Code Desktop",
+    "da": "Download Claude Code Desktop", "pl": "Pobierz Claude Code Desktop", "ru": "Скачать Claude Code Desktop",
+    "ar": "تحميل Claude Code Desktop", "no": "Last ned Claude Code Desktop", "pt-BR": "Baixar Claude Code Desktop",
+    "th": "ดาวน์โหลด Claude Code Desktop", "tr": "Claude Code Desktop İndir", "uk": "Завантажити Claude Code Desktop"
+  },
   "ui.dragDropHint": {
     "zh": "拖放文件到此处上传",
     "en": "Drop files here to upload",
@@ -3932,6 +3964,86 @@ const i18nData = {
     "th": "อัปเดตเมื่อ {time}",
     "tr": "{time} tarihinde güncellendi",
     "uk": "Оновлено о {time}"
+  },
+  "ui.update.title": {
+    "zh": "版本信息", "en": "Version Info", "zh-TW": "版本資訊",
+    "ko": "버전 정보", "ja": "バージョン情報", "de": "Versionsinformationen",
+    "es": "Información de versión", "fr": "Informations de version", "it": "Informazioni versione",
+    "da": "Versionsinfo", "pl": "Informacje o wersji", "ru": "Информация о версии",
+    "ar": "معلومات الإصدار", "no": "Versjonsinformasjon", "pt-BR": "Informações da versão",
+    "th": "ข้อมูลเวอร์ชัน", "tr": "Sürüm bilgisi", "uk": "Інформація про версію"
+  },
+  "ui.update.current": {
+    "zh": "当前版本", "en": "Current version", "zh-TW": "目前版本",
+    "ko": "현재 버전", "ja": "現在のバージョン", "de": "Aktuelle Version",
+    "es": "Versión actual", "fr": "Version actuelle", "it": "Versione corrente",
+    "da": "Nuværende version", "pl": "Bieżąca wersja", "ru": "Текущая версия",
+    "ar": "الإصدار الحالي", "no": "Gjeldende versjon", "pt-BR": "Versão atual",
+    "th": "เวอร์ชันปัจจุบัน", "tr": "Mevcut sürüm", "uk": "Поточна версія"
+  },
+  "ui.update.latest": {
+    "zh": "最新版本", "en": "Latest version", "zh-TW": "最新版本",
+    "ko": "최신 버전", "ja": "最新バージョン", "de": "Neueste Version",
+    "es": "Última versión", "fr": "Dernière version", "it": "Ultima versione",
+    "da": "Seneste version", "pl": "Najnowsza wersja", "ru": "Последняя версия",
+    "ar": "أحدث إصدار", "no": "Nyeste versjon", "pt-BR": "Versão mais recente",
+    "th": "เวอร์ชันล่าสุด", "tr": "Son sürüm", "uk": "Остання версія"
+  },
+  "ui.update.npm": {
+    "zh": "npm 版本更新", "en": "Update via npm", "zh-TW": "npm 版本更新",
+    "ko": "npm으로 업데이트", "ja": "npm で更新", "de": "Über npm aktualisieren",
+    "es": "Actualizar vía npm", "fr": "Mettre à jour via npm", "it": "Aggiorna via npm",
+    "da": "Opdater via npm", "pl": "Aktualizuj przez npm", "ru": "Обновить через npm",
+    "ar": "التحديث عبر npm", "no": "Oppdater via npm", "pt-BR": "Atualizar via npm",
+    "th": "อัปเดตผ่าน npm", "tr": "npm ile güncelle", "uk": "Оновити через npm"
+  },
+  "ui.update.electron": {
+    "zh": "Electron 桌面版更新", "en": "Update Electron Desktop", "zh-TW": "Electron 桌面版更新",
+    "ko": "Electron 데스크톱 업데이트", "ja": "Electron デスクトップ更新", "de": "Electron Desktop aktualisieren",
+    "es": "Actualizar Electron Desktop", "fr": "Mettre à jour Electron Desktop", "it": "Aggiorna Electron Desktop",
+    "da": "Opdater Electron Desktop", "pl": "Aktualizuj Electron Desktop", "ru": "Обновить Electron Desktop",
+    "ar": "تحديث Electron Desktop", "no": "Oppdater Electron Desktop", "pt-BR": "Atualizar Electron Desktop",
+    "th": "อัปเดต Electron Desktop", "tr": "Electron Desktop Güncelle", "uk": "Оновити Electron Desktop"
+  },
+  "ui.update.electronDesc": {
+    "zh": "请从 GitHub Releases 下载最新版本的安装包。", "en": "Download the latest installer from GitHub Releases.", "zh-TW": "請從 GitHub Releases 下載最新版本的安裝包。",
+    "ko": "GitHub Releases에서 최신 설치 프로그램을 다운로드하세요.", "ja": "GitHub Releases から最新のインストーラーをダウンロードしてください。", "de": "Laden Sie das neueste Installationsprogramm von GitHub Releases herunter.",
+    "es": "Descargue el instalador más reciente de GitHub Releases.", "fr": "Téléchargez le dernier installeur depuis GitHub Releases.", "it": "Scarica l'ultimo installer da GitHub Releases.",
+    "da": "Download det nyeste installationsprogram fra GitHub Releases.", "pl": "Pobierz najnowszy instalator z GitHub Releases.", "ru": "Скачайте последний установщик из GitHub Releases.",
+    "ar": "قم بتنزيل أحدث مثبت من GitHub Releases.", "no": "Last ned det nyeste installasjonsprogrammet fra GitHub Releases.", "pt-BR": "Baixe o instalador mais recente do GitHub Releases.",
+    "th": "ดาวน์โหลดตัวติดตั้งล่าสุดจาก GitHub Releases", "tr": "GitHub Releases'dan en son yükleyiciyi indirin.", "uk": "Завантажте останній інсталятор з GitHub Releases."
+  },
+  "ui.update.step1": {
+    "zh": "点击下方按钮进入 GitHub Releases 页面", "en": "Click the button below to open GitHub Releases", "zh-TW": "點擊下方按鈕進入 GitHub Releases 頁面",
+    "ko": "아래 버튼을 클릭하여 GitHub Releases 페이지로 이동", "ja": "下のボタンをクリックして GitHub Releases ページを開く", "de": "Klicken Sie auf die Schaltfläche unten, um GitHub Releases zu öffnen",
+    "es": "Haga clic en el botón para abrir GitHub Releases", "fr": "Cliquez sur le bouton ci-dessous pour ouvrir GitHub Releases", "it": "Clicca il pulsante sotto per aprire GitHub Releases",
+    "da": "Klik på knappen nedenfor for at åbne GitHub Releases", "pl": "Kliknij przycisk poniżej, aby otworzyć GitHub Releases", "ru": "Нажмите кнопку ниже, чтобы открыть GitHub Releases",
+    "ar": "انقر على الزر أدناه لفتح GitHub Releases", "no": "Klikk på knappen nedenfor for å åpne GitHub Releases", "pt-BR": "Clique no botão abaixo para abrir o GitHub Releases",
+    "th": "คลิกปุ่มด้านล่างเพื่อเปิด GitHub Releases", "tr": "GitHub Releases'ı açmak için aşağıdaki düğmeye tıklayın", "uk": "Натисніть кнопку нижче, щоб відкрити GitHub Releases"
+  },
+  "ui.update.step2": {
+    "zh": "下载对应系统的安装包（.dmg / .exe / .AppImage）", "en": "Download the installer for your OS (.dmg / .exe / .AppImage)", "zh-TW": "下載對應系統的安裝包（.dmg / .exe / .AppImage）",
+    "ko": "사용 중인 OS에 맞는 설치 파일 다운로드 (.dmg / .exe / .AppImage)", "ja": "お使いの OS 用のインストーラーをダウンロード（.dmg / .exe / .AppImage）", "de": "Laden Sie das Installationsprogramm für Ihr OS herunter (.dmg / .exe / .AppImage)",
+    "es": "Descargue el instalador para su sistema (.dmg / .exe / .AppImage)", "fr": "Téléchargez l'installeur pour votre OS (.dmg / .exe / .AppImage)", "it": "Scarica l'installer per il tuo OS (.dmg / .exe / .AppImage)",
+    "da": "Download installationsprogrammet til dit OS (.dmg / .exe / .AppImage)", "pl": "Pobierz instalator dla swojego systemu (.dmg / .exe / .AppImage)", "ru": "Скачайте установщик для вашей ОС (.dmg / .exe / .AppImage)",
+    "ar": "قم بتنزيل المثبت لنظامك (.dmg / .exe / .AppImage)", "no": "Last ned installasjonsprogrammet for ditt OS (.dmg / .exe / .AppImage)", "pt-BR": "Baixe o instalador para seu SO (.dmg / .exe / .AppImage)",
+    "th": "ดาวน์โหลดตัวติดตั้งสำหรับระบบของคุณ (.dmg / .exe / .AppImage)", "tr": "İşletim sisteminiz için yükleyiciyi indirin (.dmg / .exe / .AppImage)", "uk": "Завантажте інсталятор для вашої ОС (.dmg / .exe / .AppImage)"
+  },
+  "ui.update.step3": {
+    "zh": "安装后替换旧版本即可", "en": "Install to replace the old version", "zh-TW": "安裝後替換舊版本即可",
+    "ko": "설치하여 이전 버전을 교체", "ja": "インストールして旧バージョンを置き換え", "de": "Installieren, um die alte Version zu ersetzen",
+    "es": "Instale para reemplazar la versión anterior", "fr": "Installez pour remplacer l'ancienne version", "it": "Installa per sostituire la vecchia versione",
+    "da": "Installér for at erstatte den gamle version", "pl": "Zainstaluj, aby zastąpić starą wersję", "ru": "Установите для замены старой версии",
+    "ar": "قم بالتثبيت لاستبدال الإصدار القديم", "no": "Installer for å erstatte den gamle versjonen", "pt-BR": "Instale para substituir a versão antiga",
+    "th": "ติดตั้งเพื่อแทนที่เวอร์ชันเก่า", "tr": "Eski sürümü değiştirmek için yükleyin", "uk": "Встановіть для заміни старої версії"
+  },
+  "ui.update.goReleases": {
+    "zh": "前往 GitHub Releases", "en": "Go to GitHub Releases", "zh-TW": "前往 GitHub Releases",
+    "ko": "GitHub Releases로 이동", "ja": "GitHub Releases へ", "de": "Zu GitHub Releases",
+    "es": "Ir a GitHub Releases", "fr": "Aller sur GitHub Releases", "it": "Vai a GitHub Releases",
+    "da": "Gå til GitHub Releases", "pl": "Przejdź do GitHub Releases", "ru": "Перейти к GitHub Releases",
+    "ar": "انتقل إلى GitHub Releases", "no": "Gå til GitHub Releases", "pt-BR": "Ir para GitHub Releases",
+    "th": "ไปที่ GitHub Releases", "tr": "GitHub Releases'a git", "uk": "Перейти до GitHub Releases"
   },
   "ui.update.completed": {
     "zh": "已更新到 v{version}，下次启动生效",

@@ -8,7 +8,7 @@ CC Viewer starts an HTTP server on your machine and generates a **local network 
 
 Common reasons:
 
-1. **Not on the same network** — Your phone and computer must be connected to the same WiFi
+1. **Not on the same network** — Your phone and computer must be connected to the same WiFi (same router / same network name)
 2. **Firewall blocking** — macOS/Windows firewall may block incoming connections; allow CC Viewer's port
 3. **Corporate/school network isolation** — Some enterprise networks isolate device-to-device communication (AP isolation)
 4. **VPN interference** — A VPN on either device may disrupt the network path

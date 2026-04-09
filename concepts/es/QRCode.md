@@ -6,7 +6,7 @@ CC Viewer inicia un servidor HTTP y genera una **dirección LAN** (ej: `http://1
 
 ## ¿Por qué no puedo conectar?
 
-1. **No están en la misma red** — El móvil y el ordenador deben estar en el mismo WiFi
+1. **No están en la misma red** — El móvil y el ordenador deben estar en el mismo WiFi (mismo router/mismo nombre de red)
 2. **Bloqueo del firewall** — El firewall del sistema puede bloquear conexiones entrantes
 3. **Aislamiento de red corporativa** — El aislamiento AP puede impedir la comunicación entre dispositivos
 4. **Interferencia VPN** — Una VPN puede interrumpir la ruta de red

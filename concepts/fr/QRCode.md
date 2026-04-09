@@ -6,7 +6,7 @@ CC Viewer démarre un serveur HTTP et génère une **adresse LAN** (ex : `http:/
 
 ## Pourquoi la connexion échoue ?
 
-1. **Pas sur le même réseau** — Le mobile et l'ordinateur doivent être sur le même WiFi
+1. **Pas sur le même réseau** — Le mobile et l'ordinateur doivent être sur le même WiFi (même routeur/même nom de réseau)
 2. **Blocage du pare-feu** — Le pare-feu du système peut bloquer les connexions entrantes
 3. **Isolation réseau d'entreprise** — L'isolation AP peut empêcher la communication entre appareils
 4. **Interférence VPN** — Un VPN peut perturber le chemin réseau

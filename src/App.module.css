@@ -257,6 +257,20 @@
   color: var(--text-tertiary);
 }
 
+.footerVersionNew {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.footerVersionNew:hover {
+  color: var(--color-success);
+}
+
+.newBadge {
+  vertical-align: middle;
+}
+
 .footerDivider {
   color: var(--border-secondary);
 }

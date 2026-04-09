@@ -83,6 +83,7 @@ class TerminalPanel extends React.Component {
     this.ws = null;
     this.resizeObserver = null;
     this.state = {
+      terminalFocused: false,
       agentTeamEnabled: false,
       agentTeamPopoverOpen: false,
       presetModalVisible: false,
@@ -147,6 +148,10 @@ class TerminalPanel extends React.Component {
   }
 
   componentWillUnmount() {
+    if (this.terminal?.textarea) {
+      this.terminal.textarea.removeEventListener('focus', this._handleTermFocus);
+      this.terminal.textarea.removeEventListener('blur', this._handleTermBlur);
+    }
     if (this._themeObserver) { this._themeObserver.disconnect(); this._themeObserver = null; }
     window.removeEventListener('ccv-presets-changed', this._onPresetsChanged);
     window.removeEventListener('ccv-focus-terminal', this._onFocusTerminal);
@@ -200,6 +205,15 @@ class TerminalPanel extends React.Component {
     this.terminal.unicode.activeVersion = '11';
 
     this.terminal.open(this.containerRef.current);
+
+    // 终端 focus/blur → 边框高亮 (xterm v6 removed onFocus/onBlur, use DOM events)
+    this._handleTermFocus = () => this.setState({ terminalFocused: true });
+    this._handleTermBlur = () => this.setState({ terminalFocused: false });
+    const termTextarea = this.terminal.textarea;
+    if (termTextarea) {
+      termTextarea.addEventListener('focus', this._handleTermFocus);
+      termTextarea.addEventListener('blur', this._handleTermBlur);
+    }
 
     // 启用 WebGL 渲染器，GPU 加速绘制，失败时自动回退 Canvas
     // iOS 移动端 WebGL 性能差，直接使用 Canvas 渲染器
@@ -883,7 +897,7 @@ class TerminalPanel extends React.Component {
   render() {
     const { pendingImages, onRemovePendingImage } = this.props;
     return (
-      <div className={styles.terminalPanel}>
+      <div className={`${styles.terminalPanel}${this.state.terminalFocused ? ` ${styles.terminalPanelFocused}` : ''}`}>
         <div ref={this.containerRef} className={styles.terminalContainer} />
         {pendingImages?.length > 0 && (
           <div className={styles.pendingFileStrip}>
