@@ -136,6 +136,22 @@ export function isSkillText(text) {
 /**
  * 判断文本是否为系统注入文本（不应作为用户消息展示）
  */
+/**
+ * Strip known system/command tags from a text block, returning only user-authored content.
+ * Used to extract user input embedded in system-reminder-wrapped blocks (e.g., /ultraplan).
+ */
+function stripSystemTags(text) {
+  if (!text) return '';
+  return text
+    .replace(/<system-reminder>[\s\S]*?<\/system-reminder>/gi, '')
+    .replace(/<local-command-caveat>[\s\S]*?<\/local-command-caveat>/gi, '')
+    .replace(/<local-command-stdout>[\s\S]*?<\/local-command-stdout>/gi, '')
+    .replace(/<command-name>[\s\S]*?<\/command-name>/gi, '')
+    .replace(/<command-message>[\s\S]*?<\/command-message>/gi, '')
+    .replace(/<command-args>[\s\S]*?<\/command-args>/gi, '')
+    .trim();
+}
+
 export function isSystemText(text) {
   if (!text) return true;
   const trimmed = text.trim();
@@ -179,6 +195,16 @@ export function classifyUserContent(content) {
 
   // 过滤出非系统文本块
   let textBlocks = content.filter(b => b.type === 'text' && !isSystemText(b.text));
+
+  // 二次提取：从被过滤的系统块中提取嵌入的用户文本
+  // (e.g., /ultraplan 将 skill 指令和用户输入合并在同一 <system-reminder> 块中)
+  for (const b of content) {
+    if (b.type !== 'text' || !isSystemText(b.text)) continue;
+    const userText = stripSystemTags(b.text);
+    if (userText) {
+      textBlocks.push({ ...b, text: userText });
+    }
+  }
 
   // 过滤掉 command 相关块
   if (hasCommand) {

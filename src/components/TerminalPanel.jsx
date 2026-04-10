@@ -1,5 +1,5 @@
 import React from 'react';
-import { message, Tooltip, Popover, Button, Modal, Checkbox, Radio } from 'antd';
+import { message, Tooltip, Popover, Button, Modal, Checkbox, Switch } from 'antd';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebglAddon } from '@xterm/addon-webgl';
@@ -55,7 +55,10 @@ function UploadIcon() {
 function UltraplanIcon() {
   return (
     <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="12 2 22 12 12 22 2 12"/>
+      <circle cx="12" cy="12" r="2.5"/>
+      <ellipse cx="12" cy="12" rx="10" ry="4"/>
+      <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(60 12 12)"/>
+      <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(120 12 12)"/>
     </svg>
   );
 }
@@ -925,6 +928,29 @@ class TerminalPanel extends React.Component {
     input.click();
   };
 
+  handleUltraplanPaste = async (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (!file) return;
+        try {
+          const path = await uploadFileAndGetPath(file);
+          const name = file.name || `paste-${Date.now()}.png`;
+          this.setState(prev => ({
+            ultraplanFiles: [...prev.ultraplanFiles, { name, path }],
+          }));
+        } catch (err) {
+          console.error('Ultraplan paste upload failed:', err);
+          message.error(err?.message || 'Upload failed');
+        }
+        return;
+      }
+    }
+  };
+
   handleUltraplanRemoveFile = (idx) => {
     this.setState(prev => ({
       ultraplanFiles: prev.ultraplanFiles.filter((_, i) => i !== idx),
@@ -1039,29 +1065,40 @@ class TerminalPanel extends React.Component {
                 <div className={styles.ultraplanPanel}>
                   <div className={styles.ultraplanHeader}>{t('ui.ultraplan.title')}</div>
                   <div className={styles.ultraplanVariantRow}>
-                    <Radio.Group size="small" value={this.state.ultraplanVariant} onChange={(e) => this.setState({ ultraplanVariant: e.target.value })}>
-                      <Radio.Button value="auto">AutoModel</Radio.Button>
-                      <Radio.Button value="simple">level-1</Radio.Button>
-                      <Radio.Button value="visual">level-2</Radio.Button>
-                      <Radio.Button value="subagents">◇level-3</Radio.Button>
-                    </Radio.Group>
-                    {this.state.ultraplanFiles.length > 0 && (
-                      <div className={styles.ultraplanFileList}>
-                        {this.state.ultraplanFiles.map((f, i) => (
+                    <span className={styles.ultraplanModeLabel}>
+                      {this.state.ultraplanVariant === 'subagents' ? t('ui.ultraplan.modeForced') : t('ui.ultraplan.modeAuto')}
+                    </span>
+                    <Switch
+                      size="small"
+                      checked={this.state.ultraplanVariant === 'subagents'}
+                      onChange={(checked) => this.setState({ ultraplanVariant: checked ? 'subagents' : 'auto' })}
+                    />
+                  </div>
+                  {this.state.ultraplanFiles.length > 0 && (
+                    <div className={styles.ultraplanFileList}>
+                      {this.state.ultraplanFiles.map((f, i) => {
+                        const isImage = /\.(png|jpe?g|gif|svg|bmp|webp|avif|ico|icns)$/i.test(f.name);
+                        return isImage ? (
+                          <div key={i} className={styles.ultraplanImageItem} title={f.name}>
+                            <img src={apiUrl(`/api/file-raw?path=${encodeURIComponent(f.path)}`)} className={styles.ultraplanImageThumb} alt={f.name} />
+                            <button className={styles.ultraplanImageRemove} onClick={() => this.handleUltraplanRemoveFile(i)}>&times;</button>
+                          </div>
+                        ) : (
                           <span key={i} className={styles.ultraplanFileChip} title={f.name}>
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                             <span className={styles.ultraplanFileName}>{f.name}</span>
                             <span className={styles.ultraplanFileRemove} onClick={() => this.handleUltraplanRemoveFile(i)}>×</span>
                           </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  )}
                   <textarea
                     className={styles.ultraplanTextarea}
                     value={this.state.ultraplanPrompt}
                     onChange={(e) => this.setState({ ultraplanPrompt: e.target.value })}
                     onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && (this.state.ultraplanPrompt.trim() || this.state.ultraplanFiles.length > 0)) { e.preventDefault(); this.handleUltraplanSend(); } }}
+                    onPaste={this.handleUltraplanPaste}
                     placeholder={t('ui.ultraplan.placeholder')}
                     rows={5}
                     autoFocus
@@ -1075,7 +1112,7 @@ class TerminalPanel extends React.Component {
             >
               <button className={styles.toolbarBtn} onClick={() => this.setState({ ultraplanOpen: true })} title={t('ui.ultraplan')}>
                 <UltraplanIcon />
-                <span>Ultraplan</span>
+                <span>UltraPlan</span>
               </button>
             </Popover>
             <button className={`${styles.toolbarBtn} ${styles.toolbarBtnRight}`} onClick={() => this.setState({ presetModalVisible: true })} title={t('ui.terminal.presetShortcuts')}>

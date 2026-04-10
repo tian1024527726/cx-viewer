@@ -1415,8 +1415,8 @@ class ChatView extends React.Component {
     let options = null;
 
     // Pattern 1: Numbered options — "Question?\n  ❯ 1. Option A\n    2. Option B"
-    // Allows an optional trailing hint line (e.g. "Enter to confirm · Esc to cancel")
-    const match1 = buf.match(/([^\n]*\?)\s*\n((?:\s*[❯>]?\s*\d+\.\s+[^\n]+\n?){2,})(?:\n[^\d❯>\n][^\n]*)?$/);
+    // Allows trailing blank lines and hint lines (e.g. "\n\nEsc to cancel · Tab to amend")
+    const match1 = buf.match(/([^\n]*\?)\s*\n((?:\s*[❯>]?\s*\d+\.\s+[^\n]+\n?){2,})(?:\n[^\d❯>\n][^\n]*|\n)*$/);
     if (match1) {
       question = match1[1].trim();
       const optionLines = match1[2].match(/\s*([❯>])?\s*(\d+)\.\s+([^\n]+)/g);
@@ -1435,9 +1435,9 @@ class ChatView extends React.Component {
     // Pattern 2: Non-numbered cursor-based options (Ink Select) —
     // "Some prompt text\n  ❯ Allow once\n    Deny"
     // Question line may or may not end with "?"
-    // Allows an optional trailing hint line (e.g. "Enter to confirm · Esc to cancel")
+    // Allows trailing blank lines and hint lines (e.g. "\n\nEsc to cancel · Tab to amend")
     if (!options) {
-      const match2 = buf.match(/([^\n]+)\n((?:\s+[❯>]?\s+[^\n]+\n?){2,})(?:\n[^\s❯>\n][^\n]*)?$/);
+      const match2 = buf.match(/([^\n]+)\n((?:\s+[❯>]?\s+[^\n]+\n?){2,})(?:\n[^\s❯>\n][^\n]*|\n)*$/);
       if (match2) {
         const candidateQ = match2[1].trim();
         const block = match2[2];

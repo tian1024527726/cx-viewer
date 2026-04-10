@@ -852,7 +852,7 @@ class ChatMessage extends React.Component {
             innerContent.push(
               <React.Fragment key={`tr-denied-${tu.id}`}>
                 {tr.isUltraplan ? (
-                  <div className={styles.ultraplanBadge}>◇ Ultraplan</div>
+                  <div className={styles.ultraplanBadge}>◇ UltraPlan</div>
                 ) : (
                   <div className={`${styles.dangerApprovalBox} ${styles.dangerApprovalBoxDenied}`}>
                     <span className={styles.dangerDeniedBadge}>✗ {t('ui.dangerDenied')}</span>
@@ -869,7 +869,7 @@ class ChatMessage extends React.Component {
             innerContent.push(
               <React.Fragment key={`tr-denied-${tu.id}`}>
                 {tr.isUltraplan ? (
-                  <div className={styles.ultraplanBadge}>◇ Ultraplan</div>
+                  <div className={styles.ultraplanBadge}>◇ UltraPlan</div>
                 ) : (
                   <div className={`${styles.dangerApprovalBox} ${styles.dangerApprovalBoxDenied}`}>
                     <span className={styles.dangerDeniedBadge}>✗ {t('ui.dangerDenied')}</span>

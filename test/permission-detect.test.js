@@ -20,8 +20,8 @@ function detectPrompt(rawBuf) {
   let question = null;
   let options = null;
 
-  // Pattern 1: Numbered options
-  const match1 = buf.match(/([^\n]*\?)\s*\n((?:\s*[❯>]?\s*\d+\.\s+[^\n]+\n?){2,})$/);
+  // Pattern 1: Numbered options (allows trailing blank lines + hint lines)
+  const match1 = buf.match(/([^\n]*\?)\s*\n((?:\s*[❯>]?\s*\d+\.\s+[^\n]+\n?){2,})(?:\n[^\d❯>\n][^\n]*|\n)*$/);
   if (match1) {
     question = match1[1].trim();
     const optionLines = match1[2].match(/\s*([❯>])?\s*(\d+)\.\s+([^\n]+)/g);
@@ -33,9 +33,9 @@ function detectPrompt(rawBuf) {
     }
   }
 
-  // Pattern 2: Non-numbered cursor-based (Ink Select)
+  // Pattern 2: Non-numbered cursor-based (Ink Select, allows trailing blank lines + hint lines)
   if (!options) {
-    const match2 = buf.match(/([^\n]+)\n((?:\s+[❯>]?\s+[^\n]+\n?){2,})$/);
+    const match2 = buf.match(/([^\n]+)\n((?:\s+[❯>]?\s+[^\n]+\n?){2,})(?:\n[^\s❯>\n][^\n]*|\n)*$/);
     if (match2) {
       const candidateQ = match2[1].trim();
       const block = match2[2];
@@ -154,6 +154,21 @@ describe('Permission prompt detection', () => {
       assert.ok(result, 'Should detect bash permission');
       assert.ok(isDangerousOperationPrompt(result), 'Should classify as dangerous');
       console.log('  ✓ Detected:', result.question);
+    });
+
+    it('B1b: Bash prompt with trailing blank line + hint (subAgent format)', () => {
+      const raw = `Do you want to proceed?
+❯ 1. Yes
+  2. No
+
+Esc to cancel · Tab to amend · ctrl+e to explain
+`;
+      const result = detectPrompt(raw);
+      assert.ok(result, 'Should detect prompt with trailing blank line + hint');
+      assert.strictEqual(result.question, 'Do you want to proceed?');
+      assert.strictEqual(result.options.length, 2);
+      assert.ok(isDangerousOperationPrompt(result), 'Should classify as dangerous');
+      console.log('  ✓ Detected with hint:', result.question, `(${result.options.length} options)`);
     });
 
     it('B2: Bash with specific command shown', () => {
