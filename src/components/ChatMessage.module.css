@@ -406,6 +406,48 @@
 
 /* === Compact summary label === */
 
+.teammateStatusRow {
+  display: flex;
+  justify-content: flex-start;
+  padding: 2px 0;
+}
+
+.teammateStatusRowCenter {
+  display: flex;
+  justify-content: center;
+  padding: 2px 24px;
+}
+
+.teammateStatusBubble {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 10px;
+  background: var(--bg-container-alt);
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.4;
+  max-width: 80%;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sendMessageBlock {
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--bg-container-alt);
+  border: 1px solid var(--border-light);
+  margin: 4px 0;
+}
+
+.sendMessageHeader {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
 .compactLabel {
   font-size: 12px;
   color: var(--color-primary-lighter);

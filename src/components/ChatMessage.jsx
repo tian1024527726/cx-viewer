@@ -560,6 +560,33 @@ class ChatMessage extends React.Component {
       );
     }
 
+    // SendMessage → render message content directly (no tool shell)
+    if (tu.name === 'SendMessage' && inp.message != null) {
+      const to = inp.to || '';
+      const msg = inp.message;
+      // JSON lifecycle signal → compact status bubble
+      if (typeof msg === 'object' && msg.type) {
+        const statusKey = `ui.teammate.${msg.type}`;
+        const statusText = t(statusKey, { name: to });
+        const display = statusText === statusKey ? `${to}: ${msg.type}` : statusText;
+        return (
+          <div key={tu.id} className={styles.teammateStatusRow}>
+            <span className={styles.teammateStatusBubble}>{display}</span>
+          </div>
+        );
+      }
+      // String message → direct markdown rendering with small header
+      if (typeof msg === 'string') {
+        const header = inp.summary ? `→ ${to} — ${inp.summary}` : `→ ${to}`;
+        return (
+          <div key={tu.id} className={styles.sendMessageBlock}>
+            <div className={styles.sendMessageHeader}>{header}</div>
+            <div className="chat-md" dangerouslySetInnerHTML={{ __html: renderMarkdown(msg) }} />
+          </div>
+        );
+      }
+    }
+
     // Default: structured key-value display
     let toolLabel = tu.name;
     const keys = Object.keys(inp);
@@ -801,7 +828,7 @@ class ChatMessage extends React.Component {
     const simplify = !this.props.showFullToolContent;
     let simplifiedLabelAdded = false;
     toolUseBlocks.forEach((tu, tuIdx) => {
-      const isFullDisplayTool = tu.name === 'Edit' || tu.name === 'Write' || tu.name === 'EnterPlanMode' || tu.name === 'ExitPlanMode' || tu.name === 'AskUserQuestion' || tu.name === 'Agent' || tu.name === 'TaskCreate';
+      const isFullDisplayTool = tu.name === 'Edit' || tu.name === 'Write' || tu.name === 'EnterPlanMode' || tu.name === 'ExitPlanMode' || tu.name === 'AskUserQuestion' || tu.name === 'Agent' || tu.name === 'TaskCreate' || tu.name === 'SendMessage';
       if (simplify && !isFullDisplayTool) {
         // 简化模式：首个标签前加 "使用工具: " 标签
         if (!simplifiedLabelAdded) {
@@ -962,6 +989,44 @@ class ChatMessage extends React.Component {
     );
   }
 
+  renderTeammateMessage() {
+    const { text, label, timestamp } = this.props;
+    const timeStr = this.formatTime(timestamp);
+    const ta = getTeammateAvatar(label);
+
+    return (
+      <div className={styles.messageRowEnd}>
+        <div className={styles.contentColLimited}>
+          <div className={styles.labelRowEnd}>
+            {timeStr && <Text className={styles.timeText}>{timeStr}</Text>}
+            {this.renderViewRequestBtn()}
+            <Text type="secondary" className={styles.labelTextRight}>{label || 'Teammate'}</Text>
+          </div>
+          {this.renderHighlightBubble(styles.bubbleAssistant, (
+            <div className="chat-md" dangerouslySetInnerHTML={{ __html: renderMarkdown(text || '') }} />
+          ))}
+        </div>
+        <div className={styles.avatar} style={{ background: ta ? ta.color : 'var(--bg-sub-avatar)' }}
+          dangerouslySetInnerHTML={{ __html: ta ? ta.svg : getSvgAvatar('sub') }}
+        />
+      </div>
+    );
+  }
+
+  renderTeammateStatus() {
+    const { label, toolName } = this.props;
+    const statusKey = `ui.teammate.${toolName}`;
+    const statusText = t(statusKey, { name: label || 'Teammate' });
+    const display = statusText === statusKey
+      ? `${label || 'Teammate'}: ${toolName}`
+      : statusText;
+    return (
+      <div className={styles.teammateStatusRowCenter}>
+        <span className={styles.teammateStatusBubble}>{display}</span>
+      </div>
+    );
+  }
+
   renderPlanPromptMessage() {
     const { text, timestamp, modelInfo } = this.props;
     const timeStr = this.formatTime(timestamp);
@@ -1014,6 +1079,8 @@ class ChatMessage extends React.Component {
     if (role === 'skill-loaded') return this.renderSkillLoadedMessage();
     if (role === 'plan-prompt') return this.renderPlanPromptMessage();
     if (role === 'assistant') return this.renderAssistantMessage();
+    if (role === 'teammate-message') return this.renderTeammateMessage();
+    if (role === 'teammate-status') return this.renderTeammateStatus();
     if (role === 'sub-agent-chat') return this.renderSubAgentChatMessage();
     if (role === 'sub-agent') return this.renderSubAgentMessage();
     return null;

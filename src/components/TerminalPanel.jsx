@@ -1055,66 +1055,85 @@ class TerminalPanel extends React.Component {
                 </button>
               </Popover>
             )}
-            <Popover
-              trigger="click"
-              placement="top"
-              open={this.state.ultraplanOpen}
-              onOpenChange={(v) => { if (!v) this.setState({ ultraplanOpen: false }); }}
-              overlayInnerStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-hover)', borderRadius: 8, padding: 0, width: 420 }}
-              content={
-                <div className={styles.ultraplanPanel}>
-                  <div className={styles.ultraplanHeader}>{t('ui.ultraplan.title')}</div>
-                  <div className={styles.ultraplanVariantRow}>
-                    <span className={styles.ultraplanModeLabel}>
-                      {this.state.ultraplanVariant === 'subagents' ? t('ui.ultraplan.modeForced') : t('ui.ultraplan.modeAuto')}
-                    </span>
-                    <Switch
-                      size="small"
-                      checked={this.state.ultraplanVariant === 'subagents'}
-                      onChange={(checked) => this.setState({ ultraplanVariant: checked ? 'subagents' : 'auto' })}
-                    />
-                  </div>
-                  {this.state.ultraplanFiles.length > 0 && (
-                    <div className={styles.ultraplanFileList}>
-                      {this.state.ultraplanFiles.map((f, i) => {
-                        const isImage = /\.(png|jpe?g|gif|svg|bmp|webp|avif|ico|icns)$/i.test(f.name);
-                        return isImage ? (
-                          <div key={i} className={styles.ultraplanImageItem} title={f.name}>
-                            <img src={apiUrl(`/api/file-raw?path=${encodeURIComponent(f.path)}`)} className={styles.ultraplanImageThumb} alt={f.name} />
-                            <button className={styles.ultraplanImageRemove} onClick={() => this.handleUltraplanRemoveFile(i)}>&times;</button>
-                          </div>
-                        ) : (
-                          <span key={i} className={styles.ultraplanFileChip} title={f.name}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                            <span className={styles.ultraplanFileName}>{f.name}</span>
-                            <span className={styles.ultraplanFileRemove} onClick={() => this.handleUltraplanRemoveFile(i)}>×</span>
-                          </span>
-                        );
-                      })}
+            {this.state.agentTeamEnabled ? (
+              <Popover
+                trigger="click"
+                placement="top"
+                open={this.state.ultraplanOpen}
+                onOpenChange={(v) => { if (!v) this.setState({ ultraplanOpen: false }); }}
+                overlayInnerStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-hover)', borderRadius: 8, padding: 0, width: 420 }}
+                content={
+                  <div className={styles.ultraplanPanel}>
+                    <div className={styles.ultraplanHeader}>{t('ui.ultraplan.title')}</div>
+                    <div className={styles.ultraplanVariantRow}>
+                      <span className={styles.ultraplanModeLabel}>
+                        {this.state.ultraplanVariant === 'subagents' ? t('ui.ultraplan.modeForced') : t('ui.ultraplan.modeAuto')}
+                      </span>
+                      <Switch
+                        size="small"
+                        checked={this.state.ultraplanVariant === 'subagents'}
+                        onChange={(checked) => this.setState({ ultraplanVariant: checked ? 'subagents' : 'auto' })}
+                      />
                     </div>
-                  )}
-                  <textarea
-                    className={styles.ultraplanTextarea}
-                    value={this.state.ultraplanPrompt}
-                    onChange={(e) => this.setState({ ultraplanPrompt: e.target.value })}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && (this.state.ultraplanPrompt.trim() || this.state.ultraplanFiles.length > 0)) { e.preventDefault(); this.handleUltraplanSend(); } }}
-                    onPaste={this.handleUltraplanPaste}
-                    placeholder={t('ui.ultraplan.placeholder')}
-                    rows={5}
-                    autoFocus
-                  />
-                  <div className={styles.ultraplanFooter}>
-                    <button className={styles.ultraplanSendBtn} disabled={!this.state.ultraplanPrompt.trim() && this.state.ultraplanFiles.length === 0} onClick={this.handleUltraplanSend}>{t('ui.ultraplan.send')}</button>
-                    <button className={styles.ultraplanUploadBtn} onClick={this.handleUltraplanUpload}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>{t('ui.ultraplan.upload')}</button>
+                    {this.state.ultraplanFiles.length > 0 && (
+                      <div className={styles.ultraplanFileList}>
+                        {this.state.ultraplanFiles.map((f, i) => {
+                          const isImage = /\.(png|jpe?g|gif|svg|bmp|webp|avif|ico|icns)$/i.test(f.name);
+                          return isImage ? (
+                            <div key={i} className={styles.ultraplanImageItem} title={f.name}>
+                              <img src={apiUrl(`/api/file-raw?path=${encodeURIComponent(f.path)}`)} className={styles.ultraplanImageThumb} alt={f.name} />
+                              <button className={styles.ultraplanImageRemove} onClick={() => this.handleUltraplanRemoveFile(i)}>&times;</button>
+                            </div>
+                          ) : (
+                            <span key={i} className={styles.ultraplanFileChip} title={f.name}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                              <span className={styles.ultraplanFileName}>{f.name}</span>
+                              <span className={styles.ultraplanFileRemove} onClick={() => this.handleUltraplanRemoveFile(i)}>×</span>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <textarea
+                      className={styles.ultraplanTextarea}
+                      value={this.state.ultraplanPrompt}
+                      onChange={(e) => this.setState({ ultraplanPrompt: e.target.value })}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && (this.state.ultraplanPrompt.trim() || this.state.ultraplanFiles.length > 0)) { e.preventDefault(); this.handleUltraplanSend(); } }}
+                      onPaste={this.handleUltraplanPaste}
+                      placeholder={t('ui.ultraplan.placeholder')}
+                      rows={5}
+                      autoFocus
+                    />
+                    <div className={styles.ultraplanFooter}>
+                      <button className={styles.ultraplanSendBtn} disabled={!this.state.ultraplanPrompt.trim() && this.state.ultraplanFiles.length === 0} onClick={this.handleUltraplanSend}>{t('ui.ultraplan.send')}</button>
+                      <button className={styles.ultraplanUploadBtn} onClick={this.handleUltraplanUpload}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>{t('ui.ultraplan.upload')}</button>
+                    </div>
                   </div>
-                </div>
-              }
-            >
-              <button className={styles.toolbarBtn} onClick={() => this.setState({ ultraplanOpen: true })} title={t('ui.ultraplan')}>
-                <UltraplanIcon />
-                <span>UltraPlan</span>
-              </button>
-            </Popover>
+                }
+              >
+                <button className={styles.toolbarBtn} onClick={() => this.setState({ ultraplanOpen: true })} title={t('ui.ultraplan')}>
+                  <UltraplanIcon />
+                  <span>UltraPlan</span>
+                </button>
+              </Popover>
+            ) : (
+              <Popover
+                trigger="click"
+                placement="top"
+                overlayInnerStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-hover)', borderRadius: 8, padding: '12px 16px', maxWidth: 360 }}
+                content={
+                  <div>
+                    <div className={styles.agentTeamDisabledTip}>{t('ui.ultraplan.agentTeamRequired')}</div>
+                    <Button type="primary" size="small" loading={this.state.agentTeamEnabling} disabled={this.state.agentTeamEnabling} onClick={this.handleEnableAgentTeam}>{this.state.agentTeamEnabling ? t('ui.terminal.agentTeamEnabling') : t('ui.terminal.agentTeamEnable')}</Button>
+                  </div>
+                }
+              >
+                <button className={`${styles.toolbarBtn} ${styles.toolbarBtnDisabled}`} title={t('ui.ultraplan')}>
+                  <UltraplanIcon />
+                  <span>UltraPlan</span>
+                </button>
+              </Popover>
+            )}
             <button className={`${styles.toolbarBtn} ${styles.toolbarBtnRight}`} onClick={() => this.setState({ presetModalVisible: true })} title={t('ui.terminal.presetShortcuts')}>
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             </button>

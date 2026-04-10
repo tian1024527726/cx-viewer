@@ -149,6 +149,7 @@ function stripSystemTags(text) {
     .replace(/<command-name>[\s\S]*?<\/command-name>/gi, '')
     .replace(/<command-message>[\s\S]*?<\/command-message>/gi, '')
     .replace(/<command-args>[\s\S]*?<\/command-args>/gi, '')
+    .replace(/<teammate-message[\s\S]*?<\/teammate-message>/gi, '')
     .trim();
 }
 
@@ -176,7 +177,43 @@ export function isSystemText(text) {
  *   skillBlocks — skill 加载的文本块
  */
 export function classifyUserContent(content) {
-  if (!Array.isArray(content)) return { commands: [], textBlocks: [], skillBlocks: [] };
+  if (!Array.isArray(content)) return { commands: [], textBlocks: [], skillBlocks: [], teammateBlocks: [] };
+
+  // Extract <teammate-message> blocks from user content
+  const teammateBlocks = [];
+  for (const b of content) {
+    if (b.type !== 'text') continue;
+    const text = b.text || '';
+    const re = /<teammate-message\s+([^>]*)>([\s\S]*?)<\/teammate-message>/gi;
+    let match;
+    while ((match = re.exec(text)) !== null) {
+      const attrs = match[1];
+      const body = match[2].trim();
+      const idMatch = attrs.match(/teammate_id="([^"]*)"/);
+      const colorMatch = attrs.match(/color="([^"]*)"/);
+      const summaryMatch = attrs.match(/summary="([^"]*)"/);
+      const tmId = idMatch ? idMatch[1] : 'teammate';
+      const tmColor = colorMatch ? colorMatch[1] : null;
+      // JSON lifecycle signals → compact status bubble
+      if (body.startsWith('{')) {
+        try {
+          const j = JSON.parse(body);
+          if (j && j.type) {
+            teammateBlocks.push({
+              id: tmId, color: tmColor, summary: null,
+              content: null, status: j.type, statusFrom: j.from || tmId,
+            });
+            continue;
+          }
+        } catch {}
+      }
+      teammateBlocks.push({
+        id: tmId, color: tmColor,
+        summary: summaryMatch ? summaryMatch[1] : null,
+        content: body, status: null,
+      });
+    }
+  }
 
   const hasCommand = content.some(b => b.type === 'text' && /<command-message>/i.test(b.text || ''));
 
@@ -217,7 +254,7 @@ export function classifyUserContent(content) {
     textBlocks = textBlocks.filter(b => !isSkillText(b.text));
   }
 
-  return { commands, textBlocks, skillBlocks };
+  return { commands, textBlocks, skillBlocks, teammateBlocks };
 }
 
 /**

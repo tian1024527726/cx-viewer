@@ -782,7 +782,7 @@ class ChatView extends React.Component {
           if (suggestionText && toolResults.length > 0) {
             // AskUserQuestion 的用户回复：跳过渲染（答案已在 assistant 侧问卷卡片上显示）
           } else {
-            const { commands, textBlocks, skillBlocks } = classifyUserContent(content);
+            const { commands, textBlocks, skillBlocks, teammateBlocks } = classifyUserContent(content);
             // 渲染 slash command 作为独立用户输入
             for (let ci = 0; ci < commands.length; ci++) {
               renderedMessages.push(
@@ -802,6 +802,22 @@ class ChatView extends React.Component {
               const isPlan = /Implement the following plan:/i.test(textBlocks[ti].text || '');
               renderedMessages.push(
                 <ChatMessage key={`${keyPrefix}-user-${mi}-${ti}`} role={isPlan ? 'plan-prompt' : 'user'} text={textBlocks[ti].text} timestamp={ts} userProfile={userProfile} modelInfo={modelInfo} {...viewReqProps} />
+              );
+            }
+            // 渲染 teammate-message 块
+            for (let tmi = 0; tmi < teammateBlocks.length; tmi++) {
+              const tm = teammateBlocks[tmi];
+              renderedMessages.push(
+                <ChatMessage
+                  key={`${keyPrefix}-teammate-${mi}-${tmi}`}
+                  role={tm.status ? 'teammate-status' : 'teammate-message'}
+                  text={tm.content}
+                  label={tm.status ? (tm.statusFrom || tm.id) : tm.id}
+                  toolName={tm.status || null}
+                  timestamp={ts}
+                  modelInfo={modelInfo}
+                  {...viewReqProps}
+                />
               );
             }
           }
