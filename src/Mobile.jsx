@@ -571,6 +571,7 @@ class Mobile extends AppBase {
             global={true}
             autoApproveSeconds={this.state.autoApproveSeconds}
             onAutoApproveChange={this.handleAutoApproveChange}
+            modelName={this.state.globalPermission.modelName}
           />
         )}
         {this.state.globalPlanApproval && (

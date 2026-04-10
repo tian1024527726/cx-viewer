@@ -1,8 +1,8 @@
 # Changelog
 
-## 1.6.134 (2026-04-09)
+## 1.6.134 (2026-04-10)
 
-- Change: auto-approve default countdown 10s → 3s (enabling auto-approve should feel fast; dropdown still offers 5/10/15/20/30/60s)
+- Feat: auto-approve default countdown varies by model family (Claude/OpenAI 3s, Gemini/DeepSeek/Qwen 5s, GLM/Kimi/MiniMax 10s, unknown 10s)
 
 ## 1.6.131 (2026-04-09)
 

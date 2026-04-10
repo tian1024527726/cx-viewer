@@ -292,6 +292,7 @@ class ChatView extends React.Component {
       if (this.state.pendingPermission) {
         this.props.onPendingPermission({
           permission: this.state.pendingPermission,
+          modelName: this._reqScanCache?.modelName,
           handlers: {
             allow: this.handlePermissionAllow,
             allowSession: this.props.sdkMode ? this.handlePermissionAllowSession : null,
@@ -2872,6 +2873,7 @@ class ChatView extends React.Component {
                 visible={!!this.state.pendingPermission}
                 autoApproveSeconds={this.props.autoApproveSeconds}
                 onAutoApproveChange={this.props.onAutoApproveChange}
+                modelName={this._reqScanCache?.modelName}
               />
             )}
             {!this.props.onPendingPlanApproval && this.state.pendingPlanApproval && (

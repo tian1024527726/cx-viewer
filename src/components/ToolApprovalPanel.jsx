@@ -1,10 +1,9 @@
 import React, { useMemo, useRef, useEffect, useCallback, useState } from 'react';
 import { t } from '../i18n';
+import { getAutoApproveDefault } from '../utils/helpers';
 import styles from './ToolApprovalPanel.module.css';
 
-const DEFAULT_AUTO_SECONDS = 3;
-
-function ToolApprovalPanel({ toolName, toolInput, requestId, onAllow, onAllowSession, onDeny, visible, global: isGlobal, autoApproveSeconds = 0, onAutoApproveChange }) {
+function ToolApprovalPanel({ toolName, toolInput, requestId, onAllow, onAllowSession, onDeny, visible, global: isGlobal, autoApproveSeconds = 0, onAutoApproveChange, modelName }) {
   const panelRef = useRef(null);
   const allowRef = useRef(null);
   const prevFocusRef = useRef(null);
@@ -67,9 +66,9 @@ function ToolApprovalPanel({ toolName, toolInput, requestId, onAllow, onAllowSes
   // 简化按钮：点击切换开启/关闭
   const handleAutoApproveToggle = useCallback(() => {
     if (onAutoApproveChange) {
-      onAutoApproveChange(autoApproveSeconds > 0 ? 0 : DEFAULT_AUTO_SECONDS);
+      onAutoApproveChange(autoApproveSeconds > 0 ? 0 : getAutoApproveDefault(modelName));
     }
-  }, [onAutoApproveChange, autoApproveSeconds]);
+  }, [onAutoApproveChange, autoApproveSeconds, modelName]);
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Escape') {
@@ -124,7 +123,7 @@ function ToolApprovalPanel({ toolName, toolInput, requestId, onAllow, onAllowSes
 
   const autoApproveBtnLabel = autoApproveSeconds > 0
     ? t('ui.permission.autoApprove.disable')
-    : t('ui.permission.autoApprove.enable', { seconds: DEFAULT_AUTO_SECONDS });
+    : t('ui.permission.autoApprove.enable', { seconds: getAutoApproveDefault(modelName) });
 
   return (
     <div ref={panelRef} className={`${isGlobal ? styles.panelGlobal : styles.panel}${exiting ? ` ${styles.exiting}` : ''}`} onKeyDown={handleKeyDown}>

@@ -281,6 +281,19 @@ export function getModelInfo(modelName) {
   };
 }
 
+// 按模型族的 tool use 可靠性分级，决定自动审批默认倒计时秒数
+const AUTO_APPROVE_DEFAULTS = {
+  Claude: 3, OpenAI: 3,                  // Tier 1: tool use 成熟
+  Gemini: 5, DeepSeek: 5, Qwen: 5,       // Tier 2: 原生支持，稍逊
+  GLM: 10, Kimi: 10, MiniMax: 10,        // Tier 3: 较新，保守
+};
+const FALLBACK_AUTO_SECONDS = 10;
+
+export function getAutoApproveDefault(modelName) {
+  const info = getModelInfo(modelName);
+  return (info && AUTO_APPROVE_DEFAULTS[info.provider]) || FALLBACK_AUTO_SECONDS;
+}
+
 export function getSvgAvatar(type) {
   if (type === 'user') {
     return '<svg viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>';
