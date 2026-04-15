@@ -236,6 +236,11 @@ async function handleRequest(req, res) {
   const url = parsedUrl.pathname;
   const method = req.method;
 
+  // Debug: log OTel requests to file (temporary)
+  if (url.startsWith('/v1/')) {
+    try { appendFileSync('/tmp/cxv-otel.log', `${new Date().toISOString()} ${method} ${url} ct=${req.headers['content-type']||'-'}\n`); } catch {}
+  }
+
   // WebSocket 路径不处理，交给 upgrade 事件
   if (url === '/ws/terminal') {
     return;
@@ -278,16 +283,17 @@ async function handleRequest(req, res) {
       }
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end('{}');
-    } catch (err) {
-      if (process.env.CXV_DEBUG) console.error('[OTel] Parse error:', err.message);
+    } catch {
+      // 可能是 protobuf 格式，暂时忽略
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end('{}');
     }
     return;
   }
 
-  // OTLP logs endpoint (Codex may also send logs)
-  if (url === '/v1/logs' && method === 'POST') {
+  // OTLP logs/metrics endpoints (Codex may also send these)
+  if ((url === '/v1/logs' || url === '/v1/metrics') && method === 'POST') {
+    console.error(`[OTel] Received ${method} ${url} (${req.headers['content-type'] || 'no-ct'})`);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end('{}');
     return;

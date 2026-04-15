@@ -300,14 +300,26 @@ async function runCliMode(extraCodexArgs = [], cwd) {
   // 启动日志监听和统计（startViewer 在 workspace 模式下跳过了这些）
   serverMod.initPostLaunch();
 
-  // 注入 OTel 配置，让 codex 将遥测数据发送到 cx-viewer
+  // 注入 OTel 配置到 config.toml，让 codex 将遥测数据发送到 cx-viewer
   const otelEndpoint = `http://127.0.0.1:${port}`;
-  const otelArgs = [
-    '-c', `otel.trace_exporter="otlp-http"`,
-    '-c', `otel.trace_exporter.otlp-http.protocol="json"`,
-    '-c', `otel.trace_exporter.otlp-http.endpoint="${otelEndpoint}"`,
-  ];
-  const codexArgsWithOtel = [...otelArgs, ...extraCodexArgs];
+  const codexConfigPath = resolve(homedir(), '.codex', 'config.toml');
+  let _otelConfigInjected = false;
+  const OTEL_MARKER = '# >>> CX-Viewer OTel >>>';
+  const OTEL_MARKER_END = '# <<< CX-Viewer OTel <<<';
+  try {
+    let configContent = existsSync(codexConfigPath) ? readFileSync(codexConfigPath, 'utf-8') : '';
+    // 清理旧的 OTel 注入
+    const otelRegex = new RegExp(`\\n?${OTEL_MARKER}[\\s\\S]*?${OTEL_MARKER_END}\\n?`, 'g');
+    configContent = configContent.replace(otelRegex, '\n');
+    // 追加 OTel 配置（使用内联表避免 TOML 路径冲突）
+    const otelBlock = `\n${OTEL_MARKER}\n[otel]\ntrace_exporter = { otlp-http = { protocol = "json", endpoint = "${otelEndpoint}" } }\n${OTEL_MARKER_END}\n`;
+    configContent = configContent.trimEnd() + otelBlock;
+    writeFileSync(codexConfigPath, configContent);
+    _otelConfigInjected = true;
+  } catch (err) {
+    console.error('[CX Viewer] Failed to inject OTel config:', err.message);
+  }
+  const codexArgsWithOtel = [...extraCodexArgs];
 
   // 启动 PTY 中的 codex（直接模式，通过 OTel 旁路捕获遥测数据）
   const { spawnCodex, killPty } = await import('./pty-manager.js');
@@ -337,8 +349,18 @@ async function runCliMode(extraCodexArgs = [], cwd) {
   }
 
   // 5. 注册退出处理
+  const cleanupOtelConfig = () => {
+    if (!_otelConfigInjected) return;
+    try {
+      let c = readFileSync(codexConfigPath, 'utf-8');
+      const re = new RegExp(`\\n?${OTEL_MARKER}[\\s\\S]*?${OTEL_MARKER_END}\\n?`, 'g');
+      c = c.replace(re, '\n');
+      writeFileSync(codexConfigPath, c.trimEnd() + '\n');
+    } catch {}
+  };
   const cleanup = () => {
     killPty();
+    cleanupOtelConfig();
     serverMod.stopViewer().finally(() => process.exit());
   };
   process.on('SIGINT', cleanup);
