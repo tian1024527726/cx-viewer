@@ -303,6 +303,9 @@ async function runCliMode(extraCodexArgs = [], cwd) {
 
   const port = serverMod.getPort();
 
+  // 标记工作区已启动（跳过前端工作区选择器）
+  serverMod.setWorkspaceLaunched(true);
+
   // 启动日志监听和统计（startViewer 在 workspace 模式下跳过了这些）
   serverMod.initPostLaunch();
 
