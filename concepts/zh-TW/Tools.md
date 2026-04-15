@@ -1,6 +1,6 @@
-# Claude Code 工具一覽
+# Codex 工具一覽
 
-Claude Code 透過 Anthropic API 的 tool_use 機制向模型提供一組內建工具。每次 MainAgent 請求的 `tools` 陣列中包含這些工具的完整 JSON Schema 定義，模型在回應中透過 `tool_use` content block 呼叫它們。
+Codex 透過 Anthropic API 的 tool_use 機制向模型提供一組內建工具。每次 MainAgent 請求的 `tools` 陣列中包含這些工具的完整 JSON Schema 定義，模型在回應中透過 `tool_use` content block 呼叫它們。
 
 以下是全部工具的分類索引。
 

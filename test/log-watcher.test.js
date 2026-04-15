@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { readLogFile, sendToClients } from '../lib/log-watcher.js';
 
 function makeTmpDir() {
-  const dir = join(tmpdir(), `ccv-logwatch-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const dir = join(tmpdir(), `cxv-logwatch-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(dir, { recursive: true });
   return dir;
 }

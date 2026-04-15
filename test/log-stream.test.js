@@ -40,7 +40,7 @@ function simulateInterceptorWrites(logFile, turns) {
 
     const entry = {
       timestamp: new Date(Date.now() + deltaCount * 1000).toISOString(),
-      url: 'https://api.anthropic.com/v1/messages',
+      url: 'https://api.openai.com/v1/messages',
       mainAgent: turn.mainAgent !== undefined ? turn.mainAgent : true,
       body: {
         model: 'claude-opus-4-6',

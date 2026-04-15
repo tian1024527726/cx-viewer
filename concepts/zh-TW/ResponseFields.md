@@ -41,7 +41,7 @@ Claude API `/v1/messages` 回應主體的欄位說明。
 | **ephemeral_5m_input_tokens** | 5 分鐘 TTL 的短期快取建立 token 數 |
 | **ephemeral_1h_input_tokens** | 1 小時 TTL 的長期快取建立 token 數 |
 
-> **關於快取計費**：`cache_read_input_tokens` 的單價遠低於 `input_tokens`，而 `cache_creation_input_tokens` 的單價略高於一般輸入。因此，在持續對話中保持高快取命中率可以顯著降低費用。透過 cc-viewer 的「命中率」指標可以直觀監控這一比例。
+> **關於快取計費**：`cache_read_input_tokens` 的單價遠低於 `input_tokens`，而 `cache_creation_input_tokens` 的單價略高於一般輸入。因此，在持續對話中保持高快取命中率可以顯著降低費用。透過 cx-viewer 的「命中率」指標可以直觀監控這一比例。
 
 ## stop_reason 含義
 

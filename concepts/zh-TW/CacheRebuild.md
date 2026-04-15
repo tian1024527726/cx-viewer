@@ -8,7 +8,7 @@ Anthropic 的 prompt caching 機制會將請求中的 system → tools → messa
 
 ## 快取重建原因分類
 
-cc-viewer 透過對比前後兩個 MainAgent 請求的 body，精確判斷快取重建的原因：
+cx-viewer 透過對比前後兩個 MainAgent 請求的 body，精確判斷快取重建的原因：
 
 | reason | 含義 | 判斷方式 |
 |--------|------|----------|
@@ -29,8 +29,8 @@ cc-viewer 透過對比前後兩個 MainAgent 請求的 body，精確判斷快取
 ## 常見場景
 
 - **`ttl`**：使用者暫停操作超過 5 分鐘後繼續，快取自然過期
-- **`system_change`**：Claude Code 更新了 system prompt（如載入新的 CLAUDE.md、project instructions 變化）
+- **`system_change`**：Codex 更新了 system prompt（如載入新的 CLAUDE.md、project instructions 變化）
 - **`tools_change`**：MCP server 連線/斷開導致可用工具列表變化
 - **`model_change`**：使用者透過 `/model` 命令切換模型
-- **`msg_truncated`**：對話過長觸發上下文視窗管理，Claude Code 截斷早期訊息
-- **`msg_modified`**：Claude Code 對歷史訊息做了編輯（如 `/compact` 壓縮摘要替換原始訊息）
+- **`msg_truncated`**：對話過長觸發上下文視窗管理，Codex 截斷早期訊息
+- **`msg_modified`**：Codex 對歷史訊息做了編輯（如 `/compact` 壓縮摘要替換原始訊息）

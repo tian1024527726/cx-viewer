@@ -6,9 +6,9 @@ import { homedir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { checkAndUpdate } from '../lib/updater.js';
 
-const CACHE_DIR = join(homedir(), '.claude', 'cc-viewer');
+const CACHE_DIR = join(homedir(), '.codex', 'cx-viewer');
 const CACHE_FILE = join(CACHE_DIR, 'update-check.json');
-const CC_SETTINGS_FILE = join(homedir(), '.claude', 'settings.json');
+const CC_SETTINGS_FILE = join(homedir(), '.codex', 'settings.json');
 
 // Save/restore helpers for cache file
 let savedCache = null;
@@ -62,7 +62,7 @@ function enableAutoUpdates() {
       settings = JSON.parse(readFileSync(CC_SETTINGS_FILE, 'utf-8'));
     }
     delete settings.autoUpdates;
-    mkdirSync(join(homedir(), '.claude'), { recursive: true });
+    mkdirSync(join(homedir(), '.codex'), { recursive: true });
     writeFileSync(CC_SETTINGS_FILE, JSON.stringify(settings, null, 2));
   } catch { }
 }
@@ -73,19 +73,19 @@ describe('checkAndUpdate — disabled', () => {
   let origEnv;
 
   beforeEach(() => {
-    origEnv = process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC;
+    origEnv = process.env.CODEX_DISABLE_NONESSENTIAL_TRAFFIC;
   });
 
   afterEach(() => {
     if (origEnv === undefined) {
-      delete process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC;
+      delete process.env.CODEX_DISABLE_NONESSENTIAL_TRAFFIC;
     } else {
-      process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = origEnv;
+      process.env.CODEX_DISABLE_NONESSENTIAL_TRAFFIC = origEnv;
     }
   });
 
-  it('returns disabled when CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC is set', async () => {
-    process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = '1';
+  it('returns disabled when CODEX_DISABLE_NONESSENTIAL_TRAFFIC is set', async () => {
+    process.env.CODEX_DISABLE_NONESSENTIAL_TRAFFIC = '1';
     const result = await checkAndUpdate();
     assert.equal(result.status, 'disabled');
     assert.equal(result.remoteVersion, null);
@@ -99,22 +99,22 @@ describe('checkAndUpdate — disabled via settings', () => {
   let origEnv;
 
   beforeEach(() => {
-    origEnv = process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC;
-    delete process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC;
+    origEnv = process.env.CODEX_DISABLE_NONESSENTIAL_TRAFFIC;
+    delete process.env.CODEX_DISABLE_NONESSENTIAL_TRAFFIC;
     backupSettings();
   });
 
   afterEach(() => {
     restoreSettings();
     if (origEnv === undefined) {
-      delete process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC;
+      delete process.env.CODEX_DISABLE_NONESSENTIAL_TRAFFIC;
     } else {
-      process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = origEnv;
+      process.env.CODEX_DISABLE_NONESSENTIAL_TRAFFIC = origEnv;
     }
   });
 
   it('returns disabled when settings.json has autoUpdates: false', async () => {
-    mkdirSync(join(homedir(), '.claude'), { recursive: true });
+    mkdirSync(join(homedir(), '.codex'), { recursive: true });
     writeFileSync(CC_SETTINGS_FILE, JSON.stringify({ autoUpdates: false }));
     const result = await checkAndUpdate();
     assert.equal(result.status, 'disabled');
@@ -129,8 +129,8 @@ describe('checkAndUpdate — skipped', () => {
   let origEnv;
 
   beforeEach(() => {
-    origEnv = process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC;
-    delete process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC;
+    origEnv = process.env.CODEX_DISABLE_NONESSENTIAL_TRAFFIC;
+    delete process.env.CODEX_DISABLE_NONESSENTIAL_TRAFFIC;
     backupSettings();
     enableAutoUpdates();
     backupCache();
@@ -140,9 +140,9 @@ describe('checkAndUpdate — skipped', () => {
     restoreCache();
     restoreSettings();
     if (origEnv === undefined) {
-      delete process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC;
+      delete process.env.CODEX_DISABLE_NONESSENTIAL_TRAFFIC;
     } else {
-      process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = origEnv;
+      process.env.CODEX_DISABLE_NONESSENTIAL_TRAFFIC = origEnv;
     }
   });
 
@@ -162,8 +162,8 @@ describe('checkAndUpdate — fetch', () => {
   let origFetch;
 
   beforeEach(() => {
-    origEnv = process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC;
-    delete process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC;
+    origEnv = process.env.CODEX_DISABLE_NONESSENTIAL_TRAFFIC;
+    delete process.env.CODEX_DISABLE_NONESSENTIAL_TRAFFIC;
     backupSettings();
     enableAutoUpdates();
     backupCache();
@@ -174,9 +174,9 @@ describe('checkAndUpdate — fetch', () => {
     restoreCache();
     restoreSettings();
     if (origEnv === undefined) {
-      delete process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC;
+      delete process.env.CODEX_DISABLE_NONESSENTIAL_TRAFFIC;
     } else {
-      process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = origEnv;
+      process.env.CODEX_DISABLE_NONESSENTIAL_TRAFFIC = origEnv;
     }
     globalThis.fetch = origFetch;
   });
@@ -206,7 +206,7 @@ describe('checkAndUpdate — fetch', () => {
   });
 
   it('currentVersion matches package.json', async () => {
-    process.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = '1';
+    process.env.CODEX_DISABLE_NONESSENTIAL_TRAFFIC = '1';
     const result = await checkAndUpdate();
     const pkgPath = join(import.meta.dirname, '..', 'package.json');
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));

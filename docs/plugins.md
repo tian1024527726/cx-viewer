@@ -1,21 +1,21 @@
-# CC-Viewer Plugin System
+# CX-Viewer Plugin System
 
 [中文版](./plugins.zh.md)
 
-CC-Viewer provides a lightweight plugin mechanism that allows injecting custom logic at specific lifecycle points. This is particularly useful for enterprise deployments — for example, replacing the QR code's LAN URL with a corporate proxy URL.
+CX-Viewer provides a lightweight plugin mechanism that allows injecting custom logic at specific lifecycle points. This is particularly useful for enterprise deployments — for example, replacing the QR code's LAN URL with a corporate proxy URL.
 
 ## Quick Start
 
 1. Create the plugins directory:
 
 ```bash
-mkdir -p ~/.claude/cc-viewer/plugins
+mkdir -p ~/.codex/cx-viewer/plugins
 ```
 
 2. Create a plugin file (`.js` or `.mjs`):
 
 ```javascript
-// ~/.claude/cc-viewer/plugins/my-plugin.js
+// ~/.codex/cx-viewer/plugins/my-plugin.js
 export default {
   name: 'my-plugin',
   hooks: {
@@ -27,17 +27,17 @@ export default {
 };
 ```
 
-3. Restart cc-viewer. The plugin loads automatically — no `npm install` needed.
+3. Restart cx-viewer. The plugin loads automatically — no `npm install` needed.
 
 ## Plugin Directory
 
 All plugins live in:
 
 ```
-~/.claude/cc-viewer/plugins/
+~/.codex/cx-viewer/plugins/
 ```
 
-This is `LOG_DIR/plugins/` — the same base directory cc-viewer uses for logs and preferences. Enterprise IT teams can pre-populate this directory for all users.
+This is `LOG_DIR/plugins/` — the same base directory cx-viewer uses for logs and preferences. Enterprise IT teams can pre-populate this directory for all users.
 
 The loader scans for all `*.js` and `*.mjs` files in this directory. Each file is one plugin.
 
@@ -160,7 +160,7 @@ Triggered whenever a new JSONL log entry is detected. Useful for forwarding log 
 | Property | Description |
 |----------|-------------|
 | **Type** | Parallel (concurrent notification) |
-| **Parameters** | `entry` — the full JSONL log entry object containing request/response data, token usage, etc. Includes `entry.pid` (Claude process PID: PTY child PID in CLI mode, `process.pid` in hook-injection mode; may be `null` if PTY is not running) |
+| **Parameters** | `entry` — the full JSONL log entry object containing request/response data, token usage, etc. Includes `entry.pid` (CX process PID: PTY child PID in CLI mode, `process.pid` in hook-injection mode; may be `null` if PTY is not running) |
 | **Returns** | Ignored |
 | **Timing** | When a new entry is appended to the JSONL log file |
 
@@ -196,7 +196,7 @@ hooks: {
 
 ### Waterfall
 
-Plugins execute **sequentially** in filename sort order. Each plugin receives the return value of the previous one. The final value is used by cc-viewer.
+Plugins execute **sequentially** in filename sort order. Each plugin receives the return value of the previous one. The final value is used by cx-viewer.
 
 ```
 initial value → plugin-A → plugin-B → plugin-C → final value
@@ -218,7 +218,7 @@ Every hook call is wrapped in `try/catch`. If a plugin throws an error:
 
 ## Disabling Plugins
 
-Add plugin names to `disabledPlugins` in `~/.claude/cc-viewer/preferences.json`:
+Add plugin names to `disabledPlugins` in `~/.codex/cx-viewer/preferences.json`:
 
 ```json
 {
@@ -231,7 +231,7 @@ Disabled plugins are skipped during loading.
 ## Complete Example: Enterprise Proxy
 
 ```javascript
-// ~/.claude/cc-viewer/plugins/enterprise-proxy.js
+// ~/.codex/cx-viewer/plugins/enterprise-proxy.js
 export default {
   name: 'enterprise-proxy',
   hooks: {
@@ -245,7 +245,7 @@ export default {
       fetch('https://monitor.company.com/api/notify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ service: 'cc-viewer', port, host }),
+        body: JSON.stringify({ service: 'cx-viewer', port, host }),
       }).catch(() => {});
     },
 

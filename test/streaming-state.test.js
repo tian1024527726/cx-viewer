@@ -1,6 +1,6 @@
 // 必须在 import interceptor.js 之前设置，阻止模块顶层启动 server / setupInterceptor
 // 注意：ESM 静态 import 会被提升，process.env 赋值必须在动态 import() 之前
-process.env.CCV_PROXY_MODE = '1';
+process.env.CXV_PROXY_MODE = '1';
 
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';

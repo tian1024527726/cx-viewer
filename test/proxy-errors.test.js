@@ -38,45 +38,45 @@ describe('formatProxyRequestError', () => {
   it('将头超时转换为固定提示', () => {
     const err = new Error('fetch failed');
     err.cause = { code: 'UND_ERR_HEADERS_TIMEOUT' };
-    assert.equal(formatProxyRequestError(err), '[CC-Viewer Proxy] Request failed: Upstream headers timeout');
+    assert.equal(formatProxyRequestError(err), '[CX-Viewer Proxy] Request failed: Upstream headers timeout');
   });
 
   it('保留普通错误内容', () => {
     const err = new Error('network down');
-    assert.equal(formatProxyRequestError(err), '[CC-Viewer Proxy] Request failed: network down');
+    assert.equal(formatProxyRequestError(err), '[CX-Viewer Proxy] Request failed: network down');
   });
 
   it('converts body timeout to fixed message', () => {
     const err = new Error('fetch failed');
     err.cause = { code: 'UND_ERR_BODY_TIMEOUT' };
-    assert.equal(formatProxyRequestError(err), '[CC-Viewer Proxy] Request failed: Upstream body timeout');
+    assert.equal(formatProxyRequestError(err), '[CX-Viewer Proxy] Request failed: Upstream body timeout');
   });
 
   it('appends cause.message when present', () => {
     const err = new Error('fetch failed');
     err.cause = { message: 'ECONNREFUSED' };
-    assert.equal(formatProxyRequestError(err), '[CC-Viewer Proxy] Request failed: fetch failed (ECONNREFUSED)');
+    assert.equal(formatProxyRequestError(err), '[CX-Viewer Proxy] Request failed: fetch failed (ECONNREFUSED)');
   });
 
   it('appends cause.code when no cause.message', () => {
     const err = new Error('fetch failed');
     err.cause = { code: 'ENOTFOUND' };
-    assert.equal(formatProxyRequestError(err), '[CC-Viewer Proxy] Request failed: fetch failed (ENOTFOUND)');
+    assert.equal(formatProxyRequestError(err), '[CX-Viewer Proxy] Request failed: fetch failed (ENOTFOUND)');
   });
 
   it('falls back to cause itself when no message or code', () => {
     const err = new Error('fetch failed');
     err.cause = 'raw cause string';
-    assert.equal(formatProxyRequestError(err), '[CC-Viewer Proxy] Request failed: fetch failed (raw cause string)');
+    assert.equal(formatProxyRequestError(err), '[CX-Viewer Proxy] Request failed: fetch failed (raw cause string)');
   });
 
   it('handles non-Error input', () => {
     const result = formatProxyRequestError('just a string');
-    assert.equal(result, '[CC-Viewer Proxy] Request failed: just a string');
+    assert.equal(result, '[CX-Viewer Proxy] Request failed: just a string');
   });
 
   it('handles null/undefined input', () => {
     const result = formatProxyRequestError(null);
-    assert.equal(result, '[CC-Viewer Proxy] Request failed: null');
+    assert.equal(result, '[CX-Viewer Proxy] Request failed: null');
   });
 });

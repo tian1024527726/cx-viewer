@@ -16,7 +16,7 @@ function makeEntry(sessionId, ts, opts = {}) {
   return {
     _sessionId: sessionId,
     timestamp: ts,
-    url: opts.url || 'https://api.anthropic.com/v1/messages',
+    url: opts.url || 'https://api.openai.com/v1/messages',
     ...opts,
   };
 }

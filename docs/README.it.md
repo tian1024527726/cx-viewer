@@ -1,7 +1,7 @@
-# CC-Viewer
+# CX-Viewer
 
-Sistema di monitoraggio delle richieste di Claude Code, che cattura e visualizza in tempo reale tutte le richieste e risposte API (testo originale, senza tagli). Pensato per aiutare gli sviluppatori a monitorare il proprio Context, facilitando la revisione e il debug durante il Vibe Coding.
-L'ultima versione di CC-Viewer offre anche soluzioni per il deploy su server con programmazione web, oltre a strumenti per la programmazione da dispositivi mobili. Siete invitati a utilizzarlo nei vostri progetti; in futuro saranno disponibili ulteriori funzionalita tramite plugin e supporto per il deploy in cloud.
+Sistema di monitoraggio delle richieste di Codex, che cattura e visualizza in tempo reale tutte le richieste e risposte API (testo originale, senza tagli). Pensato per aiutare gli sviluppatori a monitorare il proprio Context, facilitando la revisione e il debug durante il Vibe Coding.
+L'ultima versione di CX-Viewer offre anche soluzioni per il deploy su server con programmazione web, oltre a strumenti per la programmazione da dispositivi mobili. Siete invitati a utilizzarlo nei vostri progetti; in futuro saranno disponibili ulteriori funzionalita tramite plugin e supporto per il deploy in cloud.
 
 Iniziamo dalla parte interessante -- ecco come appare su dispositivi mobili:
 
@@ -14,25 +14,25 @@ Iniziamo dalla parte interessante -- ecco come appare su dispositivi mobili:
 ### Installazione
 
 ```bash
-npm install -g cc-viewer --registry=https://registry.npmjs.org
+npm install -g cx-viewer --registry=https://registry.npmjs.org
 ```
 
 ### Modalita programmazione
 
-ccv e un sostituto diretto di claude -- tutti i parametri vengono passati a claude, avviando contemporaneamente il Web Viewer.
+cxv e un sostituto diretto di claude -- tutti i parametri vengono passati a claude, avviando contemporaneamente il Web Viewer.
 
 ```bash
-ccv                    # == claude (modalita interattiva)
-ccv -c                 # == claude --continue (continua l'ultima conversazione)
-ccv -r                 # == claude --resume (riprendi conversazione)
-ccv -p "hello"         # == claude --print "hello" (modalita stampa)
-ccv --d                # == claude --dangerously-skip-permissions (scorciatoia)
-ccv --model opus       # == claude --model opus
+cxv                    # == claude (modalita interattiva)
+cxv -c                 # == claude --continue (continua l'ultima conversazione)
+cxv -r                 # == claude --resume (riprendi conversazione)
+cxv -p "hello"         # == claude --print "hello" (modalita stampa)
+cxv --d                # == claude --dangerously-skip-permissions (scorciatoia)
+cxv --model opus       # == claude --model opus
 ```
 
 Il comando che l'autore usa abitualmente e:
 ```
-ccv -c --d             # == claude --continue --dangerously-skip-permissions
+cxv -c --d             # == claude --continue --dangerously-skip-permissions
 ```
 
 Dopo l'avvio della modalita programmazione, la pagina web si aprira automaticamente.
@@ -48,62 +48,62 @@ E, cosa ancora piu interessante, puoi persino programmare dal tuo dispositivo mo
 
 In questa modalita, avviando ```claude``` o ```claude --dangerously-skip-permissions```
 
-verra automaticamente avviato un processo di log per registrare le richieste in ~/.claude/cc-viewer/*tuoprogetto*/date.jsonl
+verra automaticamente avviato un processo di log per registrare le richieste in ~/.codex/cx-viewer/*tuoprogetto*/date.jsonl
 
 Avvia la modalita logger:
 ```bash
-ccv -logger
+cxv -logger
 ```
 
 Quando la console non puo stampare la porta specifica, la prima porta di avvio predefinita e 127.0.0.1:7008. Se esistono piu istanze, le porte successive sono 7009, 7010, ecc.
 
-Il comando rileva automaticamente la modalita di installazione locale di Claude Code (NPM o Native Install) e si adatta di conseguenza.
+Il comando rileva automaticamente la modalita di installazione locale di Codex (NPM o Native Install) e si adatta di conseguenza.
 
-- **Versione NPM di Claude Code**: inietta automaticamente lo script di intercettazione nel `cli.js` di Claude Code.
-- **Versione Native di Claude Code**: rileva automaticamente il binario `claude`, configura un proxy trasparente locale e imposta uno Zsh Shell Hook per il reindirizzamento automatico del traffico.
-- Per questo progetto si consiglia l'installazione di Claude Code tramite NPM.
+- **Versione NPM di Codex**: inietta automaticamente lo script di intercettazione nel `cli.js` di Codex.
+- **Versione Native di Codex**: rileva automaticamente il binario `claude`, configura un proxy trasparente locale e imposta uno Zsh Shell Hook per il reindirizzamento automatico del traffico.
+- Per questo progetto si consiglia l'installazione di Codex tramite NPM.
 
 Disinstalla la modalita logger:
 ```bash
-ccv --uninstall
+cxv --uninstall
 ```
 
 ### Risoluzione dei problemi (Troubleshooting)
 
 Se riscontri problemi di avvio, ecco una soluzione definitiva:
-Primo passo: apri Claude Code in una directory qualsiasi;
-Secondo passo: dai a Claude Code la seguente istruzione:
+Primo passo: apri Codex in una directory qualsiasi;
+Secondo passo: dai a Codex la seguente istruzione:
 ```
-Ho installato il pacchetto npm cc-viewer, ma dopo aver eseguito ccv non funziona correttamente. Esamina cli.js e findcc.js di cc-viewer e, in base all'ambiente specifico, adatta la modalita di deploy locale di Claude Code. Le modifiche dovrebbero essere limitate il piu possibile a findcc.js.
+Ho installato il pacchetto npm cx-viewer, ma dopo aver eseguito cxv non funziona correttamente. Esamina cli.js e findcx.js di cx-viewer e, in base all'ambiente specifico, adatta la modalita di deploy locale di Codex. Le modifiche dovrebbero essere limitate il piu possibile a findcx.js.
 ```
-Lasciare che Claude Code verifichi gli errori da solo e piu efficace che consultare chiunque o leggere qualsiasi documentazione!
+Lasciare che Codex verifichi gli errori da solo e piu efficace che consultare chiunque o leggere qualsiasi documentazione!
 
-Una volta completata l'istruzione, findcc.js verra aggiornato. Se il tuo progetto richiede frequentemente il deploy locale, o se il codice forkato deve risolvere spesso problemi di installazione, conserva questo file e copialo direttamente la prossima volta. Attualmente molti progetti e aziende non utilizzano Claude Code su Mac, ma lo ospitano su server, quindi l'autore ha separato findcc.js per facilitare il tracciamento degli aggiornamenti del codice sorgente di cc-viewer.
+Una volta completata l'istruzione, findcx.js verra aggiornato. Se il tuo progetto richiede frequentemente il deploy locale, o se il codice forkato deve risolvere spesso problemi di installazione, conserva questo file e copialo direttamente la prossima volta. Attualmente molti progetti e aziende non utilizzano Codex su Mac, ma lo ospitano su server, quindi l'autore ha separato findcx.js per facilitare il tracciamento degli aggiornamenti del codice sorgente di cx-viewer.
 
 ### Altri comandi ausiliari
 
 Consulta l'aiuto:
 ```bash
-ccv -h
+cxv -h
 ```
 
 ### Override della configurazione (Configuration Override)
 
-Se hai bisogno di utilizzare un endpoint API personalizzato (ad esempio un proxy aziendale), basta configurarlo in `~/.claude/settings.json` o impostare la variabile d'ambiente `ANTHROPIC_BASE_URL`. `ccv` lo rilevera automaticamente e inoltrera correttamente le richieste.
+Se hai bisogno di utilizzare un endpoint API personalizzato (ad esempio un proxy aziendale), basta configurarlo in `~/.codex/settings.json` o impostare la variabile d'ambiente `OPENAI_BASE_URL`. `cxv` lo rilevera automaticamente e inoltrera correttamente le richieste.
 
 ### Modalita silenziosa (Silent Mode)
 
-Per impostazione predefinita, `ccv` opera in modalita silenziosa quando avvolge l'esecuzione di `claude`, mantenendo l'output del terminale pulito e coerente con l'esperienza nativa. Tutti i log vengono catturati in background e sono consultabili su `http://localhost:7008`.
+Per impostazione predefinita, `cxv` opera in modalita silenziosa quando avvolge l'esecuzione di `claude`, mantenendo l'output del terminale pulito e coerente con l'esperienza nativa. Tutti i log vengono catturati in background e sono consultabili su `http://localhost:7008`.
 
 Una volta configurato, basta utilizzare normalmente il comando `claude`. Visita `http://localhost:7008` per accedere all'interfaccia di monitoraggio.
 
 
 ## Versione client
 
-CC-Viewer offre una versione client desktop scaricabile da GitHub:
-[Link per il download](https://github.com/weiesky/cc-viewer/releases)
-La versione client e attualmente in fase di test; non esitate a segnalare eventuali problemi. Inoltre, l'uso di cc-viewer richiede che Claude Code sia installato localmente.
-E importante sottolineare che cc-viewer e semplicemente un "vestito" per l'operaio (Claude Code). Senza Claude Code, il vestito non puo funzionare da solo.
+CX-Viewer offre una versione client desktop scaricabile da GitHub:
+[Link per il download](https://github.com/weiesky/cx-viewer/releases)
+La versione client e attualmente in fase di test; non esitate a segnalare eventuali problemi. Inoltre, l'uso di cx-viewer richiede che Codex sia installato localmente.
+E importante sottolineare che cx-viewer e semplicemente un "vestito" per l'operaio (Codex). Senza Codex, il vestito non puo funzionare da solo.
 
 
 ## Funzionalita
@@ -111,7 +111,7 @@ E importante sottolineare che cc-viewer e semplicemente un "vestito" per l'opera
 
 ### Modalita programmazione
 
-Dopo aver avviato ccv puoi vedere:
+Dopo aver avviato cxv puoi vedere:
 
 <img width="1500" height="765" alt="image" src="https://github.com/user-attachments/assets/ab353a2b-f101-409d-a28c-6a4e41571ea2" />
 
@@ -130,16 +130,16 @@ Puoi persino scansionare un QR code per programmare su dispositivi mobili:
 
 Realizza la tua idea di programmazione mobile. Inoltre, e disponibile un meccanismo di plugin -- se hai bisogno di personalizzare in base alle tue abitudini di programmazione, puoi seguire gli aggiornamenti degli hooks dei plugin in futuro.
 
-### Modalita logger (visualizza la conversazione completa di Claude Code)
+### Modalita logger (visualizza la conversazione completa di Codex)
 
 <img width="1500" height="768" alt="image" src="https://github.com/user-attachments/assets/a8a9f3f7-d876-4f6b-a64d-f323a05c4d21" />
 
 
-- Cattura in tempo reale tutte le richieste API inviate da Claude Code, garantendo il testo originale e non log censurati (questo e molto importante!!!)
+- Cattura in tempo reale tutte le richieste API inviate da Codex, garantendo il testo originale e non log censurati (questo e molto importante!!!)
 - Identifica e contrassegna automaticamente le richieste Main Agent e Sub Agent (sottotipi: Plan, Search, Bash)
 - Le richieste MainAgent supportano Body Diff JSON, visualizzazione compressa delle differenze rispetto alla richiesta MainAgent precedente (mostra solo campi modificati/aggiunti)
 - Ogni richiesta mostra inline le statistiche di utilizzo dei Token (Token di input/output, creazione/lettura cache, tasso di hit)
-- Compatibile con Claude Code Router (CCR) e altri scenari proxy -- corrispondenza fallback tramite pattern del percorso API
+- Compatibile con Codex Router (CCR) e altri scenari proxy -- corrispondenza fallback tramite pattern del percorso API
 
 ### Modalita conversazione
 
@@ -171,7 +171,7 @@ Pannello flottante "Statistiche dati" nell'area Header:
 
 ### Gestione log
 
-Tramite il menu a tendina CC-Viewer in alto a sinistra:
+Tramite il menu a tendina CX-Viewer in alto a sinistra:
 <img width="1500" height="760" alt="image" src="https://github.com/user-attachments/assets/33295e2b-f2e0-4968-a6f1-6f3d1404454e" />
 
 **Compressione dei log**
@@ -201,25 +201,25 @@ Puoi caricare immagini e descrivere le tue esigenze -- Claude ha un'eccellente c
 
 <img width="600" height="370" alt="image" src="https://github.com/user-attachments/assets/87d332ea-3e34-4957-b442-f9d070211fbf" />
 
-Puoi creare plugin personalizzati, gestire tutti i processi di CC-Viewer e CC-Viewer offre lo switching a caldo di interfacce di terze parti (si, puoi usare GLM, Kimi, MiniMax, Qwen, DeepSeek -- anche se l'autore ritiene che attualmente siano ancora piuttosto deboli)
+Puoi creare plugin personalizzati, gestire tutti i processi di CX-Viewer e CX-Viewer offre lo switching a caldo di interfacce di terze parti (si, puoi usare GLM, Kimi, MiniMax, Qwen, DeepSeek -- anche se l'autore ritiene che attualmente siano ancora piuttosto deboli)
 
 ---
 
 
 <img width="1500" height="746" alt="image" src="https://github.com/user-attachments/assets/b1f60c7c-1438-4ecc-8c64-193d21ee3445" />
 
-Altre funzionalita aspettano di essere scoperte... ad esempio: il sistema supporta Agent Team e include un Code Reviewer integrato. L'integrazione del Code Reviewer di Codex e in arrivo (l'autore raccomanda vivamente di usare Codex per fare Code Review di Claude Code)
+Altre funzionalita aspettano di essere scoperte... ad esempio: il sistema supporta Agent Team e include un Code Reviewer integrato. L'integrazione del Code Reviewer di Codex e in arrivo (l'autore raccomanda vivamente di usare Codex per fare Code Review di Codex)
 
 
 ### Aggiornamento automatico
 
-CC-Viewer verifica automaticamente la disponibilita di aggiornamenti all'avvio (al massimo una volta ogni 4 ore). All'interno della stessa versione major (ad esempio 1.x.x -> 1.y.z) l'aggiornamento e automatico e diventa effettivo al prossimo avvio. Per aggiornamenti cross-major viene mostrata solo una notifica.
+CX-Viewer verifica automaticamente la disponibilita di aggiornamenti all'avvio (al massimo una volta ogni 4 ore). All'interno della stessa versione major (ad esempio 1.x.x -> 1.y.z) l'aggiornamento e automatico e diventa effettivo al prossimo avvio. Per aggiornamenti cross-major viene mostrata solo una notifica.
 
-L'aggiornamento automatico segue la configurazione globale di Claude Code `~/.claude/settings.json`. Se Claude Code ha disabilitato gli aggiornamenti automatici (`autoUpdates: false`), anche CC-Viewer saltera l'aggiornamento automatico.
+L'aggiornamento automatico segue la configurazione globale di Codex `~/.codex/settings.json`. Se Codex ha disabilitato gli aggiornamenti automatici (`autoUpdates: false`), anche CX-Viewer saltera l'aggiornamento automatico.
 
 ### Supporto multilingua
 
-CC-Viewer supporta 18 lingue, con cambio automatico in base alla lingua del sistema:
+CX-Viewer supporta 18 lingue, con cambio automatico in base alla lingua del sistema:
 
 简体中文 | English | 繁體中文 | 한국어 | Deutsch | Español | Français | Italiano | Dansk | 日本語 | Polski | Русский | العربية | Norsk | Português (Brasil) | ไทย | Türkçe | Українська
 

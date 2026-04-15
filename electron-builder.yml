@@ -1,5 +1,5 @@
-appId: com.ccviewer.app
-productName: CC Viewer
+appId: com.cxviewer.app
+productName: CX Viewer
 copyright: Copyright © 2026
 
 directories:
@@ -12,7 +12,7 @@ files:
   - proxy.js
   - interceptor.js
   - i18n.js
-  - findcc.js
+  - findcx.js
   - pty-manager.js
   - workspace-registry.js
   - lib/**/*

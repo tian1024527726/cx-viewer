@@ -41,7 +41,7 @@ Claude API `/v1/messages` 响应体的字段说明。
 | **ephemeral_5m_input_tokens** | 5 分钟 TTL 的短期缓存创建 token 数 |
 | **ephemeral_1h_input_tokens** | 1 小时 TTL 的长期缓存创建 token 数 |
 
-> **关于缓存计费**：`cache_read_input_tokens` 的单价远低于 `input_tokens`，而 `cache_creation_input_tokens` 的单价略高于普通输入。因此，在持续对话中保持高缓存命中率可以显著降低费用。通过 cc-viewer 的"命中率"指标可以直观监控这一比例。
+> **关于缓存计费**：`cache_read_input_tokens` 的单价远低于 `input_tokens`，而 `cache_creation_input_tokens` 的单价略高于普通输入。因此，在持续对话中保持高缓存命中率可以显著降低费用。通过 cx-viewer 的"命中率"指标可以直观监控这一比例。
 
 ## stop_reason 含义
 

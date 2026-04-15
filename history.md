@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.0 (2026-04-15)
+
+- Major: Rebrand from cc-viewer to cx-viewer, switch proxy target from Claude Code to OpenAI Codex
+- Rename: findcc.js → findcx.js, CLI command ccv → cxv
+- Update: All env vars CCV_* → CXV_*, ANTHROPIC_BASE_URL → OPENAI_BASE_URL
+- Update: Default API target from api.anthropic.com to api.openai.com
+- Update: Log directory from ~/.claude/cc-viewer/ to ~/.codex/cx-viewer/
+
 ## 1.6.150 (2026-04-13)
 
 - Feat: iPad/tablet mode (`?ipad=1`) — Mobile layout with PC-level text scaling and interactions

@@ -10,17 +10,17 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 // ============ 配置区（第三方适配只需修改此处）============
 
 function resolveLogDir() {
-  const envDir = process.env.CCV_LOG_DIR;
+  const envDir = process.env.CXV_LOG_DIR;
   if (typeof envDir === 'string' && envDir.trim()) {
     const raw = envDir.trim();
     // 允许通过 'tmp' 或 'temp' 关键字使用系统临时目录（常用于测试）
     if (raw === 'tmp' || raw === 'temp') {
-      return join(tmpdir(), 'cc-viewer-test', `${process.pid}-${threadId}`);
+      return join(tmpdir(), 'cx-viewer-test', `${process.pid}-${threadId}`);
     }
     const expanded = raw.startsWith('~/') ? join(homedir(), raw.slice(2)) : raw;
     return resolve(expanded);
   }
-  return join(homedir(), '.claude', 'cc-viewer');
+  return join(homedir(), '.codex', 'cx-viewer');
 }
 
 // 日志存储根目录（所有项目日志、偏好设置均存放于此）
@@ -43,24 +43,24 @@ export function setLogDir(dir) {
 }
 
 // npm 包名候选列表（按优先级排列）
-export const PACKAGES = ['@anthropic-ai/claude-code', '@ali/claude-code'];
+export const PACKAGES = ['@openai/codex'];
 
 // npm 包内的入口文件（相对于包根目录）
 export const CLI_ENTRY = 'cli.js';
 
 // native 二进制候选路径（~ 会在运行时展开为 homedir()）
 const NATIVE_CANDIDATES = [
-  '~/.claude/local/claude',
-  '/usr/local/bin/claude',
-  '~/.local/bin/claude',
-  '/opt/homebrew/bin/claude',
+  '~/.codex/local/codex',
+  '/usr/local/bin/codex',
+  '~/.local/bin/codex',
+  '/opt/homebrew/bin/codex',
 ];
 
 // 用于 which/command -v 查找的命令名
-export const BINARY_NAME = 'claude';
+export const BINARY_NAME = 'codex';
 
 // 注入到 cli.js 的 import 语句（相对路径，基于 cli.js 所在位置）
-export const INJECT_IMPORT = "import '../../cc-viewer/interceptor.js';";
+export const INJECT_IMPORT = "import '../../cx-viewer/interceptor.js';";
 
 // ============ 导出函数 ============
 
@@ -93,23 +93,28 @@ export function resolveCliPath() {
 }
 
 /**
- * 查找 npm 版本的 claude（包括 nvm 安装）
- * 返回 node_modules 中的 claude cli.js 路径
+ * 查找 npm 版本的 codex（包括 nvm 安装）
+ * 返回 node_modules 中的 codex cli.js 路径
  */
-export function resolveNpmClaudePath() {
-  // 1. 尝试 which/command -v 找到 npm 安装的 claude
-  for (const cmd of [`which ${BINARY_NAME}`, `command -v ${BINARY_NAME}`]) {
+export function resolveNpmCodexPath() {
+  // 1. 尝试查找 npm 安装的 codex
+  // whence -p (zsh) / type -P (bash) 可绕过 shell function，直接返回二进制路径
+  // 需要用对应 shell 执行，因为 execSync shell:true 默认用 /bin/sh
+  const userShell = process.env.SHELL || '';
+  const bypassCmds = [];
+  if (userShell.includes('zsh')) bypassCmds.push({ cmd: `whence -p ${BINARY_NAME}`, shell: userShell });
+  if (existsSync('/bin/bash')) bypassCmds.push({ cmd: `type -P ${BINARY_NAME}`, shell: '/bin/bash' });
+  const fallbackCmds = [`which ${BINARY_NAME}`, `command -v ${BINARY_NAME}`].map(c => ({ cmd: c, shell: true }));
+  for (const { cmd, shell } of [...bypassCmds, ...fallbackCmds]) {
     try {
-      const result = execSync(cmd, { encoding: 'utf-8', shell: true, env: process.env }).trim();
+      const result = execSync(cmd, { encoding: 'utf-8', shell, env: process.env }).trim();
       // 排除 shell function 的输出（多行说明不是路径）
       if (result && !result.includes('\n') && existsSync(result)) {
         // 只接受 npm 安装的符号链接（解析后指向 node_modules）
         try {
           const real = realpathSync(result);
           if (real.includes('node_modules')) {
-            // 找到 npm 版本，返回 cli.js 的路径
-            // real 可能是 .../node_modules/@anthropic-ai/claude-code/bin/claude
-            // 我们需要返回 .../node_modules/@anthropic-ai/claude-code/cli.js
+            // 找到 npm 版本，优先返回 cli.js，否则返回实际二进制路径
             const match = real.match(/(.*node_modules\/@[^/]+\/[^/]+)\//);
             if (match) {
               const packageDir = match[1];
@@ -118,6 +123,8 @@ export function resolveNpmClaudePath() {
                 return cliPath;
               }
             }
+            // cli.js 不存在（新版 codex），直接返回二进制路径
+            return result;
           }
         } catch { }
       }
@@ -141,10 +148,16 @@ export function resolveNpmClaudePath() {
 }
 
 export function resolveNativePath() {
-  // 1. 尝试 which/command -v（继承当前 process.env PATH）
-  for (const cmd of [`which ${BINARY_NAME}`, `command -v ${BINARY_NAME}`]) {
+  // 1. 尝试查找 native codex（继承当前 process.env PATH）
+  // whence -p (zsh) / type -P (bash) 可绕过 shell function，直接返回二进制路径
+  const nativeUserShell = process.env.SHELL || '';
+  const nativeBypassCmds = [];
+  if (nativeUserShell.includes('zsh')) nativeBypassCmds.push({ cmd: `whence -p ${BINARY_NAME}`, shell: nativeUserShell });
+  if (existsSync('/bin/bash')) nativeBypassCmds.push({ cmd: `type -P ${BINARY_NAME}`, shell: '/bin/bash' });
+  const nativeFallbackCmds = [`which ${BINARY_NAME}`, `command -v ${BINARY_NAME}`].map(c => ({ cmd: c, shell: true }));
+  for (const { cmd, shell } of [...nativeBypassCmds, ...nativeFallbackCmds]) {
     try {
-      const result = execSync(cmd, { encoding: 'utf-8', shell: true, env: process.env }).trim();
+      const result = execSync(cmd, { encoding: 'utf-8', shell, env: process.env }).trim();
       // 排除 shell function 的输出（多行说明不是路径）
       if (result && !result.includes('\n') && existsSync(result)) {
         // 排除 npm 安装的符号链接（解析后指向 node_modules）

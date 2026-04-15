@@ -10,7 +10,7 @@ import { reconstructEntries, createIncrementalReconstructor } from '../lib/delta
 function makeOldFormatEntry(messages, opts = {}) {
   return {
     timestamp: opts.timestamp || new Date().toISOString(),
-    url: opts.url || 'https://api.anthropic.com/v1/messages',
+    url: opts.url || 'https://api.openai.com/v1/messages',
     mainAgent: opts.mainAgent !== undefined ? opts.mainAgent : true,
     body: { messages: [...messages], model: 'claude-opus-4-6' },
     response: { status: 200, body: { content: [{ type: 'text', text: 'ok' }] } },
@@ -22,7 +22,7 @@ function makeOldFormatEntry(messages, opts = {}) {
 function makeDeltaEntry(deltaMessages, totalCount, opts = {}) {
   return {
     timestamp: opts.timestamp || new Date().toISOString(),
-    url: opts.url || 'https://api.anthropic.com/v1/messages',
+    url: opts.url || 'https://api.openai.com/v1/messages',
     mainAgent: true,
     _deltaFormat: 1,
     _totalMessageCount: totalCount,

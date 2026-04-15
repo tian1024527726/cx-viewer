@@ -1,7 +1,7 @@
-# CC-Viewer
+# CX-Viewer
 
-Claude Code istek izleme sistemi; tum API isteklerini ve yanitlarini gercek zamanli olarak yakalar ve gorsellestirir (orijinal metin, sansursuz). Gelistiricilerin kendi Context'lerini izlemelerini kolaylastirir, boylece Vibe Coding sirasinda sorunlari gozden gecirmek ve hata ayiklamak daha kolay olur.
-CC-Viewer'in en son surumu ayrica sunucu tabanli web programlama cozumleri ve mobil programlama araclari sunar. Herkesin kendi projelerinde kullanmasini memnuniyetle karsiliyoruz. Gelecekte daha fazla eklenti ozelligi ve bulut dagitim destegi sunulacaktir.
+Codex istek izleme sistemi; tum API isteklerini ve yanitlarini gercek zamanli olarak yakalar ve gorsellestirir (orijinal metin, sansursuz). Gelistiricilerin kendi Context'lerini izlemelerini kolaylastirir, boylece Vibe Coding sirasinda sorunlari gozden gecirmek ve hata ayiklamak daha kolay olur.
+CX-Viewer'in en son surumu ayrica sunucu tabanli web programlama cozumleri ve mobil programlama araclari sunar. Herkesin kendi projelerinde kullanmasini memnuniyetle karsiliyoruz. Gelecekte daha fazla eklenti ozelligi ve bulut dagitim destegi sunulacaktir.
 
 Once ilginc kisma bakalim — mobil cihazda gorebilecekleriniz:
 
@@ -14,25 +14,25 @@ Once ilginc kisma bakalim — mobil cihazda gorebilecekleriniz:
 ### Kurulum
 
 ```bash
-npm install -g cc-viewer --registry=https://registry.npmjs.org
+npm install -g cx-viewer --registry=https://registry.npmjs.org
 ```
 
 ### Programlama Modu
 
-ccv, claude'un dogrudan yerine gecer. Tum parametreler claude'a iletilirken ayni anda Web Viewer baslatilir.
+cxv, claude'un dogrudan yerine gecer. Tum parametreler claude'a iletilirken ayni anda Web Viewer baslatilir.
 
 ```bash
-ccv                    # == claude (etkilesimli mod)
-ccv -c                 # == claude --continue (son konusmaya devam et)
-ccv -r                 # == claude --resume (konusmayi surdur)
-ccv -p "hello"         # == claude --print "hello" (yazdirma modu)
-ccv --d                # == claude --dangerously-skip-permissions (kisayol)
-ccv --model opus       # == claude --model opus
+cxv                    # == claude (etkilesimli mod)
+cxv -c                 # == claude --continue (son konusmaya devam et)
+cxv -r                 # == claude --resume (konusmayi surdur)
+cxv -p "hello"         # == claude --print "hello" (yazdirma modu)
+cxv --d                # == claude --dangerously-skip-permissions (kisayol)
+cxv --model opus       # == claude --model opus
 ```
 
 Yazarin en sik kullandigi komut:
 ```
-ccv -c --d             # == claude --continue --dangerously-skip-permissions
+cxv -c --d             # == claude --continue --dangerously-skip-permissions
 ```
 
 Programlama modu baslatildiktan sonra web sayfasi otomatik olarak acilir.
@@ -48,69 +48,69 @@ Ve daha da heyecan verici olani — mobil cihazdan bile programlama yapabilirsin
 
 Bu modda ```claude``` veya ```claude --dangerously-skip-permissions``` baslatildiginda
 
-otomatik olarak bir gunluk sureci baslatilir ve istekler ~/.claude/cc-viewer/*projeniz*/tarih.jsonl dosyasina kaydedilir.
+otomatik olarak bir gunluk sureci baslatilir ve istekler ~/.codex/cx-viewer/*projeniz*/tarih.jsonl dosyasina kaydedilir.
 
 Gunluk modunu baslatma:
 ```bash
-ccv -logger
+cxv -logger
 ```
 
 Konsolda belirli port yazdirilmadiginda, ilk ornegin varsayilan portu 127.0.0.1:7008'dir. Birden fazla eszamanli ornek icin portlar sirasiyla 7009, 7010 seklinde artar.
 
-Bu komut, Claude Code'un kurulum yontemini (NPM veya Native Install) otomatik olarak algilar ve buna gore uyarlanir.
+Bu komut, Codex'un kurulum yontemini (NPM veya Native Install) otomatik olarak algilar ve buna gore uyarlanir.
 
-- **Claude code NPM surumu**: Claude Code'un `cli.js` dosyasina otomatik olarak yakalama betigi enjekte eder.
+- **Claude code NPM surumu**: Codex'un `cli.js` dosyasina otomatik olarak yakalama betigi enjekte eder.
 - **Claude code Native surumu**: `claude` ikili dosyasini otomatik olarak algilar, yerel seffaf proxy yapilandirir ve otomatik trafik yonlendirme icin Zsh Shell Hook kurar.
-- Bu proje, NPM uzerinden kurulan Claude Code'un kullanilmasini onerir.
+- Bu proje, NPM uzerinden kurulan Codex'un kullanilmasini onerir.
 
 Gunluk modunu kaldirma:
 ```bash
-ccv --uninstall
+cxv --uninstall
 ```
 
 ### Sorun Giderme (Troubleshooting)
 
 Baslatma sorunlariyla karsilastirsaniz, nihai bir cozum vardir:
-Adim 1: Herhangi bir dizinde Claude Code'u acin;
-Adim 2: Claude Code'a su talimati verin:
+Adim 1: Herhangi bir dizinde Codex'u acin;
+Adim 2: Codex'a su talimati verin:
 ```
-cc-viewer npm paketini kurdum, ancak ccv calistirdiktan sonra hala duzgun calismiyor. cc-viewer'in cli.js ve findcc.js dosyalarini incele ve belirli ortama gore yerel Claude Code dagitimini uyarla. Degisiklikleri mumkun oldugunca findcc.js ile sinirla.
+cx-viewer npm paketini kurdum, ancak cxv calistirdiktan sonra hala duzgun calismiyor. cx-viewer'in cli.js ve findcx.js dosyalarini incele ve belirli ortama gore yerel Codex dagitimini uyarla. Degisiklikleri mumkun oldugunca findcx.js ile sinirla.
 ```
-Claude Code'un hatalari kendisinin kontrol etmesine izin vermek, herhangi birine danismaktan veya herhangi bir belge okumaktan cok daha etkilidir!
+Codex'un hatalari kendisinin kontrol etmesine izin vermek, herhangi birine danismaktan veya herhangi bir belge okumaktan cok daha etkilidir!
 
-Yukaridaki talimatlar tamamlandiktan sonra findcc.js guncellenecektir. Projeniz sik sik yerel dagitim gerektiriyorsa veya fork'lanmis kodun sikca kurulum sorunlarini cozmesi gerekiyorsa, bu dosyayi saklayin ve bir sonraki sefere dogrudan kopyalayin. Gunumuzde bircok proje ve sirket Claude Code'u Mac'te degil, sunucu tarafinda barindirilan dagitimlarda kullanmaktadir. Bu nedenle yazar, cc-viewer kaynak kodu guncellemelerini takip etmeyi kolaylastirmak icin findcc.js'yi ayristirmistir.
+Yukaridaki talimatlar tamamlandiktan sonra findcx.js guncellenecektir. Projeniz sik sik yerel dagitim gerektiriyorsa veya fork'lanmis kodun sikca kurulum sorunlarini cozmesi gerekiyorsa, bu dosyayi saklayin ve bir sonraki sefere dogrudan kopyalayin. Gunumuzde bircok proje ve sirket Codex'u Mac'te degil, sunucu tarafinda barindirilan dagitimlarda kullanmaktadir. Bu nedenle yazar, cx-viewer kaynak kodu guncellemelerini takip etmeyi kolaylastirmak icin findcx.js'yi ayristirmistir.
 
 ### Diger Yardimci Komutlar
 
 Yardimi goruntuleme:
 ```bash
-ccv -h
+cxv -h
 ```
 
 ### Yapilandirma Gecersiz Kilma (Configuration Override)
 
-Ozel bir API uc noktasi kullanmaniz gerekiyorsa (ornegin kurumsal proxy), `~/.claude/settings.json` dosyasinda yapilandirin veya `ANTHROPIC_BASE_URL` ortam degiskenini ayarlayin. `ccv` bunu otomatik olarak algilar ve istekleri dogru sekilde yonlendirir.
+Ozel bir API uc noktasi kullanmaniz gerekiyorsa (ornegin kurumsal proxy), `~/.codex/settings.json` dosyasinda yapilandirin veya `OPENAI_BASE_URL` ortam degiskenini ayarlayin. `cxv` bunu otomatik olarak algilar ve istekleri dogru sekilde yonlendirir.
 
 ### Sessiz Mod (Silent Mode)
 
-Varsayilan olarak `ccv`, `claude`'u sararken sessiz modda calisir; boylece terminal ciktiniz temiz kalir ve yerel deneyimle ayni olur. Tum gunlukler arka planda yakalanir ve `http://localhost:7008` uzerinden goruntulenebilir.
+Varsayilan olarak `cxv`, `claude`'u sararken sessiz modda calisir; boylece terminal ciktiniz temiz kalir ve yerel deneyimle ayni olur. Tum gunlukler arka planda yakalanir ve `http://localhost:7008` uzerinden goruntulenebilir.
 
 Yapilandirma tamamlandiktan sonra `claude` komutunu her zamanki gibi kullanin. Izleme arayuzunu gormek icin `http://localhost:7008` adresini ziyaret edin.
 
 
 ## Istemci Surumu
 
-CC-Viewer'in istemci surumu mevcuttur ve GitHub uzerinden indirilebilir.
-[Indirme adresi](https://github.com/weiesky/cc-viewer/releases)
-Su anda istemci surumu test asamasindadir — herhangi bir sorunla karsilastiginizda geri bildirimde bulunabilirsiniz. Ayrica cc-viewer'i kullanabilmeniz icin bilgisayarinizda Claude Code'un yuklu olmasi gerekmektedir.
-Unutmamak gerekir ki: cc-viewer yalnizca iscinin (Claude Code) bir "kiyafeti"dir. Claude Code olmadan kiyafet tek basina calisamaz.
+CX-Viewer'in istemci surumu mevcuttur ve GitHub uzerinden indirilebilir.
+[Indirme adresi](https://github.com/weiesky/cx-viewer/releases)
+Su anda istemci surumu test asamasindadir — herhangi bir sorunla karsilastiginizda geri bildirimde bulunabilirsiniz. Ayrica cx-viewer'i kullanabilmeniz icin bilgisayarinizda Codex'un yuklu olmasi gerekmektedir.
+Unutmamak gerekir ki: cx-viewer yalnizca iscinin (Codex) bir "kiyafeti"dir. Codex olmadan kiyafet tek basina calisamaz.
 
 ## Ozellikler
 
 
 ### Programlama Modu
 
-ccv ile baslatildiktan sonra sunlari goreceksiniz:
+cxv ile baslatildiktan sonra sunlari goreceksiniz:
 
 <img width="1500" height="765" alt="image" src="https://github.com/user-attachments/assets/ab353a2b-f101-409d-a28c-6a4e41571ea2" />
 
@@ -129,16 +129,16 @@ QR kod tarayarak mobil cihazda programlama bile yapabilirsiniz:
 
 Mobil programlama hayallerinizi gerceklestirir. Ayrica bir eklenti mekanizmasi vardir — programlama aliskanliklariniza gore ozellestirmek istiyorsaniz, eklenti hooks guncellemelerini takip edebilirsiniz.
 
-### Gunluk Modu (Claude Code tam konusmalarini goruntuleme)
+### Gunluk Modu (Codex tam konusmalarini goruntuleme)
 
 <img width="1500" height="768" alt="image" src="https://github.com/user-attachments/assets/a8a9f3f7-d876-4f6b-a64d-f323a05c4d21" />
 
 
-- Claude Code'un gonderdigi tum API isteklerini gercek zamanli olarak yakalar, orijinal metin oldugundan emin olur, sansurlenmis gunlukler degil (bu cok onemli!!!)
+- Codex'un gonderdigi tum API isteklerini gercek zamanli olarak yakalar, orijinal metin oldugundan emin olur, sansurlenmis gunlukler degil (bu cok onemli!!!)
 - Main Agent ve Sub Agent isteklerini otomatik olarak tanımlar ve isaretler (alt turler: Plan, Search, Bash)
 - MainAgent istekleri Body Diff JSON'u destekler, onceki MainAgent istegiyle farklari daraltilmis olarak gosterir (yalnizca degisen/yeni alanlar gosterilir)
 - Her istek satir ici Token kullanim istatistiklerini gosterir (giris/cikis Token, onbellek olusturma/okuma, isabet orani)
-- Claude Code Router (CCR) ve diger proxy senaryolariyla uyumlu — API yol kalibi eslestirmesi ile yedek olarak istekleri eslestirir
+- Codex Router (CCR) ve diger proxy senaryolariyla uyumlu — API yol kalibi eslestirmesi ile yedek olarak istekleri eslestirir
 
 ### Konusma Modu
 
@@ -170,7 +170,7 @@ Header alaninda "Veri Istatistikleri" acilir paneli:
 
 ### Gunluk Yonetimi
 
-Sol ustteki CC-Viewer acilir menusu araciligiyla:
+Sol ustteki CX-Viewer acilir menusu araciligiyla:
 <img width="1500" height="760" alt="image" src="https://github.com/user-attachments/assets/33295e2b-f2e0-4968-a6f1-6f3d1404454e" />
 
 **Gunluk Sikistirma**
@@ -200,25 +200,25 @@ Gorsel yukleyerek ihtiyaclarinizi ifade edebilirsiniz. Claude'un gorsel anlama y
 
 <img width="600" height="370" alt="image" src="https://github.com/user-attachments/assets/87d332ea-3e34-4957-b442-f9d070211fbf" />
 
-Eklentileri dogrudan ozellestirebilir, tum CC-Viewer sureclerini yonetebilir ve CC-Viewer ucuncu taraf API'lere aninda gecis yapabilir (evet, GLM, Kimi, MiniMax, Qwen, DeepSeek kullanabilirsiniz — yazar su an hepsinin oldukca zayif oldugunu dusunse de)
+Eklentileri dogrudan ozellestirebilir, tum CX-Viewer sureclerini yonetebilir ve CX-Viewer ucuncu taraf API'lere aninda gecis yapabilir (evet, GLM, Kimi, MiniMax, Qwen, DeepSeek kullanabilirsiniz — yazar su an hepsinin oldukca zayif oldugunu dusunse de)
 
 ---
 
 
 <img width="1500" height="746" alt="image" src="https://github.com/user-attachments/assets/b1f60c7c-1438-4ecc-8c64-193d21ee3445" />
 
-Kesfedilmeyi bekleyen daha fazla ozellik... Ornegin: Sistem Agent Team'i destekler ve yerlesik Code Reviewer'a sahiptir. Yakinda Codex'in Code Reviewer entegrasyonu da gelecek (yazar, Claude Code kodunu incelemek icin Codex kullanilmasini siddetle savunmaktadir)
+Kesfedilmeyi bekleyen daha fazla ozellik... Ornegin: Sistem Agent Team'i destekler ve yerlesik Code Reviewer'a sahiptir. Yakinda Codex'in Code Reviewer entegrasyonu da gelecek (yazar, Codex kodunu incelemek icin Codex kullanilmasini siddetle savunmaktadir)
 
 
 ### Otomatik Guncellemeler
 
-CC-Viewer baslatilirken otomatik olarak guncellemeleri kontrol eder (4 saatte en fazla bir kez). Ayni ana surum icinde (orn. 1.x.x -> 1.y.z) otomatik guncellenir ve bir sonraki baslatmada gecerli olur. Ana surum degisikliginde yalnizca bildirim gosterilir.
+CX-Viewer baslatilirken otomatik olarak guncellemeleri kontrol eder (4 saatte en fazla bir kez). Ayni ana surum icinde (orn. 1.x.x -> 1.y.z) otomatik guncellenir ve bir sonraki baslatmada gecerli olur. Ana surum degisikliginde yalnizca bildirim gosterilir.
 
-Otomatik guncelleme, Claude Code'un genel yapilandirmasi `~/.claude/settings.json`'u takip eder. Claude Code otomatik guncellemeleri devre disi biraktiysa (`autoUpdates: false`), CC-Viewer de otomatik guncellemeyi atlar.
+Otomatik guncelleme, Codex'un genel yapilandirmasi `~/.codex/settings.json`'u takip eder. Codex otomatik guncellemeleri devre disi biraktiysa (`autoUpdates: false`), CX-Viewer de otomatik guncellemeyi atlar.
 
 ### Coklu Dil Destegi
 
-CC-Viewer 18 dili destekler ve sistem diline gore otomatik olarak gecis yapar:
+CX-Viewer 18 dili destekler ve sistem diline gore otomatik olarak gecis yapar:
 
 简体中文 | English | 繁體中文 | 한국어 | Deutsch | Español | Français | Italiano | Dansk | 日本語 | Polski | Русский | العربية | Norsk | Português (Brasil) | ไทย | Türkçe | Українська
 

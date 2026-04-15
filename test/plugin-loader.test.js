@@ -9,7 +9,7 @@ import {
   runParallelHook,
   getPluginsInfo,
 } from '../lib/plugin-loader.js';
-import { LOG_DIR } from '../findcc.js';
+import { LOG_DIR } from '../findcx.js';
 
 const PLUGINS_DIR = getPluginsDir();
 const PREFS_FILE = join(LOG_DIR, 'preferences.json');

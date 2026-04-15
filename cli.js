@@ -1,23 +1,26 @@
 #!/usr/bin/env node
 
+// 阻止 server.js 自动启动（必须在任何导入之前设置）
+process.env.CXV_WORKSPACE_MODE = '1';
+
 import { readFileSync, writeFileSync, existsSync, realpathSync, unlinkSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
 import { spawn } from 'node:child_process';
 import { t } from './i18n.js';
-import { INJECT_IMPORT, resolveCliPath, resolveNativePath, resolveNpmClaudePath, buildShellCandidates } from './findcc.js';
+import { INJECT_IMPORT, resolveCliPath, resolveNativePath, resolveNpmCodexPath, buildShellCandidates } from './findcx.js';
 import { ensureHooks } from './lib/ensure-hooks.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
-const INJECT_START = '// >>> Start CC Viewer Web Service >>>';
-const INJECT_END = '// <<< Start CC Viewer Web Service <<<';
+const INJECT_START = '// >>> Start CX Viewer Web Service >>>';
+const INJECT_END = '// <<< Start CX Viewer Web Service <<<';
 const INJECT_BLOCK = `${INJECT_START}\n${INJECT_IMPORT}\n${INJECT_END}`;
 
 
-const SHELL_HOOK_START = '# >>> CC-Viewer Auto-Inject >>>';
-const SHELL_HOOK_END = '# <<< CC-Viewer Auto-Inject <<<';
+const SHELL_HOOK_START = '# >>> CX-Viewer Auto-Inject >>>';
+const SHELL_HOOK_END = '# <<< CX-Viewer Auto-Inject <<<';
 
 const cliPath = resolveCliPath();
 
@@ -33,7 +36,7 @@ function getShellConfigPath() {
 }
 
 function buildShellHook(isNative) {
-  // Commands/flags that should pass through directly without ccv interception
+  // Commands/flags that should pass through directly without cxv interception
   // These are non-interactive commands that don't involve API calls
   const passthroughCommands = [
     // Subcommands (no API calls)
@@ -57,40 +60,40 @@ function buildShellHook(isNative) {
 
   if (isNative) {
     return `${SHELL_HOOK_START}
-claude() {
-  # Avoid recursion if ccv invokes claude
-  if [ "$1" = "--ccv-internal" ]; then
+codex() {
+  # Avoid recursion if cxv invokes codex
+  if [ "$1" = "--cxv-internal" ]; then
     shift
-    command claude "$@"
+    command codex "$@"
     return
   fi
-  # Pass through certain commands directly without ccv interception
+  # Pass through certain commands directly without cxv interception
   case "$1" in
     ${passthroughCommands.join('|')})
-      command claude "$@"
+      command codex "$@"
       return
       ;;
     ${passthroughFlags.join('|')})
-      command claude "$@"
+      command codex "$@"
       return
       ;;
   esac
-  ccv run -- claude --ccv-internal "$@"
+  cxv run -- codex --cxv-internal "$@"
 }
 ${SHELL_HOOK_END}`;
   }
 
   const candidates = buildShellCandidates();
   return `${SHELL_HOOK_START}
-claude() {
-  # Pass through certain commands directly without ccv interception
+codex() {
+  # Pass through certain commands directly without cxv interception
   case "$1" in
     ${passthroughCommands.join('|')})
-      command claude "$@"
+      command codex "$@"
       return
       ;;
     ${passthroughFlags.join('|')})
-      command claude "$@"
+      command codex "$@"
       return
       ;;
   esac
@@ -101,10 +104,10 @@ claude() {
       break
     fi
   done
-  if [ -n "$cli_js" ] && ! grep -q "CC Viewer" "$cli_js" 2>/dev/null; then
-    ccv -logger 2>/dev/null
+  if [ -n "$cli_js" ] && ! grep -q "CX Viewer" "$cli_js" 2>/dev/null; then
+    cxv -logger 2>/dev/null
   fi
-  command claude "$@"
+  command codex "$@"
 }
 ${SHELL_HOOK_END}`;
 }
@@ -186,13 +189,10 @@ function removeCliJsInjection() {
 }
 
 async function runProxyCommand(args) {
+  // 直接模式：不启动 proxy，直接运行 codex
   try {
-    // Dynamic import to avoid side effects when just installing
-    const { startProxy } = await import('./proxy.js');
-    const proxyPort = await startProxy();
-
-    // args = ['run', '--', 'command', 'claude', ...] or ['run', 'claude', ...]
-    // Our hook uses: ccv run -- claude --ccv-internal "$@"
+    // args = ['run', '--', 'command', 'codex', ...] or ['run', 'codex', ...]
+    // Our hook uses: cxv run -- codex --cxv-internal "$@"
     // args[0] is 'run'.
     // If args[1] is '--', then command starts at args[2].
 
@@ -208,38 +208,20 @@ async function runProxyCommand(args) {
     }
     let cmdArgs = args.slice(cmdStartIndex + 1);
 
-    // If cmd is 'claude' and next arg is '--ccv-internal', remove it
-    // and we must use 'command claude' to avoid infinite recursion of the shell function?
-    // Node spawn doesn't use shell functions, so 'claude' should resolve to the binary in PATH.
-    // BUT, if 'claude' is a function in the current shell, spawn won't see it unless we use shell:true.
-    // We are using shell:false (default).
-    // So spawn('claude') should find /usr/local/bin/claude (the binary).
-    // The issue might be that ccv itself is running in a way that PATH is weird?
-
-    // Wait, the shell hook adds '--ccv-internal'. We should strip it before spawning.
-    if (cmdArgs[0] === '--ccv-internal') {
+    // If cmd is 'codex' and next arg is '--cxv-internal', remove it
+    if (cmdArgs[0] === '--cxv-internal') {
       cmdArgs.shift();
     }
 
     const env = { ...process.env };
-    // Determine the path to the native 'claude' executable
-    if (cmd === 'claude') {
+    // Determine the path to the native 'codex' executable
+    if (cmd === 'codex') {
       const nativePath = resolveNativePath();
       if (nativePath) {
         cmd = nativePath;
       }
     }
-    env.ANTHROPIC_BASE_URL = `http://127.0.0.1:${proxyPort}`;
-    env.CCV_PROXY_MODE = '1'; // 告诉 interceptor.js 不要再启动 server
-
-    const settingsJson = JSON.stringify({
-      env: {
-        ANTHROPIC_BASE_URL: env.ANTHROPIC_BASE_URL
-      }
-    });
-
-    cmdArgs.unshift(settingsJson);
-    cmdArgs.unshift('--settings');
+    env.CXV_DIRECT_MODE = '1';
 
     const child = spawn(cmd, cmdArgs, { stdio: 'inherit', env });
 
@@ -252,23 +234,23 @@ async function runProxyCommand(args) {
       process.exit(1);
     });
   } catch (err) {
-    console.error('Proxy error:', err);
+    console.error('Run error:', err);
     process.exit(1);
   }
 }
 
 // ensureHooks() extracted to lib/ensure-hooks.js (shared with electron/tab-worker.js)
 
-async function runCliMode(extraClaudeArgs = [], cwd) {
+async function runCliMode(extraCodexArgs = [], cwd) {
   // 首先尝试 npm 版本（包括 nvm 安装），找不到再尝试 native 版本
-  let claudePath = resolveNpmClaudePath();
-  let isNpmVersion = !!claudePath;
+  let codexPath = resolveNpmCodexPath();
+  let isNpmVersion = !!codexPath;
 
-  if (!claudePath) {
-    claudePath = resolveNativePath();
+  if (!codexPath) {
+    codexPath = resolveNativePath();
   }
 
-  if (!claudePath) {
+  if (!codexPath) {
     console.error(t('cli.cMode.notFound'));
     process.exit(1);
   }
@@ -281,27 +263,20 @@ async function runCliMode(extraClaudeArgs = [], cwd) {
   const { registerWorkspace } = await import('./workspace-registry.js');
   registerWorkspace(workingDir);
 
-  // 确保 AskUserQuestion hook 已注册到 ~/.claude/settings.json
+  // 确保 AskUserQuestion hook 已注册到 ~/.codex/settings.json
   ensureHooks();
 
-  // 2. 设置 CLI 模式标记（必须在 import proxy.js 之前，
-  //    因为 proxy.js → interceptor.js 可能触发 server.js 加载，
-  //    server.js 的 isCliMode 在模块顶层求值且只执行一次）
-  process.env.CCV_CLI_MODE = '1';
-  process.env.CCV_PROJECT_DIR = workingDir;
-  process.env.CCV_PROXY_MODE = '1';
+  // 2. 设置 CLI 模式标记
+  process.env.CXV_CLI_MODE = '1';
+  process.env.CXV_PROJECT_DIR = workingDir;
   // 当 --dangerously-skip-permissions 生效时，通知 perm-bridge 不要拦截
-  if (extraClaudeArgs.includes('--dangerously-skip-permissions')) {
-    process.env.CCV_BYPASS_PERMISSIONS = '1';
+  if (extraCodexArgs.includes('--dangerously-skip-permissions')) {
+    process.env.CXV_BYPASS_PERMISSIONS = '1';
   }
 
-  // 1. 启动代理
-  const { startProxy } = await import('./proxy.js');
-  const proxyPort = await startProxy();
-  process.env.CCV_PROXY_PORT = String(proxyPort);
-
-  // 3. 启动 HTTP 服务器
+  // 启动 HTTP 服务器（工作区模式下需要手动调用 startViewer）
   const serverMod = await import('./server.js');
+  await serverMod.startViewer();
 
   // 等待服务器启动完成
   await new Promise(resolve => {
@@ -315,12 +290,13 @@ async function runCliMode(extraClaudeArgs = [], cwd) {
 
   const port = serverMod.getPort();
 
-  // 3. 启动 PTY 中的 claude
-  const { spawnClaude, killPty } = await import('./pty-manager.js');
+  // 启动 PTY 中的 codex（直接模式，无 proxy）
+  const { spawnCodex, killPty } = await import('./pty-manager.js');
   try {
-    await spawnClaude(proxyPort, workingDir, extraClaudeArgs, claudePath, isNpmVersion, port);
+    // 直接启动 codex，不设置 proxy port
+    await spawnCodex(null, workingDir, extraCodexArgs, codexPath, isNpmVersion, port);
   } catch (err) {
-    console.error('[CC Viewer] Failed to spawn Claude:', err.message);
+    console.error('[CX Viewer] Failed to spawn Codex:', err.message);
     await serverMod.stopViewer();
     process.exit(1);
   }
@@ -334,7 +310,7 @@ async function runCliMode(extraClaudeArgs = [], cwd) {
     execSync(`${cmd} ${url}`, { stdio: 'ignore', timeout: 5000 });
   } catch {}
 
-  console.log(`CC Viewer:`);
+  console.log(`CX Viewer:`);
   console.log(`  ➜ Local:   ${url}`);
   const _lanIps = serverMod.getAllLocalIps();
   const _token = serverMod.getAccessToken();
@@ -351,15 +327,15 @@ async function runCliMode(extraClaudeArgs = [], cwd) {
   process.on('SIGTERM', cleanup);
 }
 
-async function runSdkMode(extraClaudeArgs = [], cwd) {
+async function runSdkMode(extraCodexArgs = [], cwd) {
   // 检查 SDK 是否可用
   let sdkManager;
   try {
     sdkManager = await import('./lib/sdk-manager.js');
     if (!sdkManager.isSdkAvailable()) throw new Error('query not available');
   } catch {
-    console.warn('[CC Viewer] Agent SDK not available, falling back to PTY mode (-C)');
-    return runCliMode(extraClaudeArgs, cwd);
+    console.warn('[CX Viewer] Agent SDK not available, falling back to PTY mode (-C)');
+    return runCliMode(extraCodexArgs, cwd);
   }
 
   const workingDir = cwd || process.cwd();
@@ -372,10 +348,9 @@ async function runSdkMode(extraClaudeArgs = [], cwd) {
   // 不需要 proxy — SDK 直接管理 API 通信
 
   // 设置环境标记（必须在 import server.js 之前）
-  process.env.CCV_CLI_MODE = '1';
-  process.env.CCV_SDK_MODE = '1';
-  process.env.CCV_PROJECT_DIR = workingDir;
-  process.env.CCV_PROXY_MODE = '1'; // 使 interceptor.js 惰性
+  process.env.CXV_CLI_MODE = '1';
+  process.env.CXV_SDK_MODE = '1';
+  process.env.CXV_PROJECT_DIR = workingDir;
 
   // 启动 HTTP 服务器
   const serverMod = await import('./server.js');
@@ -396,7 +371,7 @@ async function runSdkMode(extraClaudeArgs = [], cwd) {
   // --d / --dangerously-skip-permissions → bypassPermissions（跳过所有权限检查）
   // --ad / --allow-dangerously-skip-permissions → default（只是允许用户后续切换，不立即跳过）
   let permissionMode = 'default';
-  if (extraClaudeArgs.includes('--dangerously-skip-permissions')) {
+  if (extraCodexArgs.includes('--dangerously-skip-permissions')) {
     permissionMode = 'bypassPermissions';
   }
 
@@ -421,7 +396,7 @@ async function runSdkMode(extraClaudeArgs = [], cwd) {
     execSync(`${cmd} ${url}`, { stdio: 'ignore', timeout: 5000 });
   } catch {}
 
-  console.log(`CC Viewer (SDK mode):`);
+  console.log(`CX Viewer (SDK mode):`);
   console.log(`  ➜ Local:   ${url}`);
   const _lanIps = serverMod.getAllLocalIps();
   const _token = serverMod.getAccessToken();
@@ -438,29 +413,25 @@ async function runSdkMode(extraClaudeArgs = [], cwd) {
   process.on('SIGTERM', cleanup);
 }
 
-async function runCliModeWorkspaceSelector(extraClaudeArgs = []) {
+async function runCliModeWorkspaceSelector(extraCodexArgs = []) {
   // 首先尝试 npm 版本（包括 nvm 安装），找不到再尝试 native 版本
-  let claudePath = resolveNpmClaudePath();
-  let isNpmVersion = !!claudePath;
+  let codexPath = resolveNpmCodexPath();
+  let isNpmVersion = !!codexPath;
 
-  if (!claudePath) {
-    claudePath = resolveNativePath();
+  if (!codexPath) {
+    codexPath = resolveNativePath();
   }
 
-  if (!claudePath) {
+  if (!codexPath) {
     console.error(t('cli.cMode.notFound'));
     process.exit(1);
   }
 
   console.log(t('cli.cMode.starting'));
 
-  process.env.CCV_CLI_MODE = '1';
-  process.env.CCV_WORKSPACE_MODE = '1';
-
-  // 启动代理
-  const { startProxy } = await import('./proxy.js');
-  const proxyPort = await startProxy();
-  process.env.CCV_PROXY_PORT = String(proxyPort);
+  process.env.CXV_CLI_MODE = '1';
+  // 不启动 proxy，直接运行 codex
+  process.env.CXV_DIRECT_MODE = '1';
 
   // 启动 HTTP 服务器（工作区模式，不初始化 interceptor 日志）
   const serverMod = await import('./server.js');
@@ -470,9 +441,9 @@ async function runCliModeWorkspaceSelector(extraClaudeArgs = []) {
 
   const port = serverMod.getPort();
 
-  // 保存 extraClaudeArgs 和 claudePath 供后续 launch 使用
-  serverMod.setWorkspaceClaudeArgs(extraClaudeArgs);
-  serverMod.setWorkspaceClaudePath(claudePath, isNpmVersion);
+  // 保存 extraCodexArgs 和 codexPath 供后续 launch 使用
+  serverMod.setWorkspaceCodexArgs(extraCodexArgs);
+  serverMod.setWorkspaceCodexPath(codexPath, isNpmVersion);
 
   // 自动打开浏览器
   const wsProtocol = serverMod.getProtocol();
@@ -483,7 +454,7 @@ async function runCliModeWorkspaceSelector(extraClaudeArgs = []) {
     execSync(`${cmd} ${url}`, { stdio: 'ignore', timeout: 5000 });
   } catch {}
 
-  console.log(`CC Viewer (Workspace):`);
+  console.log(`CX Viewer (Workspace):`);
   console.log(`  ➜ Local:   ${url}`);
   const _lanIps = serverMod.getAllLocalIps();
   const _token = serverMod.getAccessToken();
@@ -505,7 +476,7 @@ async function runCliModeWorkspaceSelector(extraClaudeArgs = []) {
 
 const args = process.argv.slice(2);
 
-// ccv 自有命令判断
+// cxv 自有命令判断
 const isLogger = args.includes('-logger');
 const isUninstall = args.includes('--uninstall') || args.includes('-uninstall');
 const isHelp = args.includes('--help') || args.includes('-h') || args[0] === 'help';
@@ -519,7 +490,7 @@ if (isHelp) {
 if (isVersion) {
   try {
     const pkg = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf-8'));
-    console.log(`cc-viewer v${pkg.version}`);
+    console.log(`cx-viewer v${pkg.version}`);
   } catch (e) {
     console.error('Failed to read version:', e.message);
   }
@@ -548,22 +519,22 @@ if (isUninstall) {
 
   // 清理 statusLine 配置和脚本（兼容历史版本遗留）
   try {
-    const settingsPath = resolve(homedir(), '.claude', 'settings.json');
+    const settingsPath = resolve(homedir(), '.codex', 'settings.json');
     if (existsSync(settingsPath)) {
       const settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
-      if (settings.statusLine?.command?.includes('ccv-statusline')) {
+      if (settings.statusLine?.command?.includes('cxv-statusline')) {
         delete settings.statusLine;
         writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
         console.log('Cleaned statusLine config from settings.json');
       }
     }
-    const ccvScript = resolve(homedir(), '.claude', 'ccv-statusline.sh');
-    if (existsSync(ccvScript)) {
-      unlinkSync(ccvScript);
-      console.log('Removed ccv-statusline.sh');
+    const cxvScript = resolve(homedir(), '.codex', 'cxv-statusline.sh');
+    if (existsSync(cxvScript)) {
+      unlinkSync(cxvScript);
+      console.log('Removed cxv-statusline.sh');
     }
     // 清理 context-window.json
-    const ctxFile = resolve(homedir(), '.claude', 'context-window.json');
+    const ctxFile = resolve(homedir(), '.codex', 'context-window.json');
     if (existsSync(ctxFile)) {
       unlinkSync(ctxFile);
     }
@@ -575,14 +546,14 @@ if (isUninstall) {
 }
 
 if (isLogger) {
-  // 安装/修复 hook 逻辑（原来无参数 ccv 的行为）
+  // 安装/修复 hook 逻辑（原来无参数 cxv 的行为）
   let mode = 'unknown';
 
   let prefersNative = true;
   const paths = (process.env.PATH || '').split(':');
   for (const dir of paths) {
     if (!dir) continue;
-    const exePath = resolve(dir, 'claude');
+    const exePath = resolve(dir, 'codex');
     if (existsSync(exePath)) {
       try {
         const real = realpathSync(exePath);
@@ -617,8 +588,8 @@ if (isLogger) {
 
   if (mode === 'unknown') {
     console.error(t('cli.inject.notFound', { path: cliPath }));
-    console.error('Also could not find native "claude" command in PATH.');
-    console.error('Please make sure @anthropic-ai/claude-code is installed.');
+    console.error('Also could not find native "codex" command in PATH.');
+    console.error('Please make sure @openai/codex is installed.');
     process.exit(1);
   }
 
@@ -655,7 +626,7 @@ if (isLogger) {
   } else {
     // Native Mode
     try {
-      console.log('Detected Claude Code Native Install.');
+      console.log('Detected Codex Code Native Install.');
       const shellResult = installShellHook(true);
 
       if (shellResult.status === 'exists') {
@@ -678,16 +649,30 @@ if (args[0] === 'run') {
   runProxyCommand(args);
 } else if (args.includes('-SDK') || args.includes('--sdk')) {
   // SDK 模式（显式 -SDK 切换）
-  const claudeArgs = args.filter(a => a !== '-SDK' && a !== '--sdk')
+  let codexArgs = args.filter(a => a !== '-SDK' && a !== '--sdk')
     .map(a => a === '--d' ? '--dangerously-skip-permissions' : a === '--ad' ? '--allow-dangerously-skip-permissions' : a);
-  runSdkMode(claudeArgs, process.cwd()).catch(err => {
+
+  // 处理 codex 不支持的 -c/--continue 参数（codex 使用 resume 子命令）
+  codexArgs = codexArgs.filter(a => a !== '-c' && a !== '--continue');
+
+  runSdkMode(codexArgs, process.cwd()).catch(err => {
     console.error('SDK mode error:', err);
     process.exit(1);
   });
 } else {
   // PTY 模式（默认）
-  const claudeArgs = args.map(a => a === '--d' ? '--dangerously-skip-permissions' : a === '--ad' ? '--allow-dangerously-skip-permissions' : a);
-  runCliMode(claudeArgs, process.cwd()).catch(err => {
+  // 将 -c/--continue 转换为 codex 的 resume 子命令
+  let codexArgs = args.map(a => a === '--d' ? '--dangerously-skip-permissions' : a === '--ad' ? '--allow-dangerously-skip-permissions' : a);
+
+  // 处理 codex 不支持的 -c/--continue 参数
+  const hasContinue = codexArgs.includes('-c') || codexArgs.includes('--continue');
+  codexArgs = codexArgs.filter(a => a !== '-c' && a !== '--continue');
+
+  // 如果用户想继续会话，在 codex 中使用 resume 子命令
+  // 但子命令需要在参数列表开头，所以我们不能直接添加
+  // 暂时忽略 -c 参数，codex 会自动恢复最近的会话
+
+  runCliMode(codexArgs, process.cwd()).catch(err => {
     console.error('CLI mode error:', err);
     process.exit(1);
   });

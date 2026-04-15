@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { request } from 'node:http';
 import { rmSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { LOG_DIR } from '../findcc.js';
+import { LOG_DIR } from '../findcx.js';
 
-process.env.CCV_WORKSPACE_MODE = '1';
-process.env.CCV_CLI_MODE = '0';
+process.env.CXV_WORKSPACE_MODE = '1';
+process.env.CXV_CLI_MODE = '0';
 
 function httpRequest(port, path, { method = 'GET', body = null } = {}) {
   return new Promise((resolve, reject) => {

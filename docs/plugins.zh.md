@@ -1,15 +1,15 @@
-# CC-Viewer 插件系统
+# CX-Viewer 插件系统
 
 [English](./plugins.md)
 
-CC-Viewer 提供了一套轻量级插件机制，允许在特定生命周期节点注入自定义逻辑。这对企业内部部署尤其有用——例如将二维码的局域网 URL 替换为企业内部代理地址。
+CX-Viewer 提供了一套轻量级插件机制，允许在特定生命周期节点注入自定义逻辑。这对企业内部部署尤其有用——例如将二维码的局域网 URL 替换为企业内部代理地址。
 
 ## 快速开始
 
 ### 第 1 步：创建插件目录
 
 ```bash
-mkdir -p ~/.claude/cc-viewer/plugins
+mkdir -p ~/.codex/cx-viewer/plugins
 ```
 
 ### 第 2 步：编写插件文件
@@ -17,7 +17,7 @@ mkdir -p ~/.claude/cc-viewer/plugins
 在插件目录下创建一个 `.js` 或 `.mjs` 文件，每个文件就是一个插件：
 
 ```javascript
-// ~/.claude/cc-viewer/plugins/my-plugin.js
+// ~/.codex/cx-viewer/plugins/my-plugin.js
 export default {
   name: 'my-plugin',
   hooks: {
@@ -29,7 +29,7 @@ export default {
 };
 ```
 
-### 第 3 步：重启 cc-viewer
+### 第 3 步：重启 cx-viewer
 
 插件放入目录后重启即生效，**无需 `npm install`**。
 
@@ -175,7 +175,7 @@ hooks: {
     fetch('https://monitor.company.com/api/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ service: 'cc-viewer', port, host, url }),
+      body: JSON.stringify({ service: 'cx-viewer', port, host, url }),
     }).catch(() => {});
   },
 }
@@ -199,14 +199,14 @@ hooks: {
 
 **类型：Parallel（并行通知）**
 
-每当 cc-viewer 检测到新的 JSONL 日志条目时触发。适合用于将日志数据转发到外部 HTTP 服务、数据分析平台或自定义存储。
+每当 cx-viewer 检测到新的 JSONL 日志条目时触发。适合用于将日志数据转发到外部 HTTP 服务、数据分析平台或自定义存储。
 
 **参数说明：**
 
 | 参数 | 类型 | 说明 |
 |------|------|------|
 | `entry` | `object` | 完整的 JSONL 日志条目对象，包含请求/响应信息、token 用量等 |
-| `entry.pid` | `number \| null` | Claude 进程 PID。CLI 模式下为 PTY 子进程 PID；非 CLI 模式（hook 注入）下为当前进程 PID。PTY 未启动或已退出时可能为 `null` |
+| `entry.pid` | `number \| null` | CX 进程 PID。CLI 模式下为 PTY 子进程 PID；非 CLI 模式（hook 注入）下为当前进程 PID。PTY 未启动或已退出时可能为 `null` |
 
 ```javascript
 hooks: {
@@ -272,7 +272,7 @@ hooks: {
 插件按文件名字母序排列后加载。使用数字前缀控制顺序：
 
 ```
-~/.claude/cc-viewer/plugins/
+~/.codex/cx-viewer/plugins/
 ├── 00-audit-log.js        # 最先执行
 ├── 50-enterprise-proxy.js # 中间执行
 └── 99-cleanup.js          # 最后执行
@@ -282,7 +282,7 @@ hooks: {
 
 ## 禁用插件
 
-在 `~/.claude/cc-viewer/preferences.json` 中添加 `disabledPlugins` 数组：
+在 `~/.codex/cx-viewer/preferences.json` 中添加 `disabledPlugins` 数组：
 
 ```json
 {
@@ -297,7 +297,7 @@ hooks: {
 ## 完整示例：企业代理插件
 
 ```javascript
-// ~/.claude/cc-viewer/plugins/enterprise-proxy.js
+// ~/.codex/cx-viewer/plugins/enterprise-proxy.js
 export default {
   name: 'enterprise-proxy',
   hooks: {
@@ -311,7 +311,7 @@ export default {
       fetch('https://monitor.company.com/api/notify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ service: 'cc-viewer', port, host }),
+        body: JSON.stringify({ service: 'cx-viewer', port, host }),
       }).catch(() => {});
     },
 
@@ -335,7 +335,7 @@ export default {
 
 ## 注意事项
 
-- 插件在服务器启动时加载一次。新增或删除插件文件后需要重启 cc-viewer。
+- 插件在服务器启动时加载一次。新增或删除插件文件后需要重启 cx-viewer。
 - 如果插件目录不存在，加载器静默返回，零性能开销。
 - 插件使用 ESM 格式（`export default`），支持 `.js` 和 `.mjs` 后缀。
-- 插件目录路径：`~/.claude/cc-viewer/plugins/`，企业 IT 可预置此目录。
+- 插件目录路径：`~/.codex/cx-viewer/plugins/`，企业 IT 可预置此目录。

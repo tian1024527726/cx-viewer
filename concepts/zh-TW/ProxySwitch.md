@@ -2,7 +2,7 @@
 
 ## Overview
 
-Hot-Switch Proxy lets you dynamically redirect API requests to a different endpoint without restarting Claude Code. This is useful when using third-party API proxy services.
+Hot-Switch Proxy lets you dynamically redirect API requests to a different endpoint without restarting Codex. This is useful when using third-party API proxy services.
 
 > ⚠️ Do not use this feature if you are a Claude Max subscriber.
 
@@ -26,7 +26,7 @@ When a proxy is active, `interceptor.js` performs the following before each API 
 
 ## Config File
 
-Configuration is stored at `~/.claude/cc-viewer/profile.json`. Click the folder icon in the title to open the directory:
+Configuration is stored at `~/.codex/cx-viewer/profile.json`. Click the folder icon in the title to open the directory:
 
 ```json
 {

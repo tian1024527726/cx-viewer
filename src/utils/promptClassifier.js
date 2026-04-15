@@ -13,7 +13,7 @@ export function isDangerousOperationPrompt(prompt) {
   if (!prompt || !prompt.question) return false;
   const q = prompt.question;
   if (isPlanApprovalPrompt(prompt)) return false;
-  // Match Claude Code permission prompt patterns:
+  // Match Codex permission prompt patterns:
   // - "Do you want to make this edit" / "Do you want to write" / "Do you want to proceed"
   // - "Allow X to Y" / "Want to allow" / "wants to (execute|run|...)"
   // - "May Claude read/write/execute..." / "grant access/permission" / "permit"

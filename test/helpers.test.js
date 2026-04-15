@@ -39,7 +39,7 @@ function isMainAgent(req) {
   const body = req.body || {};
   if (!body.system || !Array.isArray(body.tools)) return false;
   const sysText = getSystemText(body);
-  if (!sysText.includes('You are Claude Code')) return false;
+  if (!sysText.includes('You are Codex')) return false;
   if (SUBAGENT_SYSTEM_RE.test(sysText)) return false;
   if (Array.isArray(body.system) && body.tools.some(t => t.name === 'ToolSearch')) {
     const messages = body.messages || [];
@@ -286,7 +286,7 @@ function extractCachedContent(requests) {
 // ─── Test helpers ────────────────────────────────────────────────────────────
 
 function makeMainReq(overrides = {}) {
-  return { mainAgent: true, timestamp: '2026-01-01T00:00:00Z', body: { model: 'claude-opus-4-6', system: [{ type: 'text', text: 'You are Claude Code' }], tools: [], messages: [] }, response: { status: 200, body: { usage: { input_tokens: 100, output_tokens: 50, cache_creation_input_tokens: 0, cache_read_input_tokens: 80 } } }, ...overrides };
+  return { mainAgent: true, timestamp: '2026-01-01T00:00:00Z', body: { model: 'claude-opus-4-6', system: [{ type: 'text', text: 'You are Codex' }], tools: [], messages: [] }, response: { status: 200, body: { usage: { input_tokens: 100, output_tokens: 50, cache_creation_input_tokens: 0, cache_read_input_tokens: 80 } } }, ...overrides };
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -424,12 +424,12 @@ describe('helpers', () => {
 
   describe('isRelevantRequest', () => {
     it('returns true for normal request', () => {
-      assert.equal(isRelevantRequest({ url: 'https://api.anthropic.com/v1/messages', response: { status: 200 } }), true);
+      assert.equal(isRelevantRequest({ url: 'https://api.openai.com/v1/messages', response: { status: 200 } }), true);
     });
     it('rejects heartbeat', () => { assert.equal(isRelevantRequest({ isHeartbeat: true }), false); });
     it('rejects countTokens', () => { assert.equal(isRelevantRequest({ isCountTokens: true }), false); });
-    it('rejects eval/sdk URL', () => { assert.equal(isRelevantRequest({ url: 'https://statsig.anthropic.com/api/eval/sdk-abc' }), false); });
-    it('rejects count_tokens URL', () => { assert.equal(isRelevantRequest({ url: 'https://api.anthropic.com/v1/messages/count_tokens' }), false); });
+    it('rejects eval/sdk URL', () => { assert.equal(isRelevantRequest({ url: 'https://statsig.openai.com/api/eval/sdk-abc' }), false); });
+    it('rejects count_tokens URL', () => { assert.equal(isRelevantRequest({ url: 'https://api.openai.com/v1/messages/count_tokens' }), false); });
     it('rejects inProgress', () => { assert.equal(isRelevantRequest({ inProgress: true, url: '' }), false); });
     it('rejects response status 0', () => { assert.equal(isRelevantRequest({ url: '', response: { status: 0 } }), false); });
   });
@@ -437,9 +437,9 @@ describe('helpers', () => {
   describe('filterRelevantRequests', () => {
     it('filters out irrelevant requests', () => {
       const reqs = [
-        { url: 'https://api.anthropic.com/v1/messages', response: { status: 200 } },
+        { url: 'https://api.openai.com/v1/messages', response: { status: 200 } },
         { isHeartbeat: true, url: '' },
-        { url: 'https://api.anthropic.com/v1/messages', inProgress: true },
+        { url: 'https://api.openai.com/v1/messages', inProgress: true },
       ];
       assert.equal(filterRelevantRequests(reqs).length, 1);
     });
@@ -564,7 +564,7 @@ describe('helpers', () => {
         body: {
           system: [
             { type: 'text', text: 'billing' },
-            { type: 'text', text: 'You are Claude Code', cache_control: { type: 'ephemeral' } },
+            { type: 'text', text: 'You are Codex', cache_control: { type: 'ephemeral' } },
             { type: 'text', text: 'file search specialist', cache_control: { type: 'ephemeral' } },
           ],
           tools: [{ name: 'Glob' }, { name: 'Read' }],
@@ -577,7 +577,7 @@ describe('helpers', () => {
       const result = extractCachedContent([subReq]);
       assert.ok(result !== null);
       // test helper collects all text blocks up to last cache_control (including billing)
-      assert.deepEqual(result.system, ['billing', 'You are Claude Code', 'file search specialist']);
+      assert.deepEqual(result.system, ['billing', 'You are Codex', 'file search specialist']);
       assert.equal(result.messages.length, 1);
       assert.equal(result.cacheCreateTokens, 100);
       assert.equal(result.cacheReadTokens, 5000);

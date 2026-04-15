@@ -1,5 +1,5 @@
 /**
- * Ultraplan prompt templates for local Claude Code execution.
+ * Ultraplan prompt templates for local Codex execution.
  *
  * Extracted from @anthropic-ai/claude-code@2.1.100 source:
  *   - simple_plan:  cli.js var FUK  (~/claude-code/utils/ultraplan/prompt.txt)
@@ -171,7 +171,7 @@ Once the review report is generated, analyze it to formulate a set of recommende
  * @param {string} userPrompt - User's task description
  * @param {'simple'|'visual'|'subagents'|'auto'} variant - Template variant
  * @param {string} [seedPlan] - Optional draft plan to refine
- * @returns {string} Assembled prompt ready to send to Claude Code
+ * @returns {string} Assembled prompt ready to send to Codex
  */
 export function buildLocalUltraplan(userPrompt, variant = 'auto', seedPlan) {
   const template = ULTRAPLAN_VARIANTS[variant] || ULTRAPLAN_VARIANTS.auto;

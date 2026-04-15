@@ -115,7 +115,7 @@ function makeEntry(idx, isCheckpoint = true) {
   }
   return {
     timestamp: new Date(Date.now() + idx * 1000).toISOString(),
-    url: 'https://api.anthropic.com/v1/messages',
+    url: 'https://api.openai.com/v1/messages',
     mainAgent: true,
     _deltaFormat: 1,
     _isCheckpoint: isCheckpoint,

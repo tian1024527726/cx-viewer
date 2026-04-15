@@ -88,7 +88,7 @@ function isPreflightRequest(req, nextReq) {
   const trimmed = text.trim();
   if (/^Command:/m.test(text) || /^<policy_spec>/i.test(trimmed) || /^<task-notification>/i.test(trimmed)) return false;
   const sysText = getSystemText(body);
-  if (!sysText.includes('Claude Code')) return false;
+  if (!sysText.includes('Codex')) return false;
   if (/process Bash commands/i.test(sysText)) return false;
   if (/Extract any file paths/i.test(sysText)) return false;
   if (nextReq) {
@@ -218,7 +218,7 @@ function makeMainAgentReq(overrides = {}) {
     mainAgent: true,
     timestamp: '2026-03-18T00:00:00Z',
     body: {
-      system: [{ type: 'text', text: 'You are Claude Code, Anthropic\'s official CLI.' }],
+      system: [{ type: 'text', text: 'You are Codex' }],
       tools: makeMainAgentTools(),
       messages: [{ role: 'user', content: 'hello' }],
     },
@@ -235,7 +235,7 @@ function makeTeammateReq(overrides = {}) {
     timestamp: '2026-03-18T00:00:05Z',
     body: {
       system: [
-        { type: 'text', text: 'You are Claude Code, Anthropic\'s official CLI.' },
+        { type: 'text', text: 'You are Codex' },
         { type: 'text', text: '# Agent Teammate Communication\n\nIMPORTANT: You are running as an agent in a team.\nUse the SendMessage tool.' },
       ],
       tools: makeMainAgentTools(),
@@ -253,7 +253,7 @@ function makeProxyTeammateReq(overrides = {}) {
     timestamp: '2026-03-18T00:00:05Z',
     body: {
       system: [
-        { type: 'text', text: 'You are Claude Code, Anthropic\'s official CLI.' },
+        { type: 'text', text: 'You are Codex' },
         { type: 'text', text: '# Agent Teammate Communication\n\nIMPORTANT: You are running as an agent in a team.' },
       ],
       tools: makeMainAgentTools(),
@@ -310,7 +310,7 @@ describe('contentFilter', () => {
 
     it('detects "Agent Teammate Communication" variant', () => {
       const req = makeProxyTeammateReq();
-      req.body.system = [{ type: 'text', text: 'You are Claude Code. Agent Teammate Communication protocol.' }];
+      req.body.system = [{ type: 'text', text: 'You are Codex. Agent Teammate Communication protocol.' }];
       assert.equal(isTeammate(req), true);
     });
   });
@@ -689,7 +689,7 @@ describe('requestType', () => {
     function makePreflightReq(text, systemExtra) {
       return {
         body: {
-          system: `You are Claude Code, Anthropic's official CLI.${systemExtra || ''}`,
+          system: `You are Codex${systemExtra || ''}`,
           messages: [{ role: 'user', content: text }],
           // no tools
         },
@@ -736,7 +736,7 @@ describe('requestType', () => {
       assert.equal(isPreflightRequest(req, next), false);
     });
 
-    it('returns false when system lacks "Claude Code"', () => {
+    it('returns false when system lacks "Codex"', () => {
       const userText = 'Do something';
       const req = { body: { system: 'You are a helpful assistant.', messages: [{ role: 'user', content: userText }] } };
       const next = makeNextReq(userText);
@@ -800,7 +800,7 @@ describe('requestType', () => {
       const userText = 'Implement the following plan:\n1. Do X\n2. Do Y';
       const req = {
         body: {
-          system: "You are Claude Code, Anthropic's official CLI.",
+          system: "You are Codex",
           messages: [{ role: 'user', content: userText }],
         },
       };
@@ -816,7 +816,7 @@ describe('requestType', () => {
       const userText = 'implement the following plan:\nstep 1';
       const req = {
         body: {
-          system: "You are Claude Code, Anthropic's official CLI.",
+          system: "You are Codex",
           messages: [{ role: 'user', content: userText }],
         },
       };
@@ -832,7 +832,7 @@ describe('requestType', () => {
       const userText = 'Please fix the bug in main.js';
       const req = {
         body: {
-          system: "You are Claude Code, Anthropic's official CLI.",
+          system: "You are Codex",
           messages: [{ role: 'user', content: userText }],
         },
       };

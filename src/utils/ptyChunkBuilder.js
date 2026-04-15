@@ -2,7 +2,7 @@
  * PTY Chunk Builder — pure functions for building keystroke sequences.
  * Separates "what to send" from "how to send".
  *
- * Claude Code AskUserQuestion prompt model:
+ * Codex AskUserQuestion prompt model:
  * - Single question: options list, Enter selects and submits
  * - Multi question: tabbed form [Q1] [Q2] ... [Submit]
  *   - Single select: ↓↓...Enter (selects and auto-advances to next tab)
@@ -107,7 +107,7 @@ export function buildMultiSelectChunks(answer, prompt, isMultiQuestion = false) 
  *
  * Multi-question tabbed form:
  *   In tabbed forms, Enter on "Type something" auto-advances to the next tab
- *   (same as regular single-select). Text input is NOT inline — Claude Code
+ *   (same as regular single-select). Text input is NOT inline — Codex
  *   prompts for it separately after the form is submitted.
  *   So we treat it like a regular single-select: navigate → Enter.
  *

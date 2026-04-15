@@ -86,7 +86,7 @@ function isDangerousOperationPrompt(prompt) {
   return false;
 }
 
-// ── Test cases: Real Claude Code permission prompts ──
+// ── Test cases: Real Codex permission prompts ──
 
 describe('Permission prompt detection', () => {
 
@@ -128,7 +128,7 @@ describe('Permission prompt detection', () => {
     it('A3: Edit prompt with directory scope', () => {
       const raw = `Do you want to make this edit to package.json?
   ❯ Yes
-    Yes, allow all edits to cc-viewer/ during this session (shift+tab)
+    Yes, allow all edits to cx-viewer/ during this session (shift+tab)
     No
 `;
       const result = detectPrompt(raw);
@@ -145,7 +145,7 @@ describe('Permission prompt detection', () => {
   describe('B. Bash command permission prompts', () => {
 
     it('B1: Bash command permission with numbered options', () => {
-      const raw = `Claude wants to execute a bash command. Allow?
+      const raw = `Codex wants to execute a bash command. Allow?
   ❯ Yes
     Yes, allow all bash commands during this session
     No
@@ -172,7 +172,7 @@ Esc to cancel · Tab to amend · ctrl+e to explain
     });
 
     it('B2: Bash with specific command shown', () => {
-      const raw = `Claude wants to run: npm install lodash
+      const raw = `Codex wants to run: npm install lodash
   ❯ Yes
     Yes, allow all bash commands during this session
     No
@@ -263,7 +263,7 @@ Esc to cancel · Tab to amend · ctrl+e to explain
   describe('F. False positives that should NOT be detected', () => {
 
     it('F1: File path output', () => {
-      const raw = `~/projects/cc-viewer/src/components/
+      const raw = `~/projects/cx-viewer/src/components/
   ❯ App.jsx
     ChatView.jsx
     ChatMessage.jsx
@@ -363,7 +363,7 @@ Do you want to make this edit to test.js?
     });
 
     it('G5: Question without ? (some prompts)', () => {
-      const raw = `Claude wants to execute the following bash command
+      const raw = `Codex wants to execute the following bash command
   ❯ Yes
     Yes, always allow
     No
@@ -375,16 +375,16 @@ Do you want to make this edit to test.js?
       console.log('  ✓ No-? prompt detected via Pattern 2');
     });
 
-    it('G6: ".claude" folder permission', () => {
-      const raw = `Do you want to make this edit to .claude/settings.json?
+    it('G6: ".codex" folder permission', () => {
+      const raw = `Do you want to make this edit to .codex/settings.json?
   ❯ Yes
-    Yes, and allow Claude to edit its own settings for this session
+    Yes, and allow Codex to edit its own settings for this session
     No
 `;
       const result = detectPrompt(raw);
-      assert.ok(result, 'Should detect .claude settings edit');
+      assert.ok(result, 'Should detect .codex settings edit');
       assert.ok(isDangerousOperationPrompt(result));
-      console.log('  ✓ .claude settings permission detected');
+      console.log('  ✓ .codex settings permission detected');
     });
 
     it('G7: Read permission', () => {
@@ -448,20 +448,20 @@ Do you want to make this edit to test.js?
       console.log('  ✓ Standard 3-option permission prompt');
     });
 
-    it('H2: Claude settings folder special option', () => {
-      const raw = `Do you want to make this edit to .claude/settings.json?
+    it('H2: Codex settings folder special option', () => {
+      const raw = `Do you want to make this edit to .codex/settings.json?
   ❯ Yes
-    Yes, and allow Claude to edit its own settings for this session
+    Yes, and allow Codex to edit its own settings for this session
     No
 `;
       const result = detectPrompt(raw);
       assert.ok(result);
       assert.strictEqual(result.options.length, 3);
-      console.log('  ✓ Claude settings special permission prompt');
+      console.log('  ✓ Codex settings special permission prompt');
     });
 
     it('H3: Read-only permission', () => {
-      const raw = `May Claude read /secret/config.yml?
+      const raw = `May Codex read /secret/config.yml?
   ❯ Yes
     Yes, allow reading from secret/ during this session
     No

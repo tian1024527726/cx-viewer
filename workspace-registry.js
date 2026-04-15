@@ -2,7 +2,7 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync, readdirSync, openSync, closeSync, renameSync, unlinkSync } from 'node:fs';
 import { join, basename, resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
-import { LOG_DIR } from './findcc.js';
+import { LOG_DIR } from './findcx.js';
 
 // 动态获取（LOG_DIR 可能在运行时被 setLogDir 修改）
 function getWorkspacesFile() { return join(LOG_DIR, 'workspaces.json'); }
@@ -83,7 +83,7 @@ export function saveWorkspaces(list) {
       }
     }
   } catch (err) {
-    console.error('[CC Viewer] Failed to save workspaces:', err.message);
+    console.error('[CX Viewer] Failed to save workspaces:', err.message);
     // 尝试清理临时文件
     try { unlinkSync(tmpFile); } catch { }
   }

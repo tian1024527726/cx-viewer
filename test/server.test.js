@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 // 创建临时目录模拟 LOG_DIR
-const tmpDir = mkdtempSync(join(tmpdir(), 'ccv-server-test-'));
+const tmpDir = mkdtempSync(join(tmpdir(), 'cxv-server-test-'));
 const fakeLogDir = join(tmpDir, 'logs');
 const fakeProjectDir = join(fakeLogDir, 'test-project');
 mkdirSync(fakeProjectDir, { recursive: true });
@@ -15,14 +15,14 @@ mkdirSync(fakeProjectDir, { recursive: true });
 const fakeLogFile = join(fakeProjectDir, 'test.jsonl');
 writeFileSync(fakeLogFile, JSON.stringify({
   timestamp: '2025-01-01T00:00:00.000Z',
-  url: 'https://api.anthropic.com/v1/messages',
+  url: 'https://api.openai.com/v1/messages',
   method: 'POST',
   status: 200,
 }) + '\n---\n');
 
 // 设置环境变量，阻止自动启动和副作用
-process.env.CCV_WORKSPACE_MODE = '1';
-process.env.CCV_CLI_MODE = '0';
+process.env.CXV_WORKSPACE_MODE = '1';
+process.env.CXV_CLI_MODE = '0';
 
 /** 用 node:http 发请求（避免被 interceptor patch 的 fetch 干扰） */
 function httpRequest(port, path, { method = 'GET', body = null } = {}) {
@@ -280,7 +280,7 @@ describe('server API endpoints', { concurrency: false }, () => {
 
   // --- IGNORED_PATTERNS in /api/files ---
   it('GET /api/files filters out system/VCS directories (.git, .DS_Store)', async () => {
-    const workspace = mkdtempSync(join(tmpdir(), 'ccv-workspace-'));
+    const workspace = mkdtempSync(join(tmpdir(), 'cxv-workspace-'));
     mkdirSync(join(workspace, '.git'), { recursive: true });
     mkdirSync(join(workspace, '.svn'), { recursive: true });
     mkdirSync(join(workspace, '.hg'), { recursive: true });
@@ -289,8 +289,8 @@ describe('server API endpoints', { concurrency: false }, () => {
     mkdirSync(join(workspace, '.vscode'), { recursive: true });
     mkdirSync(join(workspace, 'src'), { recursive: true });
 
-    const origCwd = process.env.CCV_PROJECT_DIR;
-    process.env.CCV_PROJECT_DIR = workspace;
+    const origCwd = process.env.CXV_PROJECT_DIR;
+    process.env.CXV_PROJECT_DIR = workspace;
 
     try {
       const res = await httpRequest(port, '/api/files?path=.');
@@ -305,20 +305,20 @@ describe('server API endpoints', { concurrency: false }, () => {
       assert.ok(!names.includes('.idea'), 'should filter out .idea');
       assert.ok(!names.includes('.vscode'), 'should filter out .vscode');
     } finally {
-      process.env.CCV_PROJECT_DIR = origCwd;
+      process.env.CXV_PROJECT_DIR = origCwd;
       rmSync(workspace, { recursive: true, force: true });
     }
   });
 
   it('GET /api/files shows dot files that are not in IGNORED_PATTERNS', async () => {
-    const workspace = mkdtempSync(join(tmpdir(), 'ccv-workspace-'));
+    const workspace = mkdtempSync(join(tmpdir(), 'cxv-workspace-'));
     writeFileSync(join(workspace, '.gitignore'), 'node_modules\n');
     writeFileSync(join(workspace, '.env'), 'SECRET=123');
     writeFileSync(join(workspace, '.eslintrc.js'), 'module.exports = {};');
     writeFileSync(join(workspace, 'index.js'), '');
 
-    const origCwd = process.env.CCV_PROJECT_DIR;
-    process.env.CCV_PROJECT_DIR = workspace;
+    const origCwd = process.env.CXV_PROJECT_DIR;
+    process.env.CXV_PROJECT_DIR = workspace;
 
     try {
       const res = await httpRequest(port, '/api/files?path=.');
@@ -330,20 +330,20 @@ describe('server API endpoints', { concurrency: false }, () => {
       assert.ok(names.includes('.eslintrc.js'), 'should show .eslintrc.js');
       assert.ok(names.includes('index.js'), 'should show index.js');
     } finally {
-      process.env.CCV_PROJECT_DIR = origCwd;
+      process.env.CXV_PROJECT_DIR = origCwd;
       rmSync(workspace, { recursive: true, force: true });
     }
   });
 
   it('GET /api/files shows node_modules/dist (no longer hard-filtered)', async () => {
-    const workspace = mkdtempSync(join(tmpdir(), 'ccv-workspace-'));
+    const workspace = mkdtempSync(join(tmpdir(), 'cxv-workspace-'));
     mkdirSync(join(workspace, 'node_modules'), { recursive: true });
     mkdirSync(join(workspace, 'dist'), { recursive: true });
     mkdirSync(join(workspace, '__pycache__'), { recursive: true });
     mkdirSync(join(workspace, 'src'), { recursive: true });
 
-    const origCwd = process.env.CCV_PROJECT_DIR;
-    process.env.CCV_PROJECT_DIR = workspace;
+    const origCwd = process.env.CXV_PROJECT_DIR;
+    process.env.CXV_PROJECT_DIR = workspace;
 
     try {
       const res = await httpRequest(port, '/api/files?path=.');
@@ -355,13 +355,13 @@ describe('server API endpoints', { concurrency: false }, () => {
       assert.ok(names.includes('__pycache__'), 'should show __pycache__');
       assert.ok(names.includes('src'), 'should show src');
     } finally {
-      process.env.CCV_PROJECT_DIR = origCwd;
+      process.env.CXV_PROJECT_DIR = origCwd;
       rmSync(workspace, { recursive: true, force: true });
     }
   });
 
   it('GET /api/files marks gitignored files with gitIgnored flag in a git repo', async () => {
-    const workspace = mkdtempSync(join(tmpdir(), 'ccv-gitignore-'));
+    const workspace = mkdtempSync(join(tmpdir(), 'cxv-gitignore-'));
     // Initialize a git repo
     const { execSync: exec } = await import('node:child_process');
     exec('git init', { cwd: workspace, stdio: 'ignore' });
@@ -375,8 +375,8 @@ describe('server API endpoints', { concurrency: false }, () => {
     mkdirSync(join(workspace, 'build'), { recursive: true });
     mkdirSync(join(workspace, 'src'), { recursive: true });
 
-    const origCwd = process.env.CCV_PROJECT_DIR;
-    process.env.CCV_PROJECT_DIR = workspace;
+    const origCwd = process.env.CXV_PROJECT_DIR;
+    process.env.CXV_PROJECT_DIR = workspace;
 
     try {
       const res = await httpRequest(port, '/api/files?path=.');
@@ -399,19 +399,19 @@ describe('server API endpoints', { concurrency: false }, () => {
       assert.ok(srcDir, 'src/ should be present');
       assert.equal(srcDir.gitIgnored, undefined, 'src/ should NOT have gitIgnored flag');
     } finally {
-      process.env.CCV_PROJECT_DIR = origCwd;
+      process.env.CXV_PROJECT_DIR = origCwd;
       rmSync(workspace, { recursive: true, force: true });
     }
   });
 
   it('GET /api/files works without gitIgnored when not a git repo', async () => {
-    const workspace = mkdtempSync(join(tmpdir(), 'ccv-nogit-'));
+    const workspace = mkdtempSync(join(tmpdir(), 'cxv-nogit-'));
     writeFileSync(join(workspace, '.gitignore'), 'foo.txt\n');
     writeFileSync(join(workspace, 'foo.txt'), 'data');
     writeFileSync(join(workspace, 'bar.txt'), 'data');
 
-    const origCwd = process.env.CCV_PROJECT_DIR;
-    process.env.CCV_PROJECT_DIR = workspace;
+    const origCwd = process.env.CXV_PROJECT_DIR;
+    process.env.CXV_PROJECT_DIR = workspace;
 
     try {
       const res = await httpRequest(port, '/api/files?path=.');
@@ -424,7 +424,7 @@ describe('server API endpoints', { concurrency: false }, () => {
       const hasAnyIgnored = data.some(i => i.gitIgnored);
       assert.equal(hasAnyIgnored, false, 'no items should have gitIgnored outside a git repo');
     } finally {
-      process.env.CCV_PROJECT_DIR = origCwd;
+      process.env.CXV_PROJECT_DIR = origCwd;
       rmSync(workspace, { recursive: true, force: true });
     }
   });

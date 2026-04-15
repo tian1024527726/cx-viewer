@@ -8,7 +8,7 @@ import {
   cleanupTempFiles,
   findRecentLog,
   getSystemText,
-  isAnthropicApiPath,
+  isOpenAiApiPath,
   isMainAgentRequest,
   isPreflightEntry,
   migrateConversationContext,
@@ -31,7 +31,7 @@ function makeMainAgentTools() {
 
 function makeMainAgentBody(overrides = {}) {
   return {
-    system: [{ type: 'text', text: 'You are Claude Code, ...' }],
+    system: [{ type: 'text', text: 'You are Codex, ...' }],
     tools: makeMainAgentTools(),
     messages: [{ role: 'user', content: 'hello' }],
     ...overrides,
@@ -42,7 +42,7 @@ function makeLogEntry(overrides = {}) {
   return {
     timestamp: new Date().toISOString(),
     project: 'test-project',
-    url: 'https://api.anthropic.com/v1/messages',
+    url: 'https://api.openai.com/v1/messages',
     method: 'POST',
     body: makeMainAgentBody(),
     response: { status: 200, body: {} },
@@ -59,7 +59,7 @@ describe('interceptor', () => {
   let tempDir;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'ccv-interceptor-test-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'cxv-interceptor-test-'));
   });
 
   afterEach(() => {
@@ -77,11 +77,11 @@ describe('interceptor', () => {
     it('joins array system text blocks', () => {
       const body = {
         system: [
-          { type: 'text', text: 'You are Claude Code' },
+          { type: 'text', text: 'You are Codex' },
           { type: 'text', text: ', an AI assistant.' },
         ],
       };
-      assert.equal(getSystemText(body), 'You are Claude Code, an AI assistant.');
+      assert.equal(getSystemText(body), 'You are Codex, an AI assistant.');
     });
 
     it('returns empty string for null/undefined system', () => {
@@ -110,12 +110,12 @@ describe('interceptor', () => {
 
     it('rejects when tools is not array', () => {
       assert.equal(isMainAgentRequest({
-        system: 'You are Claude Code',
+        system: 'You are Codex',
         tools: 'not-array',
       }), false);
     });
 
-    it('rejects when system does not contain "You are Claude Code"', () => {
+    it('rejects when system does not contain "You are Codex"', () => {
       assert.equal(isMainAgentRequest({
         system: 'You are a helpful assistant',
         tools: makeMainAgentTools(),
@@ -131,7 +131,7 @@ describe('interceptor', () => {
       ];
       for (const pattern of patterns) {
         const body = makeMainAgentBody({
-          system: `You are Claude Code, a ${pattern}`,
+          system: `You are Codex, a ${pattern}`,
         });
         assert.equal(isMainAgentRequest(body), false, `should reject: ${pattern}`);
       }
@@ -139,7 +139,7 @@ describe('interceptor', () => {
 
     it('rejects when tools <= 5 without ToolSearch (2 tools)', () => {
       assert.equal(isMainAgentRequest({
-        system: [{ text: 'You are Claude Code' }],
+        system: [{ text: 'You are Codex' }],
         tools: [{ name: 'Edit' }, { name: 'Bash' }],
       }), false);
     });
@@ -148,14 +148,14 @@ describe('interceptor', () => {
       const tools = Array.from({ length: 12 }, (_, i) => ({ name: `Tool${i}` }));
       tools.push({ name: 'Bash' }, { name: 'Task' });
       assert.equal(isMainAgentRequest({
-        system: [{ text: 'You are Claude Code' }],
+        system: [{ text: 'You are Codex' }],
         tools,
       }), false);
     });
 
     it('detects new architecture with ToolSearch + deferred-tools', () => {
       const body = {
-        system: [{ text: 'You are Claude Code' }],
+        system: [{ text: 'You are Codex' }],
         tools: [{ name: 'ToolSearch' }, { name: 'Bash' }],
         messages: [{ role: 'user', content: 'some text <available-deferred-tools> list' }],
       };
@@ -164,7 +164,7 @@ describe('interceptor', () => {
 
     it('new architecture: content as array', () => {
       const body = {
-        system: [{ text: 'You are Claude Code' }],
+        system: [{ text: 'You are Codex' }],
         tools: [{ name: 'ToolSearch' }],
         messages: [{ role: 'user', content: [{ text: '<available-deferred-tools>' }] }],
       };
@@ -173,7 +173,7 @@ describe('interceptor', () => {
 
     it('new architecture: rejects without deferred-tools marker', () => {
       const body = {
-        system: [{ text: 'You are Claude Code' }],
+        system: [{ text: 'You are Codex' }],
         tools: [{ name: 'ToolSearch' }],
         messages: [{ role: 'user', content: 'just a normal message' }],
       };
@@ -182,7 +182,7 @@ describe('interceptor', () => {
 
     it('new architecture: rejects deferred-tools without ToolSearch', () => {
       const body = {
-        system: [{ text: 'You are Claude Code' }],
+        system: [{ text: 'You are Codex' }],
         tools: [{ name: 'Bash' }],
         messages: [{ role: 'user', content: 'some text <available-deferred-tools> list' }],
       };
@@ -191,7 +191,7 @@ describe('interceptor', () => {
 
     it('new architecture: accepts even with few tools if marker present', () => {
       const body = {
-        system: [{ text: 'You are Claude Code' }],
+        system: [{ text: 'You are Codex' }],
         tools: [{ name: 'ToolSearch' }, { name: 'Bash' }],
         messages: [{ role: 'user', content: '<available-deferred-tools>' }],
       };
@@ -200,7 +200,7 @@ describe('interceptor', () => {
 
     it('v2.1.81+ lightweight MainAgent: 9 tools with core set', () => {
       const body = {
-        system: [{ text: 'You are Claude Code' }],
+        system: [{ text: 'You are Codex' }],
         tools: [
           { name: 'Agent' }, { name: 'Bash' }, { name: 'Glob' },
           { name: 'Grep' }, { name: 'Read' }, { name: 'Edit' },
@@ -213,7 +213,7 @@ describe('interceptor', () => {
 
     it('rejects when tools <= 5 without ToolSearch', () => {
       assert.equal(isMainAgentRequest({
-        system: [{ text: 'You are Claude Code' }],
+        system: [{ text: 'You are Codex' }],
         tools: [{ name: 'Edit' }, { name: 'Bash' }, { name: 'Agent' }],
       }), false);
     });
@@ -223,7 +223,7 @@ describe('interceptor', () => {
       // interceptor-core should NOT filter it; that's the interceptor.js / frontend layer's job
       const teammateBody = makeMainAgentBody({
         system: [
-          { type: 'text', text: 'You are Claude Code, Anthropic\'s official CLI for Claude.' },
+          { type: 'text', text: 'You are Codex, Anthropic\'s official CLI for Claude.' },
           { type: 'text', text: '# Agent Teammate Communication\n\nIMPORTANT: You are running as an agent in a team.' },
         ],
       });
@@ -236,10 +236,10 @@ describe('interceptor', () => {
   // isPreflightEntry
   // --------------------------------------------------------------------------
   describe('isPreflightEntry', () => {
-    it('detects preflight: single user message, system contains Claude Code, no tools', () => {
+    it('detects preflight: single user message, system contains Codex, no tools', () => {
       const entry = {
         body: {
-          system: 'You are Claude Code',
+          system: 'You are Codex',
           messages: [{ role: 'user', content: 'hi' }],
         },
       };
@@ -250,7 +250,7 @@ describe('interceptor', () => {
       const entry = {
         mainAgent: true,
         body: {
-          system: 'You are Claude Code',
+          system: 'You are Codex',
           messages: [{ role: 'user', content: 'hi' }],
         },
       };
@@ -261,7 +261,7 @@ describe('interceptor', () => {
       const entry = {
         isHeartbeat: true,
         body: {
-          system: 'You are Claude Code',
+          system: 'You are Codex',
           messages: [{ role: 'user', content: 'hi' }],
         },
       };
@@ -271,7 +271,7 @@ describe('interceptor', () => {
     it('rejects if tools present', () => {
       const entry = {
         body: {
-          system: 'You are Claude Code',
+          system: 'You are Codex',
           tools: [{ name: 'Edit' }],
           messages: [{ role: 'user', content: 'hi' }],
         },
@@ -282,7 +282,7 @@ describe('interceptor', () => {
     it('rejects if multiple messages', () => {
       const entry = {
         body: {
-          system: 'You are Claude Code',
+          system: 'You are Codex',
           messages: [
             { role: 'user', content: 'hi' },
             { role: 'assistant', content: 'hello' },
@@ -292,7 +292,7 @@ describe('interceptor', () => {
       assert.equal(isPreflightEntry(entry), false);
     });
 
-    it('rejects if system does not contain Claude Code', () => {
+    it('rejects if system does not contain Codex', () => {
       const entry = {
         body: {
           system: 'You are a helper',
@@ -305,7 +305,7 @@ describe('interceptor', () => {
     it('handles array system', () => {
       const entry = {
         body: {
-          system: [{ text: 'You are Claude Code' }],
+          system: [{ text: 'You are Codex' }],
           messages: [{ role: 'user', content: 'hi' }],
         },
       };
@@ -314,41 +314,41 @@ describe('interceptor', () => {
   });
 
   // --------------------------------------------------------------------------
-  // isAnthropicApiPath
+  // isOpenaiApiPath
   // --------------------------------------------------------------------------
-  describe('isAnthropicApiPath', () => {
-    it('matches /v1/messages', () => {
-      assert.equal(isAnthropicApiPath('https://api.anthropic.com/v1/messages'), true);
+  describe('isOpenAiApiPath', () => {
+    it('matches /v1/chat/completions', () => {
+      assert.equal(isOpenAiApiPath('https://api.openai.com/v1/chat/completions'), true);
     });
 
-    it('matches /v1/messages/count_tokens', () => {
-      assert.equal(isAnthropicApiPath('https://api.anthropic.com/v1/messages/count_tokens'), true);
+    it('matches /v1/completions', () => {
+      assert.equal(isOpenAiApiPath('https://api.openai.com/v1/completions'), true);
     });
 
-    it('matches /v1/messages/batches', () => {
-      assert.equal(isAnthropicApiPath('https://api.anthropic.com/v1/messages/batches'), true);
+    it('matches /v1/embeddings', () => {
+      assert.equal(isOpenAiApiPath('https://api.openai.com/v1/embeddings'), true);
     });
 
-    it('matches /v1/messages/batches/xxx', () => {
-      assert.equal(isAnthropicApiPath('https://api.anthropic.com/v1/messages/batches/batch_123'), true);
+    it('matches /v1/batches', () => {
+      assert.equal(isOpenAiApiPath('https://api.openai.com/v1/batches'), true);
     });
 
-    it('matches heartbeat /api/eval/sdk-xxx', () => {
-      assert.equal(isAnthropicApiPath('https://statsig.anthropic.com/api/eval/sdk-abc123'), true);
+    it('matches /v1/batches/xxx', () => {
+      assert.equal(isOpenAiApiPath('https://api.openai.com/v1/batches/batch_123'), true);
     });
 
     it('rejects unrelated paths', () => {
-      assert.equal(isAnthropicApiPath('https://api.anthropic.com/v1/completions'), false);
-      assert.equal(isAnthropicApiPath('https://example.com/other'), false);
+      assert.equal(isOpenAiApiPath('https://api.openai.com/v1/models'), false);
+      assert.equal(isOpenAiApiPath('https://example.com/other'), false);
     });
 
-    it('rejects /v1/messages with extra suffix', () => {
-      assert.equal(isAnthropicApiPath('https://api.anthropic.com/v1/messages/unknown'), false);
+    it('rejects /v1/chat/completions with extra suffix', () => {
+      assert.equal(isOpenAiApiPath('https://api.openai.com/v1/chat/completions/unknown'), false);
     });
 
     it('fallback regex for invalid URL', () => {
-      assert.equal(isAnthropicApiPath('not-a-url/v1/messages'), true);
-      assert.equal(isAnthropicApiPath('not-a-url/other'), false);
+      assert.equal(isOpenAiApiPath('not-a-url/v1/chat/completions'), true);
+      assert.equal(isOpenAiApiPath('not-a-url/other'), false);
     });
   });
 
@@ -641,7 +641,7 @@ describe('interceptor', () => {
 
     it('includes preflight entry before origin', () => {
       const preflight = JSON.stringify({
-        body: { system: 'You are Claude Code', messages: [{ role: 'user', content: 'preflight' }] },
+        body: { system: 'You are Codex', messages: [{ role: 'user', content: 'preflight' }] },
       }, null, 2);
       const origin = JSON.stringify({ mainAgent: true, body: { messages: [{ role: 'user', content: 'start' }] } }, null, 2);
       const follow = JSON.stringify({ mainAgent: true, body: { messages: [{ role: 'user', content: 'q' }, { role: 'assistant', content: 'a' }] } }, null, 2);

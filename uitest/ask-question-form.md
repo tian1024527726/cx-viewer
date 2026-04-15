@@ -1,15 +1,15 @@
 # AskUserQuestion UI 测试用例
 
 ## 前置条件
-- cc-viewer 服务运行中
-- 浏览器打开 cc-viewer 页面
-- Claude Code CLI 处于活跃会话
+- cx-viewer 服务运行中
+- 浏览器打开 cx-viewer 页面
+- Codex CLI 处于活跃会话
 
 ---
 
 ## TC-1: 单题单选
 
-触发：Claude 调用 AskUserQuestion，1 题 3 选项，multiSelect=false
+触发：CX 调用 AskUserQuestion，1 题 3 选项，multiSelect=false
 
 验证：
 1. 对话中出现选择表单，显示 radio 样式（○/◉）
@@ -94,7 +94,7 @@
 
 ## TC-8: 页面刷新后表单状态
 
-触发：Claude 发出 AskUserQuestion 后刷新页面
+触发：CX 发出 AskUserQuestion 后刷新页面
 
 验证：
 1. 刷新后表单仍然显示（从日志重建）

@@ -10,7 +10,7 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const WORKER_PATH = join(__dirname, '..', 'lib', 'stats-worker.js');
 
 function makeTmpDir() {
-  const dir = join(tmpdir(), `ccv-stats-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const dir = join(tmpdir(), `cxv-stats-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(dir, { recursive: true });
   return dir;
 }

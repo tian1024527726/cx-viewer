@@ -7,7 +7,7 @@ import { execSync } from 'node:child_process';
 import { getGitDiffs } from '../lib/git-diff.js';
 
 function makeTmpDir() {
-  const dir = join(tmpdir(), `ccv-git-diff-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+  const dir = join(tmpdir(), `cxv-git-diff-test-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   mkdirSync(dir, { recursive: true });
   return dir;
 }

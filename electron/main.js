@@ -1,5 +1,5 @@
 /**
- * CC Viewer Electron — Multi-Tab Architecture
+ * CX Viewer Electron — Multi-Tab Architecture
  *
  * BaseWindow with:
  * - tabBarView (36px, tab-bar.html)
@@ -79,35 +79,35 @@ if (process.versions.electron) {
   } catch { _nodePath = process.platform === 'win32' ? 'node' : '/usr/local/bin/node'; }
 }
 
-const { resolveNpmClaudePath, resolveNativePath } = await import(join(rootDir, 'findcc.js'));
-let claudePath = resolveNpmClaudePath();
-let isNpmVersion = !!claudePath;
-if (!claudePath) claudePath = resolveNativePath();
+const { resolveNpmCodexPath, resolveNativePath } = await import(join(rootDir, 'findcx.js'));
+let codexPath = resolveNpmCodexPath();
+let isNpmVersion = !!codexPath;
+if (!codexPath) codexPath = resolveNativePath();
 
 // Fallback: directly check known npm global locations
-if (!claudePath) {
+if (!codexPath) {
   const knownPaths = [
-    join(home, '.npm-global', 'lib', 'node_modules', '@anthropic-ai', 'claude-code', 'cli.js'),
-    '/usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js',
-    join(home, '.npm-global', 'lib', 'node_modules', '@ali', 'claude-code', 'cli.js'),
+    join(home, '.npm-global', 'lib', 'node_modules', '@openai', 'codex', 'cli.js'),
+    '/usr/local/lib/node_modules/@openai/codex/cli.js',
+    join(home, '.npm-global', 'lib', 'node_modules', '@ali', 'codex', 'cli.js'),
   ];
   for (const p of knownPaths) {
     if (existsSync(p)) {
-      claudePath = p;
+      codexPath = p;
       isNpmVersion = true;
       break;
     }
   }
 }
 
-if (!claudePath) {
-  process.env.CCV_CLAUDE_MISSING = '1';
+if (!codexPath) {
+  process.env.CXV_CODEX_MISSING = '1';
 }
 
 // --- Management server for workspace selector ---
-process.env.CCV_CLI_MODE = '1';
-process.env.CCV_WORKSPACE_MODE = '1';
-process.env.CCV_ELECTRON_MULTITAB = '1'; // Tell server not to spawn Claude on launch
+process.env.CXV_CLI_MODE = '1';
+process.env.CXV_WORKSPACE_MODE = '1';
+process.env.CXV_ELECTRON_MULTITAB = '1'; // Tell server not to spawn Codex on launch
 
 let mgmtServerMod = null;
 let mgmtPort = null;
@@ -115,13 +115,13 @@ let mgmtPort = null;
 async function startMgmtServer() {
   const { startProxy } = await import(join(rootDir, 'proxy.js'));
   const proxyPort = await startProxy();
-  process.env.CCV_PROXY_PORT = String(proxyPort);
+  process.env.CXV_PROXY_PORT = String(proxyPort);
   mgmtServerMod = await import(join(rootDir, 'server.js'));
   await mgmtServerMod.startViewer();
   mgmtPort = mgmtServerMod.getPort();
-  if (claudePath) {
-    mgmtServerMod.setWorkspaceClaudeArgs([]);
-    mgmtServerMod.setWorkspaceClaudePath(claudePath, isNpmVersion);
+  if (codexPath) {
+    mgmtServerMod.setWorkspaceCodexArgs([]);
+    mgmtServerMod.setWorkspaceCodexPath(codexPath, isNpmVersion);
   }
   mgmtServerMod.setLaunchCallback((path, extraArgs) => createTab(path, extraArgs));
 }
@@ -153,7 +153,7 @@ function broadcastTabs() {
 function updateWindowTitle() {
   if (!mainWindow) return;
   const tab = tabs.get(activeTabId);
-  mainWindow.setTitle(tab ? `${tab.projectName} - CC Viewer` : 'CC Viewer');
+  mainWindow.setTitle(tab ? `${tab.projectName} - CX Viewer` : 'CX Viewer');
 }
 
 // --- Layout ---
@@ -193,15 +193,15 @@ function createTab(projectPath, extraArgs = []) {
   broadcastTabs();
   hideWorkspaceSelector();
 
-  // Fork child process with CLEAN env — remove all ccv/proxy env vars from parent
-  // This prevents inheriting Web version's ANTHROPIC_BASE_URL or proxy ports
+  // Fork child process with CLEAN env — remove all cxv/proxy env vars from parent
+  // This prevents inheriting Web version's OPENAI_BASE_URL or proxy ports
   const childEnv = { ...process.env };
-  delete childEnv.CCV_WORKSPACE_MODE;
-  delete childEnv.CCV_PROXY_PORT;
-  delete childEnv.CCV_PROXY_MODE;
-  delete childEnv.CCV_ELECTRON_MULTITAB;
-  delete childEnv.ANTHROPIC_BASE_URL;
-  childEnv.CCV_PROJECT_DIR = realPath;
+  delete childEnv.CXV_WORKSPACE_MODE;
+  delete childEnv.CXV_PROXY_PORT;
+  delete childEnv.CXV_PROXY_MODE;
+  delete childEnv.CXV_ELECTRON_MULTITAB;
+  delete childEnv.OPENAI_BASE_URL;
+  childEnv.CXV_PROJECT_DIR = realPath;
 
   const child = fork(join(__dirname, 'tab-worker.js'), [], {
     execPath: _nodePath,
@@ -267,7 +267,7 @@ function createTab(projectPath, extraArgs = []) {
     type: 'launch',
     path: realPath,
     extraArgs,
-    claudePath,
+    codexPath,
     isNpmVersion,
   });
 }
@@ -318,7 +318,7 @@ async function closeTab(tabId) {
     cancelId: 1,
     title: 'Close Tab',
     message: `Close "${tab.projectName}"?`,
-    detail: 'The Claude session will be terminated.',
+    detail: 'The Codex session will be terminated.',
   });
   if (response !== 0) return;
 
@@ -503,7 +503,7 @@ function cycleTab(direction) {
 function watchTheme() {
   try {
     const home = app.getPath('home');
-    const prefsPath = join(home, '.claude', 'cc-viewer', 'preferences.json');
+    const prefsPath = join(home, '.codex', 'cx-viewer', 'preferences.json');
     if (!existsSync(prefsPath)) return;
     const readTheme = () => {
       try {
@@ -571,7 +571,7 @@ if (!gotLock) {
       height: 900,
       minWidth: 800,
       minHeight: 600,
-      title: 'CC Viewer',
+      title: 'CX Viewer',
       titleBarStyle: 'hiddenInset',
     });
 

@@ -2,8 +2,8 @@ import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { request } from 'node:http';
 
-process.env.CCV_WORKSPACE_MODE = '1';
-process.env.CCV_CLI_MODE = '0';
+process.env.CXV_WORKSPACE_MODE = '1';
+process.env.CXV_CLI_MODE = '0';
 
 function httpRequest(port, path, { method = 'GET', body = null } = {}) {
   return new Promise((resolve, reject) => {

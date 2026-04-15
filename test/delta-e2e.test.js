@@ -44,7 +44,7 @@ function simulateInterceptorWrites(logFile, turns) {
 
     const entry = {
       timestamp: new Date(Date.now() + deltaCount * 1000).toISOString(),
-      url: 'https://api.anthropic.com/v1/messages',
+      url: 'https://api.openai.com/v1/messages',
       mainAgent: turn.mainAgent !== undefined ? turn.mainAgent : true,
       body: {
         model: 'claude-opus-4-6',
@@ -181,7 +181,7 @@ describe('Delta Storage E2E', () => {
     const clearMessages = [msg('user', 'fresh start')];
     const clearEntry = {
       timestamp: new Date(Date.now() + 100000).toISOString(),
-      url: 'https://api.anthropic.com/v1/messages',
+      url: 'https://api.openai.com/v1/messages',
       mainAgent: true,
       _deltaFormat: 1,
       _totalMessageCount: 1,
@@ -195,7 +195,7 @@ describe('Delta Storage E2E', () => {
     // /clear 后的第二轮
     const postClearDelta = {
       timestamp: new Date(Date.now() + 101000).toISOString(),
-      url: 'https://api.anthropic.com/v1/messages',
+      url: 'https://api.openai.com/v1/messages',
       mainAgent: true,
       _deltaFormat: 1,
       _totalMessageCount: 2,
@@ -309,14 +309,14 @@ describe('Delta Storage E2E', () => {
     const oldEntries = [
       {
         timestamp: '2026-03-23T10:00:00Z',
-        url: 'https://api.anthropic.com/v1/messages',
+        url: 'https://api.openai.com/v1/messages',
         mainAgent: true,
         body: { messages: [msg('user', 'old1')], model: 'claude-opus-4-6' },
         response: { status: 200, body: { content: [{ type: 'text', text: 'r1' }] } },
       },
       {
         timestamp: '2026-03-23T10:01:00Z',
-        url: 'https://api.anthropic.com/v1/messages',
+        url: 'https://api.openai.com/v1/messages',
         mainAgent: true,
         body: { messages: [msg('user', 'old1'), msg('assistant', 'r1'), msg('user', 'old2')], model: 'claude-opus-4-6' },
         response: { status: 200, body: { content: [{ type: 'text', text: 'r2' }] } },
@@ -338,7 +338,7 @@ describe('Delta Storage E2E', () => {
     // 先写旧格式
     const oldEntry = {
       timestamp: '2026-03-23T10:00:00Z',
-      url: 'https://api.anthropic.com/v1/messages',
+      url: 'https://api.openai.com/v1/messages',
       mainAgent: true,
       body: { messages: [msg('user', 'old'), msg('assistant', 'resp')], model: 'claude-opus-4-6' },
       response: { status: 200, body: { content: [{ type: 'text', text: 'r' }] } },
@@ -348,7 +348,7 @@ describe('Delta Storage E2E', () => {
     // 再写新格式 delta（基于旧格式的 2 条累积）
     const deltaEntry = {
       timestamp: '2026-03-23T10:02:00Z',
-      url: 'https://api.anthropic.com/v1/messages',
+      url: 'https://api.openai.com/v1/messages',
       mainAgent: true,
       _deltaFormat: 1,
       _totalMessageCount: 3,
@@ -371,7 +371,7 @@ describe('Delta Storage E2E', () => {
   it('inProgress 条目被 completed 覆盖，不影响重建', () => {
     // inProgress 和 completed 有相同的 timestamp+url
     const ts = '2026-03-23T10:00:00Z';
-    const url = 'https://api.anthropic.com/v1/messages';
+    const url = 'https://api.openai.com/v1/messages';
 
     // checkpoint（首条）
     const checkpoint = {

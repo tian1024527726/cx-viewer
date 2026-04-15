@@ -23,7 +23,7 @@ function makeMainAgentEntry(overrides = {}) {
   return {
     mainAgent: true,
     body: {
-      system: [{ type: 'text', text: 'You are Claude Code, an AI assistant.' }],
+      system: [{ type: 'text', text: 'You are Codex' }],
       tools: makeTools(),
       messages: [{ role: 'user', content: 'hello' }],
     },
@@ -49,7 +49,7 @@ describe('isMainAgentEntry', () => {
   it('returns false for SubAgent (command execution specialist)', () => {
     const entry = makeMainAgentEntry({
       body: {
-        system: [{ type: 'text', text: 'You are Claude Code, a command execution specialist.' }],
+        system: [{ type: 'text', text: 'You are Codex, a command execution specialist.' }],
         tools: makeTools(),
         messages: [],
       },
@@ -60,7 +60,7 @@ describe('isMainAgentEntry', () => {
   it('returns false for SubAgent (file search specialist)', () => {
     const entry = makeMainAgentEntry({
       body: {
-        system: [{ type: 'text', text: 'You are Claude Code, a file search specialist.' }],
+        system: [{ type: 'text', text: 'You are Codex, a file search specialist.' }],
         tools: makeTools(),
         messages: [],
       },
@@ -77,7 +77,7 @@ describe('isMainAgentEntry', () => {
     const entry = makeMainAgentEntry({
       body: {
         system: [
-          { type: 'text', text: 'You are Claude Code.' },
+          { type: 'text', text: 'You are Codex.' },
           { type: 'text', text: 'Agent Teammate Communication\nIMPORTANT: You are running as an agent in a team.' },
         ],
         tools: makeTools(),
@@ -90,7 +90,7 @@ describe('isMainAgentEntry', () => {
   it('returns true for heuristic detection (no mainAgent flag, old arch)', () => {
     const entry = {
       body: {
-        system: [{ type: 'text', text: 'You are Claude Code, an AI assistant.' }],
+        system: [{ type: 'text', text: 'You are Codex' }],
         tools: makeTools(),
         messages: [],
       },
@@ -101,7 +101,7 @@ describe('isMainAgentEntry', () => {
   it('returns true for heuristic detection (new arch with ToolSearch + deferred-tools)', () => {
     const entry = {
       body: {
-        system: [{ type: 'text', text: 'You are Claude Code' }],
+        system: [{ type: 'text', text: 'You are Codex' }],
         tools: [{ name: 'ToolSearch' }, { name: 'Bash' }],
         messages: [{ role: 'user', content: 'some text <available-deferred-tools> list' }],
       },
@@ -187,7 +187,7 @@ describe('extractCachedContent', () => {
       body: {
         system: [
           { type: 'text', text: 'billing header' },
-          { type: 'text', text: 'You are Claude Code', cache_control: { type: 'ephemeral' } },
+          { type: 'text', text: 'You are Codex', cache_control: { type: 'ephemeral' } },
           { type: 'text', text: 'file search specialist instructions', cache_control: { type: 'ephemeral' } },
         ],
         tools: [{ name: 'Glob' }, { name: 'Grep' }, { name: 'Read' }],
@@ -201,7 +201,7 @@ describe('extractCachedContent', () => {
     };
     const result = extractCachedContent(entry);
     assert.ok(result !== null);
-    assert.deepEqual(result.system, ['billing header', 'You are Claude Code', 'file search specialist instructions']);
+    assert.deepEqual(result.system, ['billing header', 'You are Codex', 'file search specialist instructions']);
     // msg[0]: 'search task' + 'details', msg[1]: 'found results', msg[2]: tool_result
     assert.equal(result.messages.length, 4);
     assert.equal(result.cacheCreateTokens, 500);
@@ -221,7 +221,7 @@ describe('extractCachedContent', () => {
     const entry = makeMainAgentEntry({
       body: {
         system: [
-          { type: 'text', text: 'You are Claude Code.' },
+          { type: 'text', text: 'You are Codex.' },
           { type: 'text', text: 'Second block.', cache_control: { type: 'ephemeral' } },
           { type: 'text', text: 'Third block (no cache).' },
         ],
@@ -231,13 +231,13 @@ describe('extractCachedContent', () => {
     });
     const result = extractCachedContent(entry);
     // prefix cache: all blocks from 0 to last cache_control are cached
-    assert.deepEqual(result.system, ['You are Claude Code.', 'Second block.']);
+    assert.deepEqual(result.system, ['You are Codex.', 'Second block.']);
   });
 
   it('extracts messages up to last message with cache_control', () => {
     const entry = makeMainAgentEntry({
       body: {
-        system: [{ type: 'text', text: 'You are Claude Code.' }],
+        system: [{ type: 'text', text: 'You are Codex.' }],
         tools: makeTools(),
         messages: [
           { role: 'user', content: [{ type: 'text', text: 'first' }] },
@@ -259,7 +259,7 @@ describe('extractCachedContent', () => {
     ];
     const entry = makeMainAgentEntry({
       body: {
-        system: [{ type: 'text', text: 'You are Claude Code.', cache_control: { type: 'ephemeral' } }],
+        system: [{ type: 'text', text: 'You are Codex.', cache_control: { type: 'ephemeral' } }],
         tools,
         messages: [],
       },
@@ -296,7 +296,7 @@ describe('extractCachedContent', () => {
   it('handles tool_result blocks in messages', () => {
     const entry = makeMainAgentEntry({
       body: {
-        system: [{ type: 'text', text: 'You are Claude Code.' }],
+        system: [{ type: 'text', text: 'You are Codex.' }],
         tools: makeTools(),
         messages: [
           {
@@ -334,7 +334,7 @@ describe('extractCachedContent', () => {
   it('handles string message content', () => {
     const entry = makeMainAgentEntry({
       body: {
-        system: [{ type: 'text', text: 'You are Claude Code.' }],
+        system: [{ type: 'text', text: 'You are Codex.' }],
         tools: makeTools(),
         messages: [
           { role: 'user', content: 'hi' },

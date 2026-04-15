@@ -1,4 +1,4 @@
-import { resolveNativePath } from './findcc.js';
+import { resolveNativePath } from './findcx.js';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
 import { chmodSync, statSync } from 'node:fs';
@@ -94,7 +94,7 @@ function fixSpawnHelperPermissions() {
   } catch { }
 }
 
-export async function spawnClaude(proxyPort, cwd, extraArgs = [], claudePath = null, isNpmVersion = false, serverPort = null) {
+export async function spawnCodex(proxyPort, cwd, extraArgs = [], codexPath = null, isNpmVersion = false, serverPort = null) {
   if (ptyProcess) {
     killPty();
   }
@@ -103,17 +103,21 @@ export async function spawnClaude(proxyPort, cwd, extraArgs = [], claudePath = n
 
   fixSpawnHelperPermissions();
 
-  // 如果没有提供 claudePath，尝试自动查找
-  if (!claudePath) {
-    claudePath = resolveNativePath();
-    if (!claudePath) {
-      throw new Error('claude not found');
+  // 如果没有提供 codexPath，尝试自动查找
+  if (!codexPath) {
+    codexPath = resolveNativePath();
+    if (!codexPath) {
+      throw new Error('codex not found');
     }
   }
 
   const env = { ...process.env };
-  env.ANTHROPIC_BASE_URL = `http://127.0.0.1:${proxyPort}`;
-  env.CCV_PROXY_MODE = '1'; // 告诉 interceptor.js 不要再启动 server
+
+  // 仅在 proxyPort 指定时设置代理环境变量（直接模式不设置）
+  if (proxyPort) {
+    env.OPENAI_BASE_URL = `http://127.0.0.1:${proxyPort}`;
+  }
+  // 不再设置 CXV_PROXY_MODE，拦截器已禁用
 
   // Resolve real Node.js path (Electron's process.execPath is the Electron binary)
   let nodePath = process.execPath;
@@ -129,28 +133,20 @@ export async function spawnClaude(proxyPort, cwd, extraArgs = [], claudePath = n
 
   // Override EDITOR/VISUAL to use built-in FileContentView
   if (serverPort) {
-    const editorScript = join(__dirname, 'lib', 'ccv-editor.js');
+    const editorScript = join(__dirname, 'lib', 'cxv-editor.js');
     env.EDITOR = `${nodePath} ${editorScript}`;
     env.VISUAL = env.EDITOR;
-    env.CCV_EDITOR_PORT = String(serverPort);
-    env.CCVIEWER_PORT = String(serverPort); // For ask-hook bridge
+    env.CXV_EDITOR_PORT = String(serverPort);
+    env.CXVIEWER_PORT = String(serverPort); // For ask-hook bridge
   }
 
-  // 通过 --settings 注入 ANTHROPIC_BASE_URL，确保覆盖 settings.json 中的配置。
-  // 仅覆盖 env.ANTHROPIC_BASE_URL，不影响其他 settings 字段。
-  const settingsJson = JSON.stringify({
-    env: {
-      ANTHROPIC_BASE_URL: env.ANTHROPIC_BASE_URL
-    }
-  });
-
-  let command = claudePath;
-  let args = ['--settings', settingsJson, ...extraArgs];
+  let command = codexPath;
+  let args = [...extraArgs];
 
   // 如果是 npm 版本（cli.js），需要使用 node 来运行
-  if (isNpmVersion && claudePath.endsWith('.js')) {
+  if (isNpmVersion && codexPath.endsWith('.js')) {
     command = nodePath;
-    args = [claudePath, '--settings', settingsJson, ...extraArgs];
+    args = [codexPath, ...extraArgs];
   }
 
   lastExitCode = null;
@@ -188,9 +184,9 @@ export async function spawnClaude(proxyPort, cwd, extraArgs = [], claudePath = n
     // Auto-retry without -c/--continue if "No conversation found"
     const hasContinue = extraArgs.includes('-c') || extraArgs.includes('--continue');
     if (hasContinue && exitCode !== 0 && outputBuffer.includes('No conversation found')) {
-      console.error('[CC Viewer] -c failed (no conversation), retrying without -c');
+      console.error('[CX Viewer] -c failed (no conversation), retrying without -c');
       const retryArgs = extraArgs.filter(a => a !== '-c' && a !== '--continue');
-      spawnClaude(proxyPort, cwd, retryArgs, claudePath, isNpmVersion, serverPort);
+      spawnCodex(proxyPort, cwd, retryArgs, codexPath, isNpmVersion, serverPort);
       return;
     }
 
@@ -278,11 +274,11 @@ export async function spawnShell() {
   lastExitCode = null;
   currentWorkspacePath = cwd;
 
-  // Clean env: remove cc-viewer specific vars so child shells don't inherit them
-  // (prevents CCVIEWER_PORT leaking to non-cc-viewer Claude instances)
+  // Clean env: remove cx-viewer specific vars so child shells don't inherit them
+  // (prevents CXVIEWER_PORT leaking to non-cx-viewer Codex instances)
   const shellEnv = { ...process.env };
-  delete shellEnv.CCVIEWER_PORT;
-  delete shellEnv.CCV_EDITOR_PORT;
+  delete shellEnv.CXVIEWER_PORT;
+  delete shellEnv.CXV_EDITOR_PORT;
 
   ptyProcess = pty.spawn(shell, [], {
     name: 'xterm-256color',

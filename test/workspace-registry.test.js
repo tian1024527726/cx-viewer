@@ -4,7 +4,7 @@ import { mkdirSync, unlinkSync, writeFileSync, readFileSync, existsSync, utimesS
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { spawn } from 'node:child_process';
-import { LOG_DIR } from '../findcc.js';
+import { LOG_DIR } from '../findcx.js';
 import { getWorkspaces, loadWorkspaces, registerWorkspace, removeWorkspace } from '../workspace-registry.js';
 
 const WORKSPACES_FILE = join(LOG_DIR, 'workspaces.json');
@@ -17,7 +17,7 @@ function spawnRegister(path) {
   `;
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, ['--input-type=module', '-e', script, path], {
-      env: { ...process.env, CCV_LOG_DIR: LOG_DIR },
+      env: { ...process.env, CXV_LOG_DIR: LOG_DIR },
       stdio: 'inherit',
     });
     child.on('error', reject);
@@ -41,7 +41,7 @@ describe('workspace-registry', () => {
   });
 
   it('registers a workspace and sanitizes projectName', () => {
-    const wsDir = join(tmpdir(), `ccv-ws-${Date.now()}-my project!`);
+    const wsDir = join(tmpdir(), `cxv-ws-${Date.now()}-my project!`);
     mkdirSync(wsDir, { recursive: true });
     const entry = registerWorkspace(wsDir);
     assert.equal(entry.path, wsDir);
@@ -52,7 +52,7 @@ describe('workspace-registry', () => {
   });
 
   it('does not duplicate when registering same path twice', async () => {
-    const wsDir = join(tmpdir(), `ccv-ws-${Date.now()}-dup`);
+    const wsDir = join(tmpdir(), `cxv-ws-${Date.now()}-dup`);
     mkdirSync(wsDir, { recursive: true });
     const first = registerWorkspace(wsDir);
     await new Promise(r => setTimeout(r, 10));
@@ -63,7 +63,7 @@ describe('workspace-registry', () => {
   });
 
   it('removes workspace by id', () => {
-    const wsDir = join(tmpdir(), `ccv-ws-${Date.now()}-rm`);
+    const wsDir = join(tmpdir(), `cxv-ws-${Date.now()}-rm`);
     mkdirSync(wsDir, { recursive: true });
     const entry = registerWorkspace(wsDir);
     assert.equal(removeWorkspace(entry.id), true);
@@ -71,7 +71,7 @@ describe('workspace-registry', () => {
   });
 
   it('enriches logCount and totalSize in getWorkspaces', () => {
-    const wsDir = join(tmpdir(), `ccv-ws-${Date.now()}-logs`);
+    const wsDir = join(tmpdir(), `cxv-ws-${Date.now()}-logs`);
     mkdirSync(wsDir, { recursive: true });
     const entry = registerWorkspace(wsDir);
     const projectDir = join(LOG_DIR, entry.projectName);
@@ -86,8 +86,8 @@ describe('workspace-registry', () => {
   });
 
   it('keeps workspaces.json consistent under concurrent register', async () => {
-    const wsA = join(tmpdir(), `ccv-ws-${Date.now()}-A`);
-    const wsB = join(tmpdir(), `ccv-ws-${Date.now()}-B`);
+    const wsA = join(tmpdir(), `cxv-ws-${Date.now()}-A`);
+    const wsB = join(tmpdir(), `cxv-ws-${Date.now()}-B`);
     mkdirSync(wsA, { recursive: true });
     mkdirSync(wsB, { recursive: true });
 
@@ -107,7 +107,7 @@ describe('workspace-registry', () => {
     utimesSync(LOCK_FILE, oldTime, oldTime);
 
     // Attempt to register - should clear lock and succeed
-    const wsDir = join(tmpdir(), `ccv-ws-${Date.now()}-stale`);
+    const wsDir = join(tmpdir(), `cxv-ws-${Date.now()}-stale`);
     mkdirSync(wsDir, { recursive: true });
 
     // This will throw if lock is not cleared

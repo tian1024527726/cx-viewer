@@ -1,17 +1,18 @@
 // LLM Request Interceptor
-// 拦截并记录所有Claude API请求
+// 拦截并记录所有Codex API请求
 
-// 非交互命令（如 claude -v, claude --help）不需要启动 ccv
-const _ccvSkipArgs = ['--version', '-v', '--v', '--help', '-h', 'doctor', 'install', 'update', 'upgrade', 'auth', 'setup-token', 'agents', 'plugin', 'plugins', 'mcp'];
-const _ccvSkip = _ccvSkipArgs.includes(process.argv[2]);
+// 非交互命令（如 codex -v, codex --help）不需要启动 cxv
+const _cxvSkipArgs = ['--version', '-v', '--v', '--help', '-h', 'doctor', 'install', 'update', 'upgrade', 'auth', 'setup-token', 'agents', 'plugin', 'plugins', 'mcp'];
+const _cxvSkip = _cxvSkipArgs.includes(process.argv[2]);
 
 import './lib/proxy-env.js';
 import { appendFileSync, mkdirSync, readFileSync, statSync, renameSync, unlinkSync, existsSync, watchFile } from 'node:fs';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, basename } from 'node:path';
-import { LOG_DIR } from './findcc.js';
-import { assembleStreamMessage, cleanupTempFiles, findRecentLog, isAnthropicApiPath, isMainAgentRequest, rotateLogFile } from './lib/interceptor-core.js';
+import { LOG_DIR } from './findcx.js';
+import { assembleStreamMessage, cleanupTempFiles, findRecentLog, isOpenAiApiPath, isMainAgentRequest, rotateLogFile } from './lib/interceptor-core.js';
+import { MAX_LOG_SIZE as _MAX_LOG_SIZE, CHECKPOINT_INTERVAL as _CHECKPOINT_INTERVAL } from './lib/constants.js';
 
 
 
@@ -38,7 +39,7 @@ export let _cachedModel = null;
 export let _cachedHaikuModel = null;
 
 // Proxy profile hot-switch support
-const PROFILE_PATH = join(homedir(), '.claude', 'cc-viewer', 'profile.json');
+const PROFILE_PATH = join(homedir(), '.codex', 'cx-viewer', 'profile.json');
 let _activeProfile = null; // { id, name, baseURL?, apiKey?, models?, activeModel? }
 
 // 启动时捕获的原始配置（首次 API 请求时记录，不可变）
@@ -73,7 +74,7 @@ function generateNewLogFilePath() {
   try { cwd = process.cwd(); } catch { cwd = homedir(); }
   const projectName = basename(cwd).replace(/[^a-zA-Z0-9_\-\.]/g, '_');
   const dir = join(LOG_DIR, projectName);
-  try { mkdirSync(dir, { recursive: true }); } catch { }
+  try { mkdirSync(dir, { recursive: true }); } catch (err) { console.warn('[CX-Viewer] mkdirSync failed:', dir, err.message); }
   return { filePath: join(dir, `${projectName}_${ts}.jsonl`), dir, projectName };
 }
 
@@ -110,7 +111,7 @@ function resolveResumeChoice(choice) {
       LOG_FILE = newPath;
     }
   } catch (err) {
-    console.error('[CC Viewer] resolveResumeChoice error:', err);
+    console.error('[CX Viewer] resolveResumeChoice error:', err);
   }
   const result = { logFile: LOG_FILE };
   _resumeState = null;
@@ -118,12 +119,12 @@ function resolveResumeChoice(choice) {
   return result;
 }
 
-// Delta storage: 增量存储开关和状态（默认开启，设置 CCV_DISABLE_DELTA=1 关闭）
-// 注意：delta 计算依赖 mainAgent 请求串行（Claude CLI 保证），不做并发互斥
-const _deltaStorageEnabled = process.env.CCV_DISABLE_DELTA !== '1';
+// Delta storage: 增量存储开关和状态（默认开启，设置 CXV_DISABLE_DELTA=1 关闭）
+// 注意：delta 计算依赖 mainAgent 请求串行（Codex CLI 保证），不做并发互斥
+const _deltaStorageEnabled = process.env.CXV_DISABLE_DELTA !== '1';
 let _lastMessagesCount = 0;     // 上一次 mainAgent 写入的完整 messages 数量
 let _mainAgentDeltaCount = 0;   // mainAgent 请求计数器（用于触发定期 checkpoint）
-const CHECKPOINT_INTERVAL = 10; // 每 N 条 mainAgent 请求写一个 checkpoint
+const CHECKPOINT_INTERVAL = _CHECKPOINT_INTERVAL;
 
 /** Delta storage: completed 写入成功后更新状态 */
 function _commitDeltaState(originalLength) {
@@ -148,7 +149,7 @@ let _teamName = null;
 // 初始化日志文件路径（异步，支持用户交互）
 // 工作区模式下延迟到选择工作区后再初始化
 let _newLogFile, _logDir, _projectName;
-if (process.env.CCV_WORKSPACE_MODE === '1') {
+if (process.env.CXV_WORKSPACE_MODE === '1') {
   _newLogFile = '';
   _logDir = '';
   _projectName = '';
@@ -182,7 +183,7 @@ const _initPromise = (async () => {
         tempFile,
       };
     }
-  } catch { }
+  } catch (err) { console.warn('[CX-Viewer] Log init error:', err.message); }
 })();
 
 export { LOG_FILE, _initPromise, _resumeState, _choicePromise, resolveResumeChoice, _projectName, _logDir };
@@ -192,12 +193,12 @@ export { LOG_FILE, _initPromise, _resumeState, _choicePromise, resolveResumeChoi
 export function initForWorkspace(projectPath, { forceNew = false } = {}) {
   const projectName = basename(projectPath).replace(/[^a-zA-Z0-9_\-\.]/g, '_');
   const dir = join(LOG_DIR, projectName);
-  try { mkdirSync(dir, { recursive: true }); } catch {}
+  try { mkdirSync(dir, { recursive: true }); } catch (err) { console.warn('[CX-Viewer] mkdirSync failed:', dir, err.message); }
 
   cleanupTempFiles(dir, projectName);
 
   // 检查是否有最近的日志文件可以复用（始终复用最新日志）
-  // forceNew: Electron multi-tab 模式下强制创建新文件，避免与已有 ccv 实例共享日志
+  // forceNew: Electron multi-tab 模式下强制创建新文件，避免与已有 cxv 实例共享日志
   const recentLog = !forceNew && findRecentLog(dir, projectName);
   if (recentLog) {
     _projectName = projectName;
@@ -232,7 +233,7 @@ export function resetWorkspace() {
   LOG_FILE = '';
 }
 
-const MAX_LOG_SIZE = 300 * 1024 * 1024; // 300MB
+const MAX_LOG_SIZE = _MAX_LOG_SIZE;
 
 function checkAndRotateLogFile() {
   // Teammate 不做日志轮转，由 leader 负责
@@ -252,10 +253,10 @@ function checkAndRotateLogFile() {
   }
 }
 
-// 从环境变量 ANTHROPIC_BASE_URL 提取域名用于请求匹配
+// 从环境变量 OPENAI_BASE_URL 提取域名用于请求匹配
 function getBaseUrlHost() {
   try {
-    const baseUrl = process.env.ANTHROPIC_BASE_URL;
+    const baseUrl = process.env.OPENAI_BASE_URL;
     if (baseUrl) {
       return new URL(baseUrl).hostname;
     }
@@ -269,10 +270,10 @@ let viewerModule = null;
 
 export function setupInterceptor() {
   // 避免重复拦截
-  if (globalThis._ccViewerInterceptorInstalled) {
+  if (globalThis._cxViewerInterceptorInstalled) {
     return;
   }
-  globalThis._ccViewerInterceptorInstalled = true;
+  globalThis._cxViewerInterceptorInstalled = true;
 
   // 启动 viewer 服务（优先根目录 server.js，fallback 到 lib/server.js）
   // Teammate 子进程跳过，避免端口冲突（leader 已启动 viewer）
@@ -316,9 +317,9 @@ export function setupInterceptor() {
   const _originalFetch = globalThis.fetch;
 
   globalThis.fetch = async function (url, options) {
-    // cc-viewer 内部请求（翻译等）直接透传，不拦截
-    const internalHeader = options?.headers?.['x-cc-viewer-internal']
-      || (options?.headers instanceof Headers && options.headers.get('x-cc-viewer-internal'));
+    // cx-viewer 内部请求（翻译等）直接透传，不拦截
+    const internalHeader = options?.headers?.['x-cx-viewer-internal']
+      || (options?.headers instanceof Headers && options.headers.get('x-cx-viewer-internal'));
     if (internalHeader) {
       return _originalFetch.apply(this, arguments);
     }
@@ -328,15 +329,15 @@ export function setupInterceptor() {
 
     try {
       const urlStr = typeof url === 'string' ? url : url?.url || String(url);
-      // 检查 headers 中是否包含 x-cc-viewer-trace 标记
+      // 检查 headers 中是否包含 x-cx-viewer-trace 标记
       const headers = options?.headers || {};
-      const isProxyTrace = headers['x-cc-viewer-trace'] === 'true' || headers['x-cc-viewer-trace'] === true;
+      const isProxyTrace = headers['x-cx-viewer-trace'] === 'true' || headers['x-cx-viewer-trace'] === true;
 
       // 如果是 proxy 转发的，或者符合 URL 规则
-      if (isProxyTrace || urlStr.includes('anthropic') || urlStr.includes('claude') || (CUSTOM_API_HOST && urlStr.includes(CUSTOM_API_HOST)) || isAnthropicApiPath(urlStr)) {
+      if (isProxyTrace || urlStr.includes('anthropic') || urlStr.includes('codex') || (CUSTOM_API_HOST && urlStr.includes(CUSTOM_API_HOST)) || isOpenAiApiPath(urlStr)) {
         // 如果是 proxy 转发的，需要清理掉标记 header 避免发给上游
         if (isProxyTrace && options?.headers) {
-          delete options.headers['x-cc-viewer-trace'];
+          delete options.headers['x-cx-viewer-trace'];
         }
 
         const timestamp = new Date().toISOString();
@@ -418,7 +419,9 @@ export function setupInterceptor() {
           ...(_isTeammate && { teammate: _teammateName, teamName: _teamName })
         };
       }
-    } catch { }
+    } catch (err) {
+      if (process.env.CXV_DEBUG) console.warn('[CX-Viewer] Request interception error:', err.message);
+    }
 
     // 用户新指令边界：检查日志文件大小，超过 250MB 则切换新文件
     if (requestEntry?.mainAgent) {
@@ -474,10 +477,12 @@ export function setupInterceptor() {
     if (requestEntry) {
       try {
         appendFileSync(LOG_FILE, JSON.stringify(requestEntry) + '\n---\n');
-      } catch { }
+      } catch (err) {
+        if (process.env.CXV_DEBUG) console.warn('[CX-Viewer] Log write error:', err.message);
+      }
     }
 
-    // 流式请求状态追踪（仅对 Claude API 流式请求）
+    // 流式请求状态追踪（仅对 Codex API 流式请求）
     if (requestEntry?.isStream) {
       streamingState.active = true;
       streamingState.requestId = requestId;
@@ -527,7 +532,9 @@ export function setupInterceptor() {
         // 记录 proxy 信息到日志条目
         requestEntry.proxyProfile = _activeProfile.name;
         requestEntry.proxyUrl = _fetchUrl;
-      } catch { }
+      } catch (err) {
+        if (process.env.CXV_DEBUG) console.warn('[CX-Viewer] Proxy URL rewrite error:', err.message);
+      }
     }
 
     let response;
@@ -689,17 +696,3 @@ export function setupInterceptor() {
   };
 }
 
-// 自动执行拦截器设置
-// proxy 模式下（ccv CLI 或 ccv run），外层 proxy.js 已显式调用 setupInterceptor()，
-// 这里跳过自动执行，避免 Claude 进程中重复拦截 fetch
-// Teammate 子进程即使继承了 CCV_PROXY_MODE 也需要启用拦截（它是独立 claude 进程，不走 proxy）
-if (!_ccvSkip && (!process.env.CCV_PROXY_MODE || _isTeammate)) setupInterceptor();
-
-// 等待日志文件初始化完成后启动 Web Viewer 服务
-// 如果是 ccv --c 通过 proxy 模式启动的，外层已有 server，跳过
-// Teammate 子进程也跳过，避免端口冲突（leader 已启动 viewer）
-if (!_ccvSkip && !process.env.CCV_PROXY_MODE && !_isTeammate) {
-  _initPromise.then(() => import('./server.js')).catch((err) => {
-    console.error('[CC-Viewer] Failed to start viewer server:', err);
-  });
-}

@@ -21,7 +21,7 @@ function makeMainAgent(msgCount, opts = {}) {
   }
   return {
     timestamp: opts.timestamp || new Date().toISOString(),
-    url: opts.url || 'https://api.anthropic.com/v1/messages',
+    url: opts.url || 'https://api.openai.com/v1/messages',
     mainAgent: true,
     body: {
       messages,
@@ -39,7 +39,7 @@ function makeSubAgent(msgCount) {
   }
   return {
     timestamp: new Date().toISOString(),
-    url: 'https://api.anthropic.com/v1/messages',
+    url: 'https://api.openai.com/v1/messages',
     mainAgent: false,
     body: { messages, model: 'claude-sonnet-4-6' },
     response: { status: 200, body: {} },

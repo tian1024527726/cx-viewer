@@ -8,7 +8,7 @@ Anthropic 的 prompt caching 机制会将请求中的 system → tools → messa
 
 ## 缓存重建原因分类
 
-cc-viewer 通过对比前后两个 MainAgent 请求的 body，精确判断缓存重建的原因：
+cx-viewer 通过对比前后两个 MainAgent 请求的 body，精确判断缓存重建的原因：
 
 | reason | 含义 | 判断方式 |
 |--------|------|----------|
@@ -29,8 +29,8 @@ cc-viewer 通过对比前后两个 MainAgent 请求的 body，精确判断缓存
 ## 常见场景
 
 - **`ttl`**：用户暂停操作超过 5 分钟后继续，缓存自然过期
-- **`system_change`**：Claude Code 更新了 system prompt（如加载新的 CLAUDE.md、project instructions 变化）
+- **`system_change`**：Codex 更新了 system prompt（如加载新的 CLAUDE.md、project instructions 变化）
 - **`tools_change`**：MCP server 连接/断开导致可用工具列表变化
 - **`model_change`**：用户通过 `/model` 命令切换模型
-- **`msg_truncated`**：对话过长触发上下文窗口管理，Claude Code 截断早期消息
-- **`msg_modified`**：Claude Code 对历史消息做了编辑（如 `/compact` 压缩摘要替换原始消息）
+- **`msg_truncated`**：对话过长触发上下文窗口管理，Codex 截断早期消息
+- **`msg_modified`**：Codex 对历史消息做了编辑（如 `/compact` 压缩摘要替换原始消息）

@@ -1,10 +1,10 @@
 /**
  * Tab Worker — child process for each Electron tab.
  * Launched via fork() from electron/main.js.
- * Each worker runs an isolated proxy + server + Claude PTY.
+ * Each worker runs an isolated proxy + server + Codex PTY.
  *
- * Uses workspace mode (CCV_WORKSPACE_MODE=1) so interceptor.js skips auto-init.
- * Then manually: startViewer() → initForWorkspace() → spawnClaude().
+ * Uses workspace mode (CXV_WORKSPACE_MODE=1) so interceptor.js skips auto-init.
+ * Then manually: startViewer() → initForWorkspace() → spawnCodex().
  * This mirrors cli.js:runCliModeWorkspaceSelector() + /api/workspaces/launch.
  */
 import { dirname, join } from 'path';
@@ -15,10 +15,10 @@ const __dirname = dirname(__filename);
 const rootDir = join(__dirname, '..');
 
 // Set env BEFORE any imports of server.js / interceptor.js
-process.env.CCV_CLI_MODE = '1';
-process.env.CCV_WORKSPACE_MODE = '1';
-process.env.CCV_START_PORT = process.env.CCV_START_PORT || '7048';
-process.env.CCV_MAX_PORT = process.env.CCV_MAX_PORT || '7099';
+process.env.CXV_CLI_MODE = '1';
+process.env.CXV_WORKSPACE_MODE = '1';
+process.env.CXV_START_PORT = process.env.CXV_START_PORT || '7048';
+process.env.CXV_MAX_PORT = process.env.CXV_MAX_PORT || '7099';
 
 // Receive launch command from parent
 process.on('message', async (msg) => {
@@ -43,8 +43,8 @@ process.on('disconnect', async () => {
 let serverMod = null;
 let killPtyFn = null;
 
-async function launch({ path: projectPath, extraArgs = [], claudePath, isNpmVersion }) {
-  console.log('[worker] launch:', projectPath, 'claude:', claudePath, 'npm:', isNpmVersion);
+async function launch({ path: projectPath, extraArgs = [], codexPath, isNpmVersion }) {
+  console.log('[worker] launch:', projectPath, 'codex:', codexPath, 'npm:', isNpmVersion);
   // 1. Register hooks (idempotent)
   const { ensureHooks } = await import(join(rootDir, 'lib', 'ensure-hooks.js'));
   ensureHooks();
@@ -52,8 +52,8 @@ async function launch({ path: projectPath, extraArgs = [], claudePath, isNpmVers
   // 2. Start proxy
   const { startProxy } = await import(join(rootDir, 'proxy.js'));
   const proxyPort = await startProxy();
-  process.env.CCV_PROXY_PORT = String(proxyPort);
-  process.env.CCV_PROJECT_DIR = projectPath;
+  process.env.CXV_PROXY_PORT = String(proxyPort);
+  process.env.CXV_PROJECT_DIR = projectPath;
 
   // 3. Import server.js (workspace mode → skips auto-start)
   serverMod = await import(join(rootDir, 'server.js'));
@@ -65,10 +65,10 @@ async function launch({ path: projectPath, extraArgs = [], claudePath, isNpmVers
   const port = serverMod.getPort();
   if (!port) throw new Error('Server failed to bind port');
 
-  // 6. Store Claude path/args for potential later use by server APIs
-  if (claudePath) {
-    serverMod.setWorkspaceClaudeArgs(extraArgs);
-    serverMod.setWorkspaceClaudePath(claudePath, isNpmVersion);
+  // 6. Store Codex path/args for potential later use by server APIs
+  if (codexPath) {
+    serverMod.setWorkspaceCodexArgs(extraArgs);
+    serverMod.setWorkspaceCodexPath(codexPath, isNpmVersion);
   }
 
   // 7. Initialize workspace log directory (sets LOG_FILE, _projectName, _logDir)
@@ -82,7 +82,7 @@ async function launch({ path: projectPath, extraArgs = [], claudePath, isNpmVers
   // 7c. Start log watcher, stats worker, streaming status (mirrors /api/workspaces/launch logic)
   serverMod.initPostLaunch();
 
-  // 8. Notify parent FIRST — let the view load while Claude spawns
+  // 8. Notify parent FIRST — let the view load while Codex spawns
   const token = serverMod.getAccessToken();
   console.log('[worker] sending ready:', port, result.projectName);
   process.send({
@@ -92,18 +92,18 @@ async function launch({ path: projectPath, extraArgs = [], claudePath, isNpmVers
     projectName: result.projectName,
   });
 
-  // 9. Spawn Claude PTY (after ready, so view is already loading)
-  const { spawnClaude, killPty, onPtyExit } = await import(join(rootDir, 'pty-manager.js'));
+  // 9. Spawn Codex PTY (after ready, so view is already loading)
+  const { spawnCodex, killPty, onPtyExit } = await import(join(rootDir, 'pty-manager.js'));
   killPtyFn = killPty;
 
   onPtyExit((code) => {
     try { process.send({ type: 'pty-exit', code }); } catch {}
   });
 
-  if (claudePath) {
+  if (codexPath) {
     try {
-      console.log('[worker] spawnClaude proxyPort:', proxyPort, 'serverPort:', port, 'path:', projectPath);
-      await spawnClaude(proxyPort, projectPath, extraArgs, claudePath, isNpmVersion, port);
+      console.log('[worker] spawnCodex proxyPort:', proxyPort, 'serverPort:', port, 'path:', projectPath);
+      await spawnCodex(proxyPort, projectPath, extraArgs, codexPath, isNpmVersion, port);
     } catch (err) {
       try { process.send({ type: 'pty-error', message: err.message }); } catch {}
     }

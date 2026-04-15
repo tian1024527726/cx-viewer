@@ -2,7 +2,7 @@
 
 ## 背景
 
-Claude Code 的 MainAgent 採用全量上下文發送機制——每次請求都會攜帶完整的對話歷史、system prompt、工具定義等內容。這意味著隨著對話推進，請求體會越來越龐大，直接查看原始 Body 很難快速定位「這一輪到底新增了什麼」。
+Codex 的 MainAgent 採用全量上下文發送機制——每次請求都會攜帶完整的對話歷史、system prompt、工具定義等內容。這意味著隨著對話推進，請求體會越來越龐大，直接查看原始 Body 很難快速定位「這一輪到底新增了什麼」。
 
 Body Diff JSON 正是為了解決這個問題：它自動對比前後兩個 MainAgent 請求的 body，提煉出增量部分，讓你一眼看清本次請求實際新增的內容。
 
@@ -29,4 +29,4 @@ Body Diff JSON 正是為了解決這個問題：它自動對比前後兩個 Main
 - Body Diff JSON 顯示在 MainAgent 請求的詳情面板中
 - 點擊標題可展開/收起
 - 支援 JSON 和 Text 兩種查看模式，以及一鍵複製
-- 在左上角 **CC-Viewer → 全域設定** 中，可以設定「預設展開 Body Diff JSON」
+- 在左上角 **CX-Viewer → 全域設定** 中，可以設定「預設展開 Body Diff JSON」

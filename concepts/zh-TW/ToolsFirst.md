@@ -1,6 +1,6 @@
 # 為什麼 Tools 排在最前面？
 
-在 cc-viewer 的 Context 面板中，**Tools 顯示在 System Prompt 和 Messages 之前**。這個排列順序精確地反映了 **Anthropic API 的 KV-Cache 前綴序列**。
+在 cx-viewer 的 Context 面板中，**Tools 顯示在 System Prompt 和 Messages 之前**。這個排列順序精確地反映了 **Anthropic API 的 KV-Cache 前綴序列**。
 
 ## KV-Cache 前綴序列
 
@@ -74,4 +74,4 @@ MCP（Model Context Protocol）工具與內建工具一樣，被放在 Tools 區
 | MCP server 頻繁增減 | 每次變動都會全量重建快取，考慮固定 tool 集合 |
 | Tool Schema 過大 | 精簡 description 和 enum，減少前綴 token 佔用 |
 
-在 cc-viewer 的 Context 面板中，MCP 工具與內建工具並列顯示在 Tools 區域，可以直觀看到每個 tool 的 Schema 體積和對快取前綴的貢獻。
+在 cx-viewer 的 Context 面板中，MCP 工具與內建工具並列顯示在 Tools 區域，可以直觀看到每個 tool 的 Schema 體積和對快取前綴的貢獻。

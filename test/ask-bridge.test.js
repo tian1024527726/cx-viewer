@@ -27,8 +27,8 @@ function runBridge(stdin, env = {}) {
 }
 
 describe('ask-bridge.js', () => {
-  it('exits 0 silently when CCVIEWER_PORT is not set', async () => {
-    const { code, stdout } = await runBridge('{}', { CCVIEWER_PORT: '' });
+  it('exits 0 silently when CXVIEWER_PORT is not set', async () => {
+    const { code, stdout } = await runBridge('{}', { CXVIEWER_PORT: '' });
     assert.equal(code, 0);
     const output = JSON.parse(stdout.trim());
     assert.equal(output.continue, true);
@@ -36,19 +36,19 @@ describe('ask-bridge.js', () => {
   });
 
   it('exits 1 when stdin is invalid JSON', async () => {
-    const { code } = await runBridge('not-json', { CCVIEWER_PORT: '9999' });
+    const { code } = await runBridge('not-json', { CXVIEWER_PORT: '9999' });
     assert.equal(code, 1);
   });
 
   it('exits 1 when questions are missing', async () => {
     const input = JSON.stringify({ tool_input: {} });
-    const { code } = await runBridge(input, { CCVIEWER_PORT: '9999' });
+    const { code } = await runBridge(input, { CXVIEWER_PORT: '9999' });
     assert.equal(code, 1);
   });
 
   it('exits 1 when questions array is empty', async () => {
     const input = JSON.stringify({ tool_input: { questions: [] } });
-    const { code } = await runBridge(input, { CCVIEWER_PORT: '9999' });
+    const { code } = await runBridge(input, { CXVIEWER_PORT: '9999' });
     assert.equal(code, 1);
   });
 
@@ -58,7 +58,7 @@ describe('ask-bridge.js', () => {
         questions: [{ question: 'Q?', header: 'H', options: [{ label: 'A' }], multiSelect: false }],
       },
     });
-    const { code, stdout, stderr } = await runBridge(input, { CCVIEWER_PORT: '19999' });
+    const { code, stdout, stderr } = await runBridge(input, { CXVIEWER_PORT: '19999' });
     assert.equal(code, 0);
     const output = JSON.parse(stdout.trim());
     assert.equal(output.continue, true);
@@ -101,7 +101,7 @@ describe('ask-bridge.js', () => {
       });
 
       const input = JSON.stringify({ tool_input: { questions } });
-      const { code, stdout } = await runBridge(input, { CCVIEWER_PORT: String(port) });
+      const { code, stdout } = await runBridge(input, { CXVIEWER_PORT: String(port) });
 
       assert.equal(code, 0);
       const output = JSON.parse(stdout.trim());
@@ -122,7 +122,7 @@ describe('ask-bridge.js', () => {
           questions: [{ question: 'Q?', header: 'H', options: [{ label: 'A' }], multiSelect: false }],
         },
       });
-      const { code, stdout } = await runBridge(input, { CCVIEWER_PORT: String(port) });
+      const { code, stdout } = await runBridge(input, { CXVIEWER_PORT: String(port) });
       assert.equal(code, 0);
       const output = JSON.parse(stdout.trim());
       assert.equal(output.continue, true);
@@ -139,7 +139,7 @@ describe('ask-bridge.js', () => {
           questions: [{ question: 'Q?', header: 'H', options: [{ label: 'A' }], multiSelect: false }],
         },
       });
-      const { code, stdout } = await runBridge(input, { CCVIEWER_PORT: String(port) });
+      const { code, stdout } = await runBridge(input, { CXVIEWER_PORT: String(port) });
       assert.equal(code, 0);
       const output = JSON.parse(stdout.trim());
       assert.equal(output.continue, true);

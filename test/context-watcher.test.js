@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { readModelContextSize, buildContextWindowEvent, CONTEXT_WINDOW_FILE } from '../lib/context-watcher.js';
 
-const CLAUDE_DIR = join(homedir(), '.claude');
+const CLAUDE_DIR = join(homedir(), '.codex');
 
 // 备份和恢复 context-window.json
 let savedContextFile = null;
@@ -72,7 +72,7 @@ describe('context-watcher: readModelContextSize', () => {
     }
   });
 
-  it('falls back to context_window.context_window_size from Claude Code statusLine', () => {
+  it('falls back to context_window.context_window_size from Codex statusLine', () => {
     backupContextFile();
     try {
       mkdirSync(CLAUDE_DIR, { recursive: true });

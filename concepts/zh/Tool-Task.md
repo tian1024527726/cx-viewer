@@ -1,6 +1,6 @@
 # Task
 
-> **注意：** 新版 Claude Code 已将此工具重命名为 **Agent**，请参阅 [Tool-Agent](Tool-Agent) 文档。
+> **注意：** 新版 Codex 已将此工具重命名为 **Agent**，请参阅 [Tool-Agent](Tool-Agent) 文档。
 
 ## 定义
 
@@ -27,7 +27,7 @@
 | `general-purpose` | 通用多步骤任务 | 全部工具 |
 | `Explore` | 快速探索代码库 | 除 Task/Edit/Write/NotebookEdit/ExitPlanMode 外的所有工具 |
 | `Plan` | 设计实施方案 | 除 Task/Edit/Write/NotebookEdit/ExitPlanMode 外的所有工具 |
-| `claude-code-guide` | Claude Code 使用指南问答 | Glob, Grep, Read, WebFetch, WebSearch |
+| `claude-code-guide` | Codex 使用指南问答 | Glob, Grep, Read, WebFetch, WebSearch |
 | `statusline-setup` | 配置状态栏 | Read, Edit |
 
 ## 使用场景

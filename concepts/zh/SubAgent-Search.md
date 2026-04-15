@@ -2,7 +2,7 @@
 
 ## 定义
 
-Search 是由 Claude Code 主 agent 生成的子 agent 类型，用于执行代码库搜索。它使用 Glob、Grep 和 Read 等工具执行有针对性的文件和内容搜索，然后将结果返回给父 agent。
+Search 是由 Codex 主 agent 生成的子 agent 类型，用于执行代码库搜索。它使用 Glob、Grep 和 Read 等工具执行有针对性的文件和内容搜索，然后将结果返回给父 agent。
 
 ## 行为
 

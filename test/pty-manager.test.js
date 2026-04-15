@@ -1,7 +1,7 @@
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  spawnClaude,
+  spawnCodex,
   writeToPty,
   resizePty,
   killPty,
@@ -84,9 +84,9 @@ describe('pty-manager: listener registration', () => {
   });
 });
 
-// ─── spawnClaude integration (requires claude binary) ───
+// ─── spawnCodex integration (requires codex binary) ───
 
-describe('pty-manager: spawnClaude integration', () => {
+describe('pty-manager: spawnCodex integration', () => {
   let spawned = [];
 
   beforeEach(() => {
@@ -126,14 +126,14 @@ describe('pty-manager: spawnClaude integration', () => {
   });
 
   it('getPtyPid returns PID when PTY is running', async () => {
-    await spawnClaude(9999, process.cwd(), [], '/bin/echo');
+    await spawnCodex(9999, process.cwd(), [], '/bin/echo');
     assert.equal(getPtyPid(), 12345);
     killPty();
     assert.equal(getPtyPid(), null);
   });
 
   it('getPtyState reflects running state after spawn', async () => {
-    await spawnClaude(9999, process.cwd(), [], '/bin/echo');
+    await spawnCodex(9999, process.cwd(), [], '/bin/echo');
     const state = getPtyState();
     assert.equal(state.running, true);
     killPty();
@@ -141,14 +141,14 @@ describe('pty-manager: spawnClaude integration', () => {
   });
 
   it('getCurrentWorkspace returns cwd after spawn', async () => {
-    await spawnClaude(9999, process.cwd(), [], '/bin/echo');
+    await spawnCodex(9999, process.cwd(), [], '/bin/echo');
     const ws = getCurrentWorkspace();
     assert.equal(ws.running, true);
     assert.equal(ws.cwd, process.cwd());
   });
 
   it('onPtyData receives data from PTY', async () => {
-    await spawnClaude(9999, process.cwd(), [], '/bin/echo');
+    await spawnCodex(9999, process.cwd(), [], '/bin/echo');
     await new Promise((resolve) => {
       const unsub = onPtyData((data) => {
         unsub();
@@ -160,7 +160,7 @@ describe('pty-manager: spawnClaude integration', () => {
   });
 
   it('onPtyExit fires when PTY exits', async () => {
-    await spawnClaude(9999, process.cwd(), [], '/bin/echo');
+    await spawnCodex(9999, process.cwd(), [], '/bin/echo');
     await new Promise((resolve) => {
       const unsub = onPtyExit((exitCode) => {
         unsub();
@@ -172,7 +172,7 @@ describe('pty-manager: spawnClaude integration', () => {
   });
 
   it('getOutputBuffer accumulates PTY output', async () => {
-    await spawnClaude(9999, process.cwd(), [], '/bin/echo');
+    await spawnCodex(9999, process.cwd(), [], '/bin/echo');
     writeToPty('echo test\r');
     await new Promise(r => setTimeout(r, 0));
     const buf = getOutputBuffer();
@@ -180,16 +180,25 @@ describe('pty-manager: spawnClaude integration', () => {
   });
 
   it('resizePty does not throw while running', async () => {
-    await spawnClaude(9999, process.cwd(), [], '/bin/echo');
+    await spawnCodex(9999, process.cwd(), [], '/bin/echo');
     assert.doesNotThrow(() => resizePty(80, 24));
   });
 
-  it('spawnClaude kills existing PTY before spawning new one', async () => {
-    await spawnClaude(9999, process.cwd(), [], '/bin/echo');
+  it('spawnCodex kills existing PTY before spawning new one', async () => {
+    await spawnCodex(9999, process.cwd(), [], '/bin/echo');
     const first = spawned[0];
-    await spawnClaude(9999, process.cwd(), [], '/bin/echo');
+    await spawnCodex(9999, process.cwd(), [], '/bin/echo');
     assert.equal(first._isKilled(), true);
     assert.equal(spawned.length, 2);
+  });
+
+  it('injects built-in editor bridge when serverPort is provided', async () => {
+    await spawnCodex(9999, process.cwd(), [], '/bin/echo', false, 7008);
+    const env = spawned[0].opts.env;
+    assert.match(env.EDITOR, /lib\/cxv-editor\.js$/);
+    assert.equal(env.VISUAL, env.EDITOR);
+    assert.equal(env.CXV_EDITOR_PORT, '7008');
+    assert.equal(env.CXVIEWER_PORT, '7008');
   });
 });
 

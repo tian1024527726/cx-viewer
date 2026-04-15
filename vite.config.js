@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 
 function getBackendPort() {
   try {
-    return parseInt(readFileSync('/tmp/cc-viewer-port', 'utf-8').trim(), 10);
+    return parseInt(readFileSync('/tmp/cx-viewer-port', 'utf-8').trim(), 10);
   } catch {
     return 7008;
   }

@@ -19,8 +19,8 @@ function getBaseUrlFromSettings(settingsPath) {
   try {
     if (existsSync(settingsPath)) {
       const settings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
-      if (settings.env && settings.env.ANTHROPIC_BASE_URL) {
-        return settings.env.ANTHROPIC_BASE_URL;
+      if (settings.env && settings.env.OPENAI_BASE_URL) {
+        return settings.env.OPENAI_BASE_URL;
       }
     }
   } catch (e) {
@@ -35,7 +35,7 @@ function getOriginalBaseUrl(configPaths, envBaseUrl) {
     if (url) return url;
   }
   if (envBaseUrl) return envBaseUrl;
-  return 'https://api.anthropic.com';
+  return 'https://api.openai.com';
 }
 
 // URL joining logic from startProxy request handler
@@ -75,7 +75,7 @@ describe('proxy', () => {
   let tempDir;
 
   beforeEach(() => {
-    tempDir = mkdtempSync(join(tmpdir(), 'ccv-proxy-test-'));
+    tempDir = mkdtempSync(join(tmpdir(), 'cxv-proxy-test-'));
   });
 
   afterEach(() => {
@@ -86,10 +86,10 @@ describe('proxy', () => {
   // getBaseUrlFromSettings
   // --------------------------------------------------------------------------
   describe('getBaseUrlFromSettings', () => {
-    it('reads ANTHROPIC_BASE_URL from settings file', () => {
+    it('reads OPENAI_BASE_URL from settings file', () => {
       const settingsPath = join(tempDir, 'settings.json');
       writeFileSync(settingsPath, JSON.stringify({
-        env: { ANTHROPIC_BASE_URL: 'https://custom-api.example.com' },
+        env: { OPENAI_BASE_URL: 'https://custom-api.example.com' },
       }));
       assert.equal(getBaseUrlFromSettings(settingsPath), 'https://custom-api.example.com');
     });
@@ -130,8 +130,8 @@ describe('proxy', () => {
     it('returns URL from first matching config file', () => {
       const s1 = join(tempDir, 'local.json');
       const s2 = join(tempDir, 'project.json');
-      writeFileSync(s1, JSON.stringify({ env: { ANTHROPIC_BASE_URL: 'https://local.example.com' } }));
-      writeFileSync(s2, JSON.stringify({ env: { ANTHROPIC_BASE_URL: 'https://project.example.com' } }));
+      writeFileSync(s1, JSON.stringify({ env: { OPENAI_BASE_URL: 'https://local.example.com' } }));
+      writeFileSync(s2, JSON.stringify({ env: { OPENAI_BASE_URL: 'https://project.example.com' } }));
 
       assert.equal(getOriginalBaseUrl([s1, s2], null), 'https://local.example.com');
     });
@@ -140,7 +140,7 @@ describe('proxy', () => {
       const s1 = join(tempDir, 'local.json');
       const s2 = join(tempDir, 'project.json');
       writeFileSync(s1, JSON.stringify({ env: {} }));
-      writeFileSync(s2, JSON.stringify({ env: { ANTHROPIC_BASE_URL: 'https://project.example.com' } }));
+      writeFileSync(s2, JSON.stringify({ env: { OPENAI_BASE_URL: 'https://project.example.com' } }));
 
       assert.equal(getOriginalBaseUrl([s1, s2], null), 'https://project.example.com');
     });
@@ -155,13 +155,13 @@ describe('proxy', () => {
     it('returns default when nothing matches', () => {
       assert.equal(
         getOriginalBaseUrl([join(tempDir, 'nope.json')], null),
-        'https://api.anthropic.com'
+        'https://api.openai.com'
       );
     });
 
     it('config file takes priority over env var', () => {
       const s1 = join(tempDir, 'settings.json');
-      writeFileSync(s1, JSON.stringify({ env: { ANTHROPIC_BASE_URL: 'https://config.example.com' } }));
+      writeFileSync(s1, JSON.stringify({ env: { OPENAI_BASE_URL: 'https://config.example.com' } }));
 
       assert.equal(
         getOriginalBaseUrl([s1], 'https://env.example.com'),
@@ -176,29 +176,29 @@ describe('proxy', () => {
   describe('buildFullUrl', () => {
     it('joins base URL and request path', () => {
       assert.equal(
-        buildFullUrl('https://api.anthropic.com', '/v1/messages'),
-        'https://api.anthropic.com/v1/messages'
+        buildFullUrl('https://api.openai.com', '/v1/messages'),
+        'https://api.openai.com/v1/messages'
       );
     });
 
     it('handles trailing slash on base URL', () => {
       assert.equal(
-        buildFullUrl('https://api.anthropic.com/', '/v1/messages'),
-        'https://api.anthropic.com/v1/messages'
+        buildFullUrl('https://api.openai.com/', '/v1/messages'),
+        'https://api.openai.com/v1/messages'
       );
     });
 
     it('handles no leading slash on request path', () => {
       assert.equal(
-        buildFullUrl('https://api.anthropic.com', 'v1/messages'),
-        'https://api.anthropic.com/v1/messages'
+        buildFullUrl('https://api.openai.com', 'v1/messages'),
+        'https://api.openai.com/v1/messages'
       );
     });
 
     it('handles both trailing and no leading slash', () => {
       assert.equal(
-        buildFullUrl('https://api.anthropic.com/', 'v1/messages'),
-        'https://api.anthropic.com/v1/messages'
+        buildFullUrl('https://api.openai.com/', 'v1/messages'),
+        'https://api.openai.com/v1/messages'
       );
     });
 
@@ -211,8 +211,8 @@ describe('proxy', () => {
 
     it('preserves query string', () => {
       assert.equal(
-        buildFullUrl('https://api.anthropic.com', '/v1/messages?beta=true'),
-        'https://api.anthropic.com/v1/messages?beta=true'
+        buildFullUrl('https://api.openai.com', '/v1/messages?beta=true'),
+        'https://api.openai.com/v1/messages?beta=true'
       );
     });
   });
@@ -313,13 +313,13 @@ describe('proxy', () => {
   // Request header handling
   // --------------------------------------------------------------------------
   describe('request header handling', () => {
-    it('x-cc-viewer-trace header is set to true', () => {
+    it('x-cx-viewer-trace header is set to true', () => {
       // Simulates the header injection logic in startProxy
-      const headers = { 'content-type': 'application/json', host: 'api.anthropic.com' };
+      const headers = { 'content-type': 'application/json', host: 'api.openai.com' };
       delete headers.host;
-      headers['x-cc-viewer-trace'] = 'true';
+      headers['x-cx-viewer-trace'] = 'true';
 
-      assert.equal(headers['x-cc-viewer-trace'], 'true');
+      assert.equal(headers['x-cx-viewer-trace'], 'true');
       assert.equal(headers.host, undefined);
     });
   });
@@ -329,16 +329,16 @@ describe('proxy', () => {
   // --------------------------------------------------------------------------
   describe('config path priority', () => {
     it('settings.local.json > settings.json > home settings > env var', () => {
-      const localSettings = join(tempDir, '.claude', 'settings.local.json');
-      const projectSettings = join(tempDir, '.claude', 'settings.json');
-      const homeSettings = join(tempDir, 'home', '.claude', 'settings.json');
+      const localSettings = join(tempDir, '.codex', 'settings.local.json');
+      const projectSettings = join(tempDir, '.codex', 'settings.json');
+      const homeSettings = join(tempDir, 'home', '.codex', 'settings.json');
 
-      mkdirSync(join(tempDir, '.claude'), { recursive: true });
-      mkdirSync(join(tempDir, 'home', '.claude'), { recursive: true });
+      mkdirSync(join(tempDir, '.codex'), { recursive: true });
+      mkdirSync(join(tempDir, 'home', '.codex'), { recursive: true });
 
-      writeFileSync(localSettings, JSON.stringify({ env: { ANTHROPIC_BASE_URL: 'https://local.test' } }));
-      writeFileSync(projectSettings, JSON.stringify({ env: { ANTHROPIC_BASE_URL: 'https://project.test' } }));
-      writeFileSync(homeSettings, JSON.stringify({ env: { ANTHROPIC_BASE_URL: 'https://home.test' } }));
+      writeFileSync(localSettings, JSON.stringify({ env: { OPENAI_BASE_URL: 'https://local.test' } }));
+      writeFileSync(projectSettings, JSON.stringify({ env: { OPENAI_BASE_URL: 'https://project.test' } }));
+      writeFileSync(homeSettings, JSON.stringify({ env: { OPENAI_BASE_URL: 'https://home.test' } }));
 
       // All three exist — local wins
       assert.equal(
@@ -367,7 +367,7 @@ describe('proxy', () => {
       // Remove env — default
       assert.equal(
         getOriginalBaseUrl([join(tempDir, 'a'), join(tempDir, 'b'), join(tempDir, 'c')], null),
-        'https://api.anthropic.com'
+        'https://api.openai.com'
       );
     });
   });

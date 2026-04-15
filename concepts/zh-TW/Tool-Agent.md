@@ -2,7 +2,7 @@
 
 ## 定義
 
-啟動一個子 agent（SubAgent）來自主處理複雜的多步驟任務。子 agent 是獨立的子程序，擁有各自專用的工具集和上下文。Agent 是新版 Claude Code 中 Task 工具的重新命名版本。
+啟動一個子 agent（SubAgent）來自主處理複雜的多步驟任務。子 agent 是獨立的子程序，擁有各自專用的工具集和上下文。Agent 是新版 Codex 中 Task 工具的重新命名版本。
 
 ## 參數
 
@@ -25,7 +25,7 @@
 | `general-purpose` | 通用多步驟任務 | 全部工具 |
 | `Explore` | 快速探索程式碼庫 | 除 Agent/Edit/Write/NotebookEdit/ExitPlanMode 外的所有工具 |
 | `Plan` | 設計實施方案 | 除 Agent/Edit/Write/NotebookEdit/ExitPlanMode 外的所有工具 |
-| `claude-code-guide` | Claude Code 使用指南問答 | Glob, Grep, Read, WebFetch, WebSearch |
+| `claude-code-guide` | Codex 使用指南問答 | Glob, Grep, Read, WebFetch, WebSearch |
 | `statusline-setup` | 設定狀態列 | Read, Edit |
 
 ## 使用場景
@@ -58,10 +58,10 @@ The Agent tool launches specialized agents (subprocesses) that autonomously hand
 
 Available agent types and the tools they have access to:
 - general-purpose: General-purpose agent for researching complex questions, searching for code, and executing multi-step tasks. When you are searching for a keyword or file and are not confident that you will find the right match in the first few tries use this agent to perform the search for you. (Tools: *)
-- statusline-setup: Use this agent to configure the user's Claude Code status line setting. (Tools: Read, Edit)
+- statusline-setup: Use this agent to configure the user's Codex status line setting. (Tools: Read, Edit)
 - Explore: Fast agent specialized for exploring codebases. Use this when you need to quickly find files by patterns (eg. "src/components/**/*.tsx"), search code for keywords (eg. "API endpoints"), or answer questions about the codebase (eg. "how do API endpoints work?"). When calling this agent, specify the desired thoroughness level: "quick" for basic searches, "medium" for moderate exploration, or "very thorough" for comprehensive analysis across multiple locations and naming conventions. (Tools: All tools except Agent, ExitPlanMode, Edit, Write, NotebookEdit)
 - Plan: Software architect agent for designing implementation plans. Use this when you need to plan the implementation strategy for a task. Returns step-by-step plans, identifies critical files, and considers architectural trade-offs. (Tools: All tools except Agent, ExitPlanMode, Edit, Write, NotebookEdit)
-- claude-code-guide: Use this agent when the user asks questions ("Can Claude...", "Does Claude...", "How do I...") about: (1) Claude Code (the CLI tool) - features, hooks, slash commands, MCP servers, settings, IDE integrations, keyboard shortcuts; (2) Claude Agent SDK - building custom agents; (3) Claude API (formerly Anthropic API) - API usage, tool use, Anthropic SDK usage. **IMPORTANT:** Before spawning a new agent, check if there is already a running or recently completed claude-code-guide agent that you can resume using the "resume" parameter. (Tools: Glob, Grep, Read, WebFetch, WebSearch)
+- claude-code-guide: Use this agent when the user asks questions ("Can Claude...", "Does Claude...", "How do I...") about: (1) Codex (the CLI tool) - features, hooks, slash commands, MCP servers, settings, IDE integrations, keyboard shortcuts; (2) Claude Agent SDK - building custom agents; (3) Claude API (formerly Anthropic API) - API usage, tool use, Anthropic SDK usage. **IMPORTANT:** Before spawning a new agent, check if there is already a running or recently completed claude-code-guide agent that you can resume using the "resume" parameter. (Tools: Glob, Grep, Read, WebFetch, WebSearch)
 
 When using the Agent tool, you must specify a subagent_type parameter to select which agent type to use.
 

@@ -34,9 +34,10 @@ function execWithStdin(cmd, args, input, options) {
     child.stdin.end();
   });
 }
-import { LOG_FILE, _initPromise, _resumeState, resolveResumeChoice, _projectName, _logDir, _cachedApiKey, _cachedAuthHeader, _cachedHaikuModel, initForWorkspace, resetWorkspace, streamingState, resetStreamingState, _loadProxyProfile, PROFILE_PATH, _defaultConfig } from './interceptor.js';
-import { LOG_DIR, setLogDir } from './findcc.js';
+import { LOG_FILE, _initPromise, _resumeState, resolveResumeChoice, _projectName, _logDir, _cachedApiKey, _cachedAuthHeader, initForWorkspace, resetWorkspace, streamingState, resetStreamingState, _loadProxyProfile, PROFILE_PATH, _defaultConfig } from './interceptor.js';
+import { LOG_DIR, setLogDir } from './findcx.js';
 import { t, detectLanguage } from './i18n.js';
+import { DEFAULT_START_PORT, DEFAULT_MAX_PORT, MAX_POST_BODY as _MAX_POST_BODY, MAX_UPLOAD_SIZE, SSE_HEARTBEAT_MS, HOOK_TIMEOUT_MS, EDITOR_SESSION_CLEANUP_MS, UPLOAD_DIR } from './lib/constants.js';
 import { checkAndUpdate } from './lib/updater.js';
 import { loadPlugins, runWaterfallHook, runParallelHook, getPluginsInfo, getPluginsDir } from './lib/plugin-loader.js';
 import { uploadPlugins, installPluginFromUrl } from './lib/plugin-manager.js';
@@ -52,17 +53,17 @@ import { countLogEntries, streamRawEntriesAsync, readPagedEntries } from './lib/
 // 动态获取 getPrefsFile()（LOG_DIR 可能在运行时被 setLogDir 修改）
 function getPrefsFile() { return join(LOG_DIR, 'preferences.json'); }
 
-// 启动时一次性读取 ~/.claude/settings.json（不 watch）
-let claudeSettings = {};
+// 启动时一次性读取 ~/.codex/settings.json（不 watch）
+let codexSettings = {};
 try {
-  const settingsPath = join(homedir(), '.claude', 'settings.json');
+  const settingsPath = join(homedir(), '.codex', 'settings.json');
   if (existsSync(settingsPath)) {
-    claudeSettings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
+    codexSettings = JSON.parse(readFileSync(settingsPath, 'utf-8'));
   }
 } catch { }
-const isCliMode = process.env.CCV_CLI_MODE === '1';
-const isSdkMode = process.env.CCV_SDK_MODE === '1';
-const isWorkspaceMode = process.env.CCV_WORKSPACE_MODE === '1';
+const isCliMode = process.env.CXV_CLI_MODE === '1';
+const isSdkMode = process.env.CXV_SDK_MODE === '1';
+const isWorkspaceMode = process.env.CXV_WORKSPACE_MODE === '1';
 const _defaultProxyProfiles = { active: 'max', profiles: [{ id: 'max', name: 'Default' }] };
 const _maskApiKey = (k) => k && typeof k === 'string' && k.length > 4 ? '****' + k.slice(-4) : k ? '****' : '';
 const _maskProfiles = (data) => {
@@ -71,9 +72,9 @@ const _maskProfiles = (data) => {
 };
 const _isMasked = (k) => typeof k === 'string' && /^\*{4}.{0,4}$/.test(k);
 
-// 获取 Claude 进程 PID（CLI 模式下从 pty-manager 获取）
+// 获取 Codex 进程 PID（CLI 模式下从 pty-manager 获取）
 let _getPtyPidFn = null;
-function getClaudePid() {
+function getCodexPid() {
   if (!isCliMode) return process.pid;
   if (_getPtyPidFn) return _getPtyPidFn();
   // lazy load 尚未完成，尝试同步获取（pty-manager 可能已被其他路径加载）
@@ -83,7 +84,7 @@ if (isCliMode) {
   import('./pty-manager.js').then(m => {
     _getPtyPidFn = m.getPtyPid;
   }).catch(err => {
-    console.error('[CC Viewer] Failed to load pty-manager for PID tracking:', err.message);
+    console.error('[CX Viewer] Failed to load pty-manager for PID tracking:', err.message);
   });
 }
 
@@ -93,14 +94,14 @@ const IGNORED_PATTERNS = new Set([
   '.idea', '.vscode'
 ]);
 
-// 工作区模式：保存 Claude 额外参数，供 launch API 使用
-let _workspaceClaudeArgs = [];
-let _workspaceClaudePath = null;
+// 工作区模式：保存 Codex 额外参数，供 launch API 使用
+let _workspaceCodexArgs = [];
+let _workspaceCodexPath = null;
 let _workspaceIsNpmVersion = false;
 let _workspaceLaunched = false; // 工作区是否已经启动了会话
 
 // Ask hook bridge state (for PreToolUse AskUserQuestion hook)
-// At most one pending request at a time (Claude Code is single-threaded)
+// At most one pending request at a time (Codex Code is single-threaded)
 let pendingAskHook = null; // { questions, res, timer, createdAt }
 
 // Permission hook bridge state (for PreToolUse permission approval)
@@ -112,18 +113,18 @@ const editorSessions = new Map(); // sessionId → { filePath, done, createdAt }
 const _editorCleanupTimer = setInterval(() => {
   const now = Date.now();
   for (const [id, session] of editorSessions) {
-    if (now - (session.createdAt || 0) > 3600000) editorSessions.delete(id);
+    if (now - (session.createdAt || 0) > EDITOR_SESSION_CLEANUP_MS) editorSessions.delete(id);
   }
 }, 60000);
 _editorCleanupTimer.unref(); // Don't keep process alive for cleanup
 let terminalWss = null; // WebSocketServer reference for broadcasting
 let _writeToPty = null; // PTY write function reference (set by setupTerminalWebSocket)
 let _onPtyData = null;  // PTY data listener registration (set by setupTerminalWebSocket)
-export function setWorkspaceClaudeArgs(args) {
-  _workspaceClaudeArgs = args;
+export function setWorkspaceCodexArgs(args) {
+  _workspaceCodexArgs = args;
 }
-export function setWorkspaceClaudePath(path, isNpm) {
-  _workspaceClaudePath = path;
+export function setWorkspaceCodexPath(path, isNpm) {
+  _workspaceCodexPath = path;
   _workspaceIsNpmVersion = isNpm;
 }
 let _launchCallback = null;
@@ -135,15 +136,15 @@ export function initPostLaunch() {
   startStreamingStatusTimer();
 }
 
-// Global POST body size limit (10MB) to prevent OOM from malicious/buggy clients
-const MAX_POST_BODY = 10 * 1024 * 1024;
+// Global POST body size limit
+const MAX_POST_BODY = _MAX_POST_BODY;
 
 
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const START_PORT = parseInt(process.env.CCV_START_PORT) || 7008;
-const MAX_PORT = parseInt(process.env.CCV_MAX_PORT) || 7099;
+const START_PORT = parseInt(process.env.CXV_START_PORT) || DEFAULT_START_PORT;
+const MAX_PORT = parseInt(process.env.CXV_MAX_PORT) || DEFAULT_MAX_PORT;
 const HOST = '0.0.0.0';
 
 // 局域网访问 token（本地 127.0.0.1 免验证）
@@ -160,12 +161,12 @@ function startStatsWorker() {
   try {
     statsWorker = new Worker(new URL('./lib/stats-worker.js', import.meta.url));
     statsWorker.on('error', (err) => {
-      console.error('[CC Viewer] Stats worker error:', err.message);
+      console.error('[CX Viewer] Stats worker error:', err.message);
       statsWorker = null;
     });
     statsWorker.on('exit', (code) => {
       if (code !== 0) {
-        console.error('[CC Viewer] Stats worker exited with code', code);
+        console.error('[CX Viewer] Stats worker exited with code', code);
       }
       statsWorker = null;
     });
@@ -174,7 +175,7 @@ function startStatsWorker() {
       statsWorker.postMessage({ type: 'init', logDir: LOG_DIR, projectName: _projectName });
     }
   } catch (err) {
-    console.error('[CC Viewer] Failed to start stats worker:', err.message);
+    console.error('[CX Viewer] Failed to start stats worker:', err.message);
   }
 }
 
@@ -201,7 +202,7 @@ function _logWatcherOpts(logFile) {
   return {
     logFile: logFile || LOG_FILE,
     clients,
-    getClaudePid,
+    getCodexPid,
     runParallelHook,
     notifyStatsWorker,
     getLogFile: () => LOG_FILE,
@@ -264,7 +265,7 @@ async function handleRequest(req, res) {
   }
 
   // User preferences API
-  // File upload API — save to /tmp/cc-viewer-uploads/
+  // File upload API — save to /tmp/cx-viewer-uploads/
   if (url === '/api/upload' && method === 'POST') {
     const contentType = req.headers['content-type'] || '';
     const boundaryMatch = contentType.match(/boundary=(.+)/);
@@ -273,7 +274,7 @@ async function handleRequest(req, res) {
       res.end(JSON.stringify({ error: 'Missing boundary' }));
       return;
     }
-    const MAX_UPLOAD = 100 * 1024 * 1024; // 100MB
+    const MAX_UPLOAD = MAX_UPLOAD_SIZE;
     const contentLength = parseInt(req.headers['content-length'] || '0', 10);
     if (contentLength > MAX_UPLOAD) {
       res.writeHead(413, { 'Content-Type': 'application/json' });
@@ -311,7 +312,7 @@ async function handleRequest(req, res) {
         const closingBoundary = Buffer.from('\r\n--' + boundary);
         const bodyEnd = buf.indexOf(closingBoundary, bodyStart);
         const fileData = bodyEnd !== -1 ? buf.slice(bodyStart, bodyEnd) : buf.slice(bodyStart);
-        const uploadDir = '/tmp/cc-viewer-uploads';
+        const uploadDir = UPLOAD_DIR;
         mkdirSync(uploadDir, { recursive: true });
         // Unique filename: prepend timestamp to avoid silent overwrite
         const ts = Date.now();
@@ -321,11 +322,11 @@ async function handleRequest(req, res) {
           : `${originalName}-${ts}`;
         const savePath = join(uploadDir, uniqueName);
         writeFileSync(savePath, fileData);
-        // 持久化副本到 ~/.claude/cc-viewer/${project}/images/，避免 /tmp 清理后丢失
+        // 持久化副本到 ~/.codex/cx-viewer/${project}/images/，避免 /tmp 清理后丢失
         let persistPath = null;
         try {
           const pName = _projectName || 'default';
-          const persistDir = join(homedir(), '.claude', 'cc-viewer', pName, 'images');
+          const persistDir = join(homedir(), '.codex', 'cx-viewer', pName, 'images');
           mkdirSync(persistDir, { recursive: true });
           persistPath = join(persistDir, uniqueName);
           writeFileSync(persistPath, fileData);
@@ -358,7 +359,7 @@ async function handleRequest(req, res) {
       res.end(JSON.stringify({ error: 'Invalid dir parameter' }));
       return;
     }
-    const MAX_UPLOAD = 100 * 1024 * 1024; // 100MB
+    const MAX_UPLOAD = MAX_UPLOAD_SIZE;
     const contentLength = parseInt(req.headers['content-length'] || '0', 10);
     if (contentLength > MAX_UPLOAD) {
       res.writeHead(413, { 'Content-Type': 'application/json' });
@@ -383,7 +384,7 @@ async function handleRequest(req, res) {
     req.on('end', () => {
       if (aborted) return;
       try {
-        const cwd = process.env.CCV_PROJECT_DIR || process.cwd();
+        const cwd = process.env.CXV_PROJECT_DIR || process.cwd();
         const targetDir = join(cwd, dir);
         mkdirSync(targetDir, { recursive: true });
         const realDir = realpathSync(targetDir);
@@ -456,7 +457,7 @@ async function handleRequest(req, res) {
         const prefsDir = dirname(prefsFile);
         if (!existsSync(prefsDir)) mkdirSync(prefsDir, { recursive: true });
         writeFileSync(prefsFile, JSON.stringify(prefs, null, 2));
-        // 主题切换时同步到 Claude Code CLI：发 /theme，监听输出验证结果，不对就再发一次
+        // 主题切换时同步到 Codex Code CLI：发 /theme，监听输出验证结果，不对就再发一次
         if (incoming.themeColor && _writeToPty && _onPtyData) {
           const target = incoming.themeColor === 'light' ? 'light' : 'dark';
           let buf = '';
@@ -627,8 +628,8 @@ async function handleRequest(req, res) {
         registerWorkspace(wsPath);
 
         // Electron multi-tab 模式：管理 server 只触发 callback，不做日志初始化
-        // 所有日志相关操作（initForWorkspace、watchLogFile、spawnClaude）由 tab-worker 子进程负责
-        if (process.env.CCV_ELECTRON_MULTITAB === '1') {
+        // 所有日志相关操作（initForWorkspace、watchLogFile、spawnCodex）由 tab-worker 子进程负责
+        if (process.env.CXV_ELECTRON_MULTITAB === '1') {
           if (_launchCallback) {
             _launchCallback(wsPath, Array.isArray(launchExtraArgs) ? launchExtraArgs : []);
           }
@@ -640,7 +641,7 @@ async function handleRequest(req, res) {
 
         // 非 Electron 模式（web / CLI）：完整逻辑
         const result = initForWorkspace(wsPath);
-        process.env.CCV_PROJECT_DIR = wsPath;
+        process.env.CXV_PROJECT_DIR = wsPath;
 
         // 启动日志监听
         watchLogFile(_logWatcherOpts(LOG_FILE));
@@ -650,11 +651,11 @@ async function handleRequest(req, res) {
         startStreamingStatusTimer();
 
         // 启动 PTY
-        const proxyPort = process.env.CCV_PROXY_PORT;
+        const proxyPort = process.env.CXV_PROXY_PORT;
         if (proxyPort) {
-          const { spawnClaude } = await import('./pty-manager.js');
-          const mergedArgs = [..._workspaceClaudeArgs, ...(Array.isArray(launchExtraArgs) ? launchExtraArgs : [])];
-          await spawnClaude(parseInt(proxyPort), wsPath, mergedArgs, _workspaceClaudePath, _workspaceIsNpmVersion, actualPort);
+          const { spawnCodex } = await import('./pty-manager.js');
+          const mergedArgs = [..._workspaceCodexArgs, ...(Array.isArray(launchExtraArgs) ? launchExtraArgs : [])];
+          await spawnCodex(parseInt(proxyPort), wsPath, mergedArgs, _workspaceCodexPath, _workspaceIsNpmVersion, actualPort);
         }
 
         _workspaceLaunched = true;
@@ -770,10 +771,10 @@ async function handleRequest(req, res) {
     // sendToClients 向该客户端推送 live entry，而 load_end 的 setState 会覆盖这些
     // 已处理的 live entry，导致 对话条目"显示→消失→重现"闪烁。
 
-    // SSE 心跳保活：每 30s 发送 ping 事件，防止连接被 OS/代理/浏览器静默断开
+    // SSE 心跳保活：防止连接被 OS/代理/浏览器静默断开
     const pingTimer = setInterval(() => {
       try { res.write('event: ping\ndata: {}\n\n'); } catch {}
-    }, 30000);
+    }, SSE_HEARTBEAT_MS);
 
     // 如果有待决的 resume 选择，发送 resume_prompt 事件
     if (_resumeState) {
@@ -931,7 +932,7 @@ async function handleRequest(req, res) {
 
   // 返回项目目录绝对路径（前端用于将绝对路径转为相对路径）
   if (url === '/api/project-dir' && method === 'GET') {
-    const dir = process.env.CCV_PROJECT_DIR || process.cwd();
+    const dir = process.env.CXV_PROJECT_DIR || process.cwd();
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ dir }));
     return;
@@ -1031,31 +1032,31 @@ async function handleRequest(req, res) {
     return;
   }
 
-  // Claude settings.json（启动时读取，不 watch）
-  if (url === '/api/claude-settings' && method === 'GET') {
+  // Codex settings.json（启动时读取，不 watch）
+  if (url === '/api/codex-settings' && method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    const fileEnv = claudeSettings.env || {};
-    // 与 Claude Code 保持一致：settings.json env 优先，fallback 到 process.env
+    const fileEnv = codexSettings.env || {};
+    // 与 Codex Code 保持一致：settings.json env 优先，fallback 到 process.env
     const env = { ...fileEnv };
     if (!env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS && process.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS) {
       env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = process.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS;
     }
-    res.end(JSON.stringify({ env, model: claudeSettings.model || null, showThinkingSummaries: claudeSettings.showThinkingSummaries || false, claudeAvailable: process.env.CCV_CLAUDE_MISSING !== '1' }));
+    res.end(JSON.stringify({ env, model: codexSettings.model || null, showThinkingSummaries: codexSettings.showThinkingSummaries || false, codexAvailable: process.env.CXV_CLAUDE_MISSING !== '1' }));
     return;
   }
 
-  if (url === '/api/claude-settings' && method === 'POST') {
+  if (url === '/api/codex-settings' && method === 'POST') {
     let body = '';
     req.on('data', chunk => { body += chunk; if (body.length > MAX_POST_BODY) req.destroy(); });
     req.on('end', () => {
       try {
         const incoming = JSON.parse(body);
-        const settingsPath = join(homedir(), '.claude', 'settings.json');
+        const settingsPath = join(homedir(), '.codex', 'settings.json');
         let settings = {};
         try { if (existsSync(settingsPath)) settings = JSON.parse(readFileSync(settingsPath, 'utf-8')); } catch { }
         Object.assign(settings, incoming);
         writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
-        Object.assign(claudeSettings, incoming);
+        Object.assign(codexSettings, incoming);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true }));
       } catch {
@@ -1141,7 +1142,7 @@ async function handleRequest(req, res) {
       res.end(JSON.stringify({ error: 'Invalid path' }));
       return;
     }
-    const cwd = process.env.CCV_PROJECT_DIR || process.cwd();
+    const cwd = process.env.CXV_PROJECT_DIR || process.cwd();
     const targetDir = join(cwd, reqPath);
     try {
       const entries = readdirSync(targetDir, { withFileTypes: true });
@@ -1205,7 +1206,7 @@ async function handleRequest(req, res) {
           res.end(JSON.stringify({ error: 'Invalid path' }));
           return;
         }
-        const cwd = process.env.CCV_PROJECT_DIR || process.cwd();
+        const cwd = process.env.CXV_PROJECT_DIR || process.cwd();
         const oldFullPath = join(cwd, oldPath);
         const parentDir = dirname(oldFullPath);
         const newFullPath = join(parentDir, newName);
@@ -1257,7 +1258,7 @@ async function handleRequest(req, res) {
           res.end(JSON.stringify({ error: 'Invalid path' }));
           return;
         }
-        const cwd = process.env.CCV_PROJECT_DIR || process.cwd();
+        const cwd = process.env.CXV_PROJECT_DIR || process.cwd();
         const oldFullPath = join(cwd, fromPath);
         const toDirFull = join(cwd, toDir);
         // 检查源文件/目录存在
@@ -1345,7 +1346,7 @@ async function handleRequest(req, res) {
           res.end(JSON.stringify({ error: 'Invalid path' }));
           return;
         }
-        const cwd = process.env.CCV_PROJECT_DIR || process.cwd();
+        const cwd = process.env.CXV_PROJECT_DIR || process.cwd();
         const fullPath = join(cwd, filePath);
         if (!existsSync(fullPath)) {
           res.writeHead(404, { 'Content-Type': 'application/json' });
@@ -1408,7 +1409,7 @@ async function handleRequest(req, res) {
           res.end(JSON.stringify({ error: 'Invalid path' }));
           return;
         }
-        const cwd = process.env.CCV_PROJECT_DIR || process.cwd();
+        const cwd = process.env.CXV_PROJECT_DIR || process.cwd();
         const fullPath = join(cwd, filePath);
         if (!existsSync(fullPath)) {
           res.writeHead(404, { 'Content-Type': 'application/json' });
@@ -1463,7 +1464,7 @@ async function handleRequest(req, res) {
           res.end(JSON.stringify({ error: 'Invalid path' }));
           return;
         }
-        const cwd = process.env.CCV_PROJECT_DIR || process.cwd();
+        const cwd = process.env.CXV_PROJECT_DIR || process.cwd();
         const fullPath = join(cwd, filePath);
         if (!existsSync(fullPath)) {
           res.writeHead(404, { 'Content-Type': 'application/json' });
@@ -1513,7 +1514,7 @@ async function handleRequest(req, res) {
           res.end(JSON.stringify({ error: 'Invalid path' }));
           return;
         }
-        const cwd = process.env.CCV_PROJECT_DIR || process.cwd();
+        const cwd = process.env.CXV_PROJECT_DIR || process.cwd();
         const fullPath = relPath ? join(cwd, relPath) : cwd;
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true, fullPath }));
@@ -1554,7 +1555,7 @@ async function handleRequest(req, res) {
           res.end(JSON.stringify({ error: 'Invalid path' }));
           return;
         }
-        const cwd = process.env.CCV_PROJECT_DIR || process.cwd();
+        const cwd = process.env.CXV_PROJECT_DIR || process.cwd();
         const fullDirPath = relDir ? join(cwd, relDir) : cwd;
         if (!existsSync(fullDirPath) || !statSync(fullDirPath).isDirectory()) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -1604,7 +1605,7 @@ async function handleRequest(req, res) {
           res.end(JSON.stringify({ error: 'Invalid path' }));
           return;
         }
-        const cwd = process.env.CCV_PROJECT_DIR || process.cwd();
+        const cwd = process.env.CXV_PROJECT_DIR || process.cwd();
         const fullDir = relDir ? join(cwd, relDir) : cwd;
         if (!existsSync(fullDir) || !statSync(fullDir).isDirectory()) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -1683,7 +1684,7 @@ async function handleRequest(req, res) {
           res.end(JSON.stringify({ error: 'Invalid path' }));
           return;
         }
-        const cwd = process.env.CCV_PROJECT_DIR || process.cwd();
+        const cwd = process.env.CXV_PROJECT_DIR || process.cwd();
         const fullDirPath = relDir ? join(cwd, relDir) : cwd;
         if (!existsSync(fullDirPath) || !statSync(fullDirPath).isDirectory()) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -1737,7 +1738,7 @@ async function handleRequest(req, res) {
   }
 
   if (url === '/api/open-project-dir' && method === 'POST') {
-    const dir = process.env.CCV_PROJECT_DIR || process.cwd();
+    const dir = process.env.CXV_PROJECT_DIR || process.cwd();
     const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'explorer' : 'xdg-open';
     execFile(cmd, [dir], () => {});
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -1847,7 +1848,7 @@ async function handleRequest(req, res) {
           clearTimeout(pendingAskHook.timer);
         }
 
-        const HOOK_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+        const HOOK_TIMEOUT = HOOK_TIMEOUT_MS;
         const timer = setTimeout(() => {
           if (pendingAskHook && pendingAskHook.res === res) {
             pendingAskHook = null;
@@ -1931,7 +1932,7 @@ async function handleRequest(req, res) {
           clearTimeout(pendingPermHook.timer);
         }
 
-        const HOOK_TIMEOUT = 5 * 60 * 1000;
+        const HOOK_TIMEOUT = HOOK_TIMEOUT_MS;
         const id = `perm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         const timer = setTimeout(() => {
           if (pendingPermHook && pendingPermHook.id === id) {
@@ -1988,7 +1989,7 @@ async function handleRequest(req, res) {
   if (url === '/api/file-content' && method === 'GET') {
     const reqPath = parsedUrl.searchParams.get('path');
     const isEditorSession = parsedUrl.searchParams.get('editorSession') === 'true';
-    const cwd = process.env.CCV_PROJECT_DIR || process.cwd();
+    const cwd = process.env.CXV_PROJECT_DIR || process.cwd();
     try {
       const result = readFileContent(cwd, reqPath, isEditorSession);
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -2006,12 +2007,12 @@ async function handleRequest(req, res) {
   if (url === '/api/file-raw' && (method === 'GET' || method === 'HEAD')) {
     const reqPath = parsedUrl.searchParams.get('path');
     const isEditorSession = parsedUrl.searchParams.get('editorSession') === 'true';
-    const cwd = process.env.CCV_PROJECT_DIR || process.cwd();
+    const cwd = process.env.CXV_PROJECT_DIR || process.cwd();
     try {
-      // 上传图片路径（/tmp/cc-viewer-uploads/ 或持久化目录）直接使用，跳过项目目录安全检查
-      const uploadPrefix = '/tmp/cc-viewer-uploads/';
+      // 上传图片路径（/tmp/cx-viewer-uploads/ 或持久化目录）直接使用，跳过项目目录安全检查
+      const uploadPrefix = UPLOAD_DIR + '/';
       const pName = _projectName || 'default';
-      const persistPrefix = join(homedir(), '.claude', 'cc-viewer', pName, 'images') + '/';
+      const persistPrefix = join(homedir(), '.codex', 'cx-viewer', pName, 'images') + '/';
       let targetFile;
       if (reqPath && reqPath.startsWith(uploadPrefix)) {
         targetFile = resolve(reqPath);
@@ -2094,7 +2095,7 @@ async function handleRequest(req, res) {
       }
       try {
         const { path: reqPath, content, editorSession } = JSON.parse(body);
-        const cwd = process.env.CCV_PROJECT_DIR || process.cwd();
+        const cwd = process.env.CXV_PROJECT_DIR || process.cwd();
         const result = writeFileContent(cwd, reqPath, content, editorSession);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true, size: result.size }));
@@ -2139,7 +2140,7 @@ async function handleRequest(req, res) {
           res.end(JSON.stringify({ error: 'Invalid path' }));
           return;
         }
-        const cwd = process.env.CCV_PROJECT_DIR || process.cwd();
+        const cwd = process.env.CXV_PROJECT_DIR || process.cwd();
         const fullPath = join(cwd, filePath);
         if (existsSync(fullPath)) {
           const realFull = realpathSync(fullPath);
@@ -2170,7 +2171,7 @@ async function handleRequest(req, res) {
 
   if (url === '/api/git-status' && method === 'GET') {
     try {
-      const cwd = process.env.CCV_PROJECT_DIR || process.cwd();
+      const cwd = process.env.CXV_PROJECT_DIR || process.cwd();
       const { stdout: output } = await execFileAsync('git', ['status', '--porcelain'], { cwd, encoding: 'utf-8', timeout: 5000 });
       const lines = output.split('\n').filter(line => line.trim());
       const changes = lines.map(line => {
@@ -2198,7 +2199,7 @@ async function handleRequest(req, res) {
   // Git diff 数据获取
   if (url.startsWith('/api/git-diff') && method === 'GET') {
     try {
-      const cwd = process.env.CCV_PROJECT_DIR || process.cwd();
+      const cwd = process.env.CXV_PROJECT_DIR || process.cwd();
       const filesParam = parsedUrl.searchParams.get('files');
 
       if (!filesParam) {
@@ -2506,8 +2507,8 @@ async function handleRequest(req, res) {
     return;
   }
 
-  // CCV 进程列表
-  if (url === '/api/ccv-processes' && method === 'GET') {
+  // CXV 进程列表
+  if (url === '/api/cxv-processes' && method === 'GET') {
     if (platform() === 'win32') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ processes: [] }));
@@ -2532,14 +2533,14 @@ async function handleRequest(req, res) {
         const port = portMatch[1];
         if (!seen.has(pid)) seen.set(pid, port);
       }
-      // 获取所有候选进程的 PPID，过滤掉 PPID 也在 CCV 进程集合中的子进程（即 ccv -c/-d 启动的 claude 子进程）
-      const ccvPids = new Set(seen.keys());
+      // 获取所有候选进程的 PPID，过滤掉 PPID 也在 CXV 进程集合中的子进程（即 cxv -c/-d 启动的 codex 子进程）
+      const cxvPids = new Set(seen.keys());
       const filteredPids = [];
       for (const [pid] of seen) {
         try {
           const { stdout: ppidOut } = await execAsync(`ps -o ppid= -p ${pid}`, { timeout: 2000 }).catch(() => ({ stdout: '' }));
           const ppid = parseInt(ppidOut.trim(), 10);
-          if (ppid && ccvPids.has(ppid)) continue; // 是某个 CCV 进程的子进程，跳过
+          if (ppid && cxvPids.has(ppid)) continue; // 是某个 CXV 进程的子进程，跳过
         } catch {}
         filteredPids.push(pid);
       }
@@ -2561,7 +2562,7 @@ async function handleRequest(req, res) {
             const year = lsMatch[4];
             startTime = `${year}年${mon}月${day}日 ${time}`;
             const rawCmd = lsMatch[5];
-            // Extract path after lib/ (e.g. node_modules/cc-viewer/cli.js -d → cc-viewer/cli.js -d)
+            // Extract path after lib/ (e.g. node_modules/cx-viewer/cli.js -d → cx-viewer/cli.js -d)
             const libMatch = rawCmd.match(/lib\/(.+)/);
             command = libMatch ? libMatch[1] : rawCmd;
           }
@@ -2578,8 +2579,8 @@ async function handleRequest(req, res) {
     return;
   }
 
-  // CCV 进程关闭
-  if (url === '/api/ccv-processes/kill' && method === 'POST') {
+  // CXV 进程关闭
+  if (url === '/api/cxv-processes/kill' && method === 'POST') {
     let body = '';
     req.on('data', chunk => { body += chunk; if (body.length > MAX_POST_BODY) req.destroy(); });
     req.on('end', async () => {
@@ -2595,13 +2596,13 @@ async function handleRequest(req, res) {
           res.end(JSON.stringify({ error: 'Cannot kill current process' }));
           return;
         }
-        // 安全检查：确认是监听 CCV 端口范围 (7008-7099) 的 node 进程
+        // 安全检查：确认是监听 CXV 端口范围 (7008-7099) 的 node 进程
         const { stdout: lsofOut } = await execAsync(`lsof -iTCP:7008-7099 -sTCP:LISTEN -P -n -p ${pid}`, { timeout: 5000 }).catch(() => ({ stdout: '' }));
         const lsofLines = lsofOut.trim().split('\n').filter(Boolean).slice(1);
         const isNodeOnCcvPort = lsofLines.some(line => line.trim().split(/\s+/)[0] === 'node');
         if (!isNodeOnCcvPort) {
           res.writeHead(403, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Not a CCV process' }));
+          res.end(JSON.stringify({ error: 'Not a CXV process' }));
           return;
         }
         process.kill(pid, 'SIGTERM');
@@ -2670,13 +2671,13 @@ export async function startViewer() {
     const httpsResult = await runWaterfallHook('httpsOptions', {});
     httpsOptions = (httpsResult.pfx || httpsResult.cert) ? httpsResult : null;
   } catch (err) {
-    console.error('[CC Viewer] httpsOptions hook error:', err.message);
+    console.error('[CX Viewer] httpsOptions hook error:', err.message);
   }
 
   const useHttps = !!httpsOptions;
   const protocol = useHttps ? 'https' : 'http';
   serverProtocol = protocol;
-  if (useHttps) console.error('[CC Viewer] HTTPS mode enabled via plugin hook');
+  if (useHttps) console.error('[CX Viewer] HTTPS mode enabled via plugin hook');
 
   return new Promise((resolve, reject) => {
     function tryListen(port) {
@@ -2700,7 +2701,7 @@ export async function startViewer() {
           try {
             currentServer = createHttpsServer(httpsOptions, handleRequest);
           } catch (err) {
-            console.error('[CC Viewer] HTTPS server creation failed, falling back to HTTP:', err.message);
+            console.error('[CX Viewer] HTTPS server creation failed, falling back to HTTP:', err.message);
             currentServer = createServer(handleRequest);
             serverProtocol = 'http';
           }
@@ -2722,7 +2723,7 @@ export async function startViewer() {
           }
           // v2.0.69 之前的版本会清空控制台，自动打开浏览器确保用户能看到界面
           try {
-            const ccPkgPath = join(__dirname, '..', '@anthropic-ai', 'claude-code', 'package.json');
+            const ccPkgPath = join(__dirname, '..', '@openai', 'codex', 'package.json');
             const ccVer = JSON.parse(readFileSync(ccPkgPath, 'utf-8')).version;
             const [maj, min, pat] = ccVer.split('.').map(Number);
             if (maj < 2 || (maj === 2 && min === 0 && pat < 69)) {
@@ -2743,7 +2744,7 @@ export async function startViewer() {
           }
           // 通知插件服务器已启动
           runParallelHook('serverStarted', { port, host: HOST, url, ip: getLocalIp(), token: ACCESS_TOKEN, protocol: serverProtocol, httpServer: currentServer })
-            .catch(err => console.error('[CC Viewer] Plugin serverStarted hook error:', err.message));
+            .catch(err => console.error('[CX Viewer] Plugin serverStarted hook error:', err.message));
           resolve(server);
         });
 
@@ -2963,7 +2964,7 @@ async function setupTerminalWebSocket(httpServer) {
             // Security: only allow paths within upload directories, reject traversal
             const p = msg.path;
             if (terminalWss && p && !p.includes('..') && (
-              p.startsWith('/tmp/cc-viewer-uploads/') || (p.includes('/cc-viewer/') && p.includes('/images/'))
+              p.startsWith('/tmp/cx-viewer-uploads/') || (p.includes('/cx-viewer/') && p.includes('/images/'))
             )) {
               const rmsg = msg.type === 'image-upload-notify'
                 ? JSON.stringify({ type: 'image-upload-notify', path: p, source: msg.source || 'unknown' })
@@ -3012,7 +3013,7 @@ async function setupTerminalWebSocket(httpServer) {
       });
     });
   } catch (err) {
-    console.error('[CC Viewer] Failed to setup terminal WebSocket:', err.message);
+    console.error('[CX Viewer] Failed to setup terminal WebSocket:', err.message);
   }
 }
 
@@ -3151,7 +3152,7 @@ if (!isWorkspaceMode) {
         }).catch(() => { });
       }, 3000);
     }).catch(err => {
-      console.error('Failed to start CC Viewer:', err);
+      console.error('Failed to start CX Viewer:', err);
     });
   });
 }

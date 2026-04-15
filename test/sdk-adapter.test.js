@@ -46,7 +46,7 @@ describe('sdkToJSONLEntry', () => {
 
   it('uses default model when no model is available', () => {
     const entry = sdkToJSONLEntry({ message: null }, [], null, 'proj');
-    assert.equal(entry.body.model, 'claude-opus-4-6');
+    assert.equal(entry.body.model, 'gpt-4o');
   });
 
   it('uses custom tools from opts.tools', () => {

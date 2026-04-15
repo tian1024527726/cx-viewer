@@ -90,7 +90,7 @@ function _isMainAgentImpl(req) {
   const sysText = getSystemText(body);
 
   // 必须包含 MainAgent 身份标识
-  if (!sysText.includes('You are Claude Code')) return false;
+  if (!sysText.includes('You are Codex')) return false;
 
   // 排除 SubAgent
   if (SUBAGENT_SYSTEM_RE.test(sysText)) return false;
@@ -162,7 +162,7 @@ export function isSystemText(text) {
   if (/Implement the following plan:/i.test(trimmed)) return false;
   if (/^<[a-zA-Z_][\w-]*[\s>]/i.test(trimmed)) return true;
   if (/^\[SUGGESTION MODE:/i.test(trimmed)) return true;
-  // Claude Code 输出截断时注入的系统消息
+  // Codex 输出截断时注入的系统消息
   if (/^Your response was cut off because it exceeded the output token limit/i.test(trimmed)) return true;
   // Skill 加载的文档内容
   if (/^Base directory for this skill:/i.test(trimmed)) return true;
