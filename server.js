@@ -35,6 +35,7 @@ function execWithStdin(cmd, args, input, options) {
   });
 }
 import { LOG_FILE, _initPromise, _resumeState, resolveResumeChoice, _projectName, _logDir, _cachedApiKey, _cachedAuthHeader, initForWorkspace, resetWorkspace, streamingState, resetStreamingState, _loadProxyProfile, PROFILE_PATH, _defaultConfig } from './interceptor.js';
+import { parseOtlpTraces, writeOtelEntries } from './lib/otel-receiver.js';
 import { LOG_DIR, setLogDir } from './findcx.js';
 import { t, detectLanguage } from './i18n.js';
 import { DEFAULT_START_PORT, DEFAULT_MAX_PORT, MAX_POST_BODY as _MAX_POST_BODY, MAX_UPLOAD_SIZE, SSE_HEARTBEAT_MS, HOOK_TIMEOUT_MS, EDITOR_SESSION_CLEANUP_MS, UPLOAD_DIR } from './lib/constants.js';
@@ -262,6 +263,34 @@ async function handleRequest(req, res) {
       res.end(JSON.stringify({ error: 'Forbidden: invalid token' }));
       return;
     }
+  }
+
+  // OTLP HTTP 接收端点 — 接收 Codex 原生 OTel trace 数据
+  if (url === '/v1/traces' && method === 'POST') {
+    const buffers = [];
+    for await (const chunk of req) buffers.push(chunk);
+    const body = Buffer.concat(buffers);
+    try {
+      const otlpData = JSON.parse(body.toString());
+      const entries = parseOtlpTraces(otlpData);
+      if (entries.length > 0 && LOG_FILE) {
+        writeOtelEntries(LOG_FILE, entries);
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end('{}');
+    } catch (err) {
+      if (process.env.CXV_DEBUG) console.error('[OTel] Parse error:', err.message);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end('{}');
+    }
+    return;
+  }
+
+  // OTLP logs endpoint (Codex may also send logs)
+  if (url === '/v1/logs' && method === 'POST') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end('{}');
+    return;
   }
 
   // User preferences API

@@ -300,10 +300,18 @@ async function runCliMode(extraCodexArgs = [], cwd) {
   // 启动日志监听和统计（startViewer 在 workspace 模式下跳过了这些）
   serverMod.initPostLaunch();
 
-  // 启动 PTY 中的 codex（直接模式）
+  // 注入 OTel 配置，让 codex 将遥测数据发送到 cx-viewer
+  const otelEndpoint = `http://127.0.0.1:${port}`;
+  const otelArgs = [
+    '-c', `otel.trace_exporter="otlp-http"`,
+    '-c', `otel.trace_exporter.otlp-http.endpoint="${otelEndpoint}"`,
+  ];
+  const codexArgsWithOtel = [...otelArgs, ...extraCodexArgs];
+
+  // 启动 PTY 中的 codex（直接模式，通过 OTel 旁路捕获遥测数据）
   const { spawnCodex, killPty } = await import('./pty-manager.js');
   try {
-    await spawnCodex(null, workingDir, extraCodexArgs, codexPath, isNpmVersion, port);
+    await spawnCodex(null, workingDir, codexArgsWithOtel, codexPath, isNpmVersion, port);
   } catch (err) {
     console.error('[CX Viewer] Failed to spawn Codex:', err.message);
     await serverMod.stopViewer();
