@@ -1,8 +1,9 @@
-import { resolveNativePath } from './findcx.js';
+import { resolveNativePath, BINARY_NAME } from './findcx.js';
 import { fileURLToPath } from 'node:url';
 import { join, dirname } from 'node:path';
 import { chmodSync, statSync } from 'node:fs';
 import { platform, arch } from 'node:os';
+import { execSync } from 'node:child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -94,6 +95,35 @@ function fixSpawnHelperPermissions() {
   } catch { }
 }
 
+/**
+ * 从用户 shell 中提取 codex 命令的代理环境变量。
+ * 用户可能在 .zshrc/.bashrc 中通过 shell function 为 codex 设置代理，例如：
+ *   codex() { HTTPS_PROXY=http://... HTTP_PROXY=http://... command codex "$@" }
+ * cxv 通过 pty.spawn 直接执行 codex 二进制，会绕过这个 shell function，
+ * 导致代理环境变量丢失，引发网络问题。
+ * 此函数检测并提取这些内联代理设置。
+ */
+function extractShellProxyEnv() {
+  const shell = process.env.SHELL || '/bin/zsh';
+  try {
+    // 用交互模式获取 shell function 定义（-ic 加载 .zshrc/.bashrc）
+    const funcBody = execSync(
+      `${shell} -ic 'declare -f ${BINARY_NAME} 2>/dev/null || type ${BINARY_NAME} 2>/dev/null'`,
+      { encoding: 'utf-8', timeout: 5000, stdio: ['pipe', 'pipe', 'pipe'] }
+    );
+    // 匹配内联代理设置：HTTPS_PROXY=... HTTP_PROXY=... 等
+    const proxyVars = {};
+    const proxyRe = /\b(HTTPS?_PROXY|https?_proxy|ALL_PROXY|all_proxy|NO_PROXY|no_proxy)=(\S+)/g;
+    let m;
+    while ((m = proxyRe.exec(funcBody)) !== null) {
+      proxyVars[m[1]] = m[2];
+    }
+    return proxyVars;
+  } catch {
+    return {};
+  }
+}
+
 export async function spawnCodex(proxyPort, cwd, extraArgs = [], codexPath = null, isNpmVersion = false, serverPort = null) {
   if (ptyProcess) {
     killPty();
@@ -112,6 +142,12 @@ export async function spawnCodex(proxyPort, cwd, extraArgs = [], codexPath = nul
   }
 
   const env = { ...process.env };
+
+  // 从用户 shell function 中提取代理设置（解决 cxv 绕过 shell function 的问题）
+  if (!env.HTTPS_PROXY && !env.HTTP_PROXY && !env.https_proxy && !env.http_proxy) {
+    const shellProxy = extractShellProxyEnv();
+    Object.assign(env, shellProxy);
+  }
 
   // 仅在 proxyPort 指定时设置代理环境变量（直接模式不设置）
   if (proxyPort) {
