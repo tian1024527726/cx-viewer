@@ -334,7 +334,7 @@ export function setupInterceptor() {
       const isProxyTrace = headers['x-cx-viewer-trace'] === 'true' || headers['x-cx-viewer-trace'] === true;
 
       // 如果是 proxy 转发的，或者符合 URL 规则
-      if (isProxyTrace || urlStr.includes('anthropic') || urlStr.includes('codex') || (CUSTOM_API_HOST && urlStr.includes(CUSTOM_API_HOST)) || isOpenAiApiPath(urlStr)) {
+      if (isProxyTrace || urlStr.includes('codex') || (CUSTOM_API_HOST && urlStr.includes(CUSTOM_API_HOST)) || isOpenAiApiPath(urlStr)) {
         // 如果是 proxy 转发的，需要清理掉标记 header 避免发给上游
         if (isProxyTrace && options?.headers) {
           delete options.headers['x-cx-viewer-trace'];

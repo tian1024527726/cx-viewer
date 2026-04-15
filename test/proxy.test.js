@@ -204,8 +204,8 @@ describe('proxy', () => {
 
     it('preserves base URL path prefix', () => {
       assert.equal(
-        buildFullUrl('https://gateway.example.com/proxy/anthropic', '/v1/messages'),
-        'https://gateway.example.com/proxy/anthropic/v1/messages'
+        buildFullUrl('https://gateway.example.com/proxy/codex', '/v1/messages'),
+        'https://gateway.example.com/proxy/codex/v1/messages'
       );
     });
 
@@ -254,7 +254,7 @@ describe('proxy', () => {
     it('passes through all headers when none match filter', () => {
       const headers = [
         ['x-request-id', '123'],
-        ['anthropic-ratelimit-remaining', '99'],
+        ['x-ratelimit-remaining', '99'],
       ];
       const filtered = filterResponseHeaders(headers);
       assert.equal(Object.keys(filtered).length, 2);

@@ -78,7 +78,7 @@ class ChatView extends React.Component {
 
 
     // 从 localStorage 读取用户偏好的终端宽度（像素）
-    const savedWidth = localStorage.getItem('cc-viewer-terminal-width');
+    const savedWidth = localStorage.getItem('cx-viewer-terminal-width');
     const initialTerminalWidth = savedWidth ? parseFloat(savedWidth) : null;
 
     this.state = {
@@ -89,7 +89,7 @@ class ChatView extends React.Component {
       highlightTs: null,
       highlightFading: false,
       highlightVisibleIdx: -1,
-      sidebarWidth: parseInt(localStorage.getItem('cc-viewer-sidebar-width'), 10) || 240,
+      sidebarWidth: parseInt(localStorage.getItem('cx-viewer-sidebar-width'), 10) || 240,
       terminalWidth: initialTerminalWidth || 624, // 默认 80cols * 7.8px
       needsInitialSnap: initialTerminalWidth === null, // 标记是否需要初始化吸附
       inputEmpty: true,
@@ -98,7 +98,7 @@ class ChatView extends React.Component {
       ptyPrompt: null,
       ptyPromptHistory: [],
       inputSuggestion: null,
-      fileExplorerOpen: (!isMobile || isPad) && localStorage.getItem('ccv_fileExplorerOpen') !== 'false',
+      fileExplorerOpen: (!isMobile || isPad) && localStorage.getItem('cxv_fileExplorerOpen') !== 'false',
       currentFile: null,
       currentGitDiff: null,
       scrollToLine: null,
@@ -153,7 +153,7 @@ class ChatView extends React.Component {
   }
 
   _setFileExplorerOpen(open) {
-    localStorage.setItem('ccv_fileExplorerOpen', String(open));
+    localStorage.setItem('cxv_fileExplorerOpen', String(open));
     this.setState({ fileExplorerOpen: open });
   }
 
@@ -1328,8 +1328,8 @@ class ChatView extends React.Component {
   _loadPresets() {
     // 判断 Agent Team 是否启用
     let agentTeamEnabled = false;
-    fetch(apiUrl('/api/claude-settings')).then(r => r.json()).then(data => {
-      agentTeamEnabled = data?.env?.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS === '1';
+    fetch(apiUrl('/api/codex-settings')).then(r => r.json()).then(data => {
+      agentTeamEnabled = data?.env?.CODEX_EXPERIMENTAL_AGENT_TEAMS === '1';
     }).catch(() => {}).then(() => {
       if (!agentTeamEnabled) return;
       // 加载预置快捷方式，合并内置预置
@@ -2282,7 +2282,7 @@ class ChatView extends React.Component {
       if (this.state.activeSnapLine) {
         const newWidth = this.state.activeSnapLine.terminalPx;
         // 保存用户偏好到 localStorage
-        localStorage.setItem('cc-viewer-terminal-width', newWidth.toString());
+        localStorage.setItem('cx-viewer-terminal-width', newWidth.toString());
         this.setState({
           terminalWidth: newWidth,
           isDragging: false,
@@ -2292,7 +2292,7 @@ class ChatView extends React.Component {
         });
       } else {
         // 用户手动拖拽到非吸附位置，也保存偏好
-        localStorage.setItem('cc-viewer-terminal-width', this.state.terminalWidth.toString());
+        localStorage.setItem('cx-viewer-terminal-width', this.state.terminalWidth.toString());
         this.setState({
           isDragging: false,
           activeSnapLine: null,
@@ -2366,10 +2366,10 @@ class ChatView extends React.Component {
 
       if (this.state.activeSnapLine) {
         const newWidth = this.state.activeSnapLine.linePosition;
-        localStorage.setItem('cc-viewer-sidebar-width', newWidth.toString());
+        localStorage.setItem('cx-viewer-sidebar-width', newWidth.toString());
         this.setState({ sidebarWidth: newWidth, isDragging: false, activeSnapLine: null, snapLines: [] });
       } else {
-        localStorage.setItem('cc-viewer-sidebar-width', this.state.sidebarWidth.toString());
+        localStorage.setItem('cx-viewer-sidebar-width', this.state.sidebarWidth.toString());
         this.setState({ isDragging: false, activeSnapLine: null, snapLines: [] });
       }
 
@@ -2451,7 +2451,7 @@ class ChatView extends React.Component {
     const terminalPx = targetCols * charWidth; // 468px
 
     this.setState({ terminalWidth: terminalPx, needsInitialSnap: false });
-    localStorage.setItem('cc-viewer-terminal-width', terminalPx.toString());
+    localStorage.setItem('cx-viewer-terminal-width', terminalPx.toString());
   }
 
   /**

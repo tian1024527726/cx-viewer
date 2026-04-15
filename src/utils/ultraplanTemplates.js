@@ -1,13 +1,13 @@
 /**
  * Ultraplan prompt templates for local Codex execution.
  *
- * Extracted from @anthropic-ai/claude-code@2.1.100 source:
- *   - simple_plan:  cli.js var FUK  (~/claude-code/utils/ultraplan/prompt.txt)
+ * Extracted from codex@2.1.100 source:
+ *   - simple_plan:  cli.js var FUK  (~/codex/utils/ultraplan/prompt.txt)
  *   - visual_plan:  cli.js var pUK
  *   - subagents:    cli.js var UUK
  *   - auto:         custom auto-route variant combining all three
  *
- * Assembly logic mirrors ~/claude-code/commands/ultraplan.tsx:63-73
+ * Assembly logic mirrors ~/codex/commands/ultraplan.tsx:63-73
  *   buildUltraplanPrompt(blurb, seedPlan?)
  */
 
@@ -166,7 +166,7 @@ Once the review report is generated, analyze it to formulate a set of recommende
 
 /**
  * Assemble a local ultraplan prompt.
- * Mirrors ~/claude-code/commands/ultraplan.tsx:63-73 buildUltraplanPrompt()
+ * Mirrors ~/codex/commands/ultraplan.tsx:63-73 buildUltraplanPrompt()
  *
  * @param {string} userPrompt - User's task description
  * @param {'simple'|'visual'|'subagents'|'auto'} variant - Template variant

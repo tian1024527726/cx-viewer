@@ -1,7 +1,7 @@
-const DB_NAME = 'ccv_entryCache';
+const DB_NAME = 'cxv_entryCache';
 const STORE_NAME = 'entries';
 const CACHE_KEY = 'cache';
-const META_KEY = 'ccv_cacheMeta';
+const META_KEY = 'cxv_cacheMeta';
 const DB_VERSION = 2;
 const MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 天过期
 

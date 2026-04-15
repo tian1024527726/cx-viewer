@@ -39,7 +39,7 @@ describe('OTel Adapter', () => {
 
   describe('Span Creation', () => {
     const mockRequestEntry = {
-      url: 'https://api.anthropic.com/v1/messages',
+      url: 'https://api.openai.com/v1/messages',
       method: 'POST',
       headers: {
         'content-type': 'application/json',
@@ -99,7 +99,7 @@ describe('OTel Adapter', () => {
 
   describe('Span Completion', () => {
     const mockRequestEntry = {
-      url: 'https://api.anthropic.com/v1/messages',
+      url: 'https://api.openai.com/v1/messages',
       method: 'POST',
       timestamp: new Date().toISOString(),
       mainAgent: true,

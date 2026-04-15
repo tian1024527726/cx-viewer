@@ -223,7 +223,7 @@ describe('interceptor', () => {
       // interceptor-core should NOT filter it; that's the interceptor.js / frontend layer's job
       const teammateBody = makeMainAgentBody({
         system: [
-          { type: 'text', text: 'You are Codex, Anthropic\'s official CLI for Claude.' },
+          { type: 'text', text: 'You are Codex, the official CLI for code generation.' },
           { type: 'text', text: '# Agent Teammate Communication\n\nIMPORTANT: You are running as an agent in a team.' },
         ],
       });

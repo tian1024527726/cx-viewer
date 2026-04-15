@@ -28,8 +28,8 @@ class AppBase extends React.Component {
   constructor(props) {
     super(props);
     // 从 localStorage 恢复缓存倒计时
-    const savedExpireAt = parseInt(localStorage.getItem('ccv_cacheExpireAt'), 10) || null;
-    const savedCacheType = localStorage.getItem('ccv_cacheType') || null;
+    const savedExpireAt = parseInt(localStorage.getItem('cxv_cacheExpireAt'), 10) || null;
+    const savedCacheType = localStorage.getItem('cxv_cacheType') || null;
     // 只恢复尚未过期的缓存
     const now = Date.now();
     const cacheExpireAt = savedExpireAt && savedExpireAt > now ? savedExpireAt : null;
@@ -61,7 +61,7 @@ class AppBase extends React.Component {
       showFullToolContent: false,
       showThinkingSummaries: false,
       themeColor: 'dark',
-      claudeMissing: false,
+      codexMissing: false,
       updateModalVisible: false,
       fileLoading: false,
       fileLoadingCount: 0,
@@ -200,9 +200,9 @@ class AppBase extends React.Component {
 
   componentDidMount() {
     // 获取 claude settings（showThinkingSummaries 等）
-    fetch(apiUrl('/api/claude-settings')).then(r => r.json()).then(data => {
+    fetch(apiUrl('/api/codex-settings')).then(r => r.json()).then(data => {
       if (data.showThinkingSummaries) this.setState({ showThinkingSummaries: true });
-      if (data.claudeAvailable === false) this.setState({ claudeMissing: true });
+      if (data.codexAvailable === false) this.setState({ codexMissing: true });
     }).catch(() => {});
 
     // 获取用户偏好设置（包含 filterIrrelevant）
@@ -963,8 +963,8 @@ class AppBase extends React.Component {
               cacheExpireAt = newExpireAt;
               const cacheTotal = (usage.cache_read_input_tokens || 0) + (usage.cache_creation_input_tokens || 0);
               cacheType = cacheTotal > 0 ? formatTokenCount(cacheTotal) : newType;
-              localStorage.setItem('ccv_cacheExpireAt', String(cacheExpireAt));
-              localStorage.setItem('ccv_cacheType', cacheType);
+              localStorage.setItem('cxv_cacheExpireAt', String(cacheExpireAt));
+              localStorage.setItem('cxv_cacheType', cacheType);
             }
           }
         }

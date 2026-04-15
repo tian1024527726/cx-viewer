@@ -118,9 +118,9 @@ class TerminalPanel extends React.Component {
     this.initTerminal();
     this.connectWebSocket();
     this.setupResizeObserver();
-    // 读取 claude settings 判断 Agent Team 是否可用
-    fetch(apiUrl('/api/claude-settings')).then(r => r.json()).then(data => {
-      const enabled = data?.env?.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS === '1';
+    // 读取 codex settings 判断 Agent Team 是否可用
+    fetch(apiUrl('/api/codex-settings')).then(r => r.json()).then(data => {
+      const enabled = data?.env?.CODEX_EXPERIMENTAL_AGENT_TEAMS === '1';
       this.setState({ agentTeamEnabled: enabled });
     }).catch(() => {});
     this._loadPresetShortcuts();

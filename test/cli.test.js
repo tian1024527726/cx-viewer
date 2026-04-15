@@ -154,7 +154,7 @@ describe('cxv --uninstall', () => {
       '# >>> CX-Viewer Auto-Inject >>>',
       'codex() {',
       '  local cli_js=""',
-      '  for candidate in "$HOME/.npm-global/lib/node_modules/@anthropic-ai/claude-code/cli.js"; do',
+      '  for candidate in "$HOME/.npm-global/lib/node_modules/codex/cli.js"; do',
       '    if [ -f "$candidate" ]; then',
       '      cli_js="$candidate"',
       '      break',

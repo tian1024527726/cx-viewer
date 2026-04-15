@@ -326,13 +326,13 @@ class App extends AppBase {
               onProxyProfileChange={this.handleProxyProfileChange}
             />
           </Layout.Header>
-          {this.state.claudeMissing && (
+          {this.state.codexMissing && (
             <Alert
               type="warning"
               showIcon
               banner
-              message={t('ui.claudeMissing.title')}
-              description={<span>{t('ui.claudeMissing.desc')}<br /><code style={{ background: 'var(--bg-code)', padding: '2px 6px', borderRadius: 3 }}>npm install -g @anthropic-ai/claude-code</code> <span style={{ color: 'var(--text-muted)', margin: '0 4px' }}>{t('ui.claudeMissing.or')}</span> <a href="https://claude.ai/download" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary-light)' }}>{t('ui.claudeMissing.native')}</a></span>}
+              message={t('ui.codexMissing.title')}
+              description={<span>{t('ui.codexMissing.desc')}<br /><code style={{ background: 'var(--bg-code)', padding: '2px 6px', borderRadius: 3 }}>npm install -g codex</code> <span style={{ color: 'var(--text-muted)', margin: '0 4px' }}>{t('ui.codexMissing.or')}</span> <a href="https://openai.com/codex" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary-light)' }}>{t('ui.codexMissing.native')}</a></span>}
             />
           )}
           <Layout.Content className={styles.content}>
@@ -362,7 +362,7 @@ class App extends AppBase {
                       <div className={styles.guideStepNum}>3</div>
                       <div className={styles.guideStepBody}>
                         <p className={styles.guideText}>{t('ui.guide.step3')}</p>
-                        <code className={styles.guideCode}>npm install -g @anthropic-ai/claude-code</code>
+                        <code className={styles.guideCode}>npm install -g codex</code>
                       </div>
                     </div>
                   </div>

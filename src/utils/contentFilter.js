@@ -38,7 +38,7 @@ export function isTeammate(req) {
   if (cached !== undefined) return cached;
   // interceptor 模式：通过 process.argv 写入的 teammate 字段
   if (req.teammate) { _isTeammateCache.set(req, true); return true; }
-  // native teammate：同进程内 Agent 子代理（system prompt 包含 "You are a Claude agent"）
+  // native teammate：同进程内 Agent 子代理（system prompt 包含 "You are a Claude agent" 特征）
   if (isNativeTeammate(req)) {
     // 注入 teammate 字段供下游 requestType.js 的 formatTeammateLabel 使用
     if (!req.teammate) {

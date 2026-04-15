@@ -52,7 +52,7 @@ function getOriginalBaseUrl() {
   const codexUrl = getCodexConfigBaseUrl(codexUserConfig);
   if (codexUrl && !isStaleLocalCodexBaseUrl(codexUrl)) return codexUrl;
 
-  // 3. Claude Code / Codex settings.json (legacy compat)
+  // 3. Codex settings.json
   const configPaths = [];
   if (cwd) {
     configPaths.push(join(cwd, '.codex', 'settings.local.json'));

@@ -49,7 +49,7 @@ function isCountRequest(req) {
  * Preflight 判断：
  * 1. tools 为空或不存在
  * 2. messages 仅一条 user message
- * 3. system 包含 Claude Code 特征
+ * 3. system 包含 Codex 特征
  * 4. 下一条请求的 messages 中包含本条 message 的文本（前80字符匹配）
  */
 function isPreflightRequest(req, nextReq) {
@@ -73,9 +73,9 @@ function isPreflightRequest(req, nextReq) {
   const trimmed = text.trim();
   if (/^Command:/m.test(text) || /^<policy_spec>/i.test(trimmed) || /^<task-notification>/i.test(trimmed)) return false;
 
-  // 条件3: system 包含 Claude Code 特征，但排除 Bash 处理器
+  // 条件3: system 包含 Codex 特征，但排除 Bash 处理器
   const sysText = getSystemText(body);
-  if (!sysText.includes('Claude Code')) return false;
+  if (!sysText.includes('Codex')) return false;
   if (/process Bash commands/i.test(sysText)) return false;
   if (/Extract any file paths/i.test(sysText)) return false;
 

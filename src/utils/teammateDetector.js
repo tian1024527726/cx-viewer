@@ -9,7 +9,7 @@
  * （主 agent 的 system prompt 是 "You are Codex"）
  *
  * 版本兼容：
- * - Codex v2.1.81+: system block[1] = "You are a Claude agent, built on Anthropic's Claude Agent SDK."
+ * - Codex v2.1.81+: system block[1] = "You are a Claude agent, built on Codex Agent SDK."
  * - 未来版本如果特征变化，在此文件中添加新的检测规则即可
  */
 
@@ -97,7 +97,7 @@ export function extractNativeTeammateName(req) {
  * @param {object} req - 请求对象
  * @returns {string|null} 版本号如 "2.1.90" 或 null
  */
-export function extractCcVersion(req) {
+export function extractCodexVersion(req) {
   const system = req?.body?.system;
   if (!Array.isArray(system)) return null;
   for (const block of system) {

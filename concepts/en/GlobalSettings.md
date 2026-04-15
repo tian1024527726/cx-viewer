@@ -224,8 +224,8 @@ Plugin enable/disable managed via `disabledPlugins` array in `preferences.json`.
 
 | Key | Description |
 |-----|-------------|
-| `ccv_cacheExpireAt` | Cache countdown expiration time |
-| `ccv_cacheType` | Cache type label |
+| `cxv_cacheExpireAt` | Cache countdown expiration time |
+| `cxv_cacheType` | Cache type label |
 | `ccv_sseSlim` | Enable SSE incremental pruning (desktop performance optimization) |
 | `ccv_calibrationModel` | KV-Cache context window calibration model |
 | `ccv_fileExplorerOpen` | File explorer panel toggle |

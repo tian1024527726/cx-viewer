@@ -1038,10 +1038,10 @@ async function handleRequest(req, res) {
     const fileEnv = codexSettings.env || {};
     // 与 Codex Code 保持一致：settings.json env 优先，fallback 到 process.env
     const env = { ...fileEnv };
-    if (!env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS && process.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS) {
-      env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = process.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS;
+    if (!env.CODEX_EXPERIMENTAL_AGENT_TEAMS && process.env.CODEX_EXPERIMENTAL_AGENT_TEAMS) {
+      env.CODEX_EXPERIMENTAL_AGENT_TEAMS = process.env.CODEX_EXPERIMENTAL_AGENT_TEAMS;
     }
-    res.end(JSON.stringify({ env, model: codexSettings.model || null, showThinkingSummaries: codexSettings.showThinkingSummaries || false, codexAvailable: process.env.CXV_CLAUDE_MISSING !== '1' }));
+    res.end(JSON.stringify({ env, model: codexSettings.model || null, showThinkingSummaries: codexSettings.showThinkingSummaries || false, codexAvailable: process.env.CXV_CODEX_MISSING !== '1' }));
     return;
   }
 

@@ -786,7 +786,7 @@ class ChatMessage extends React.Component {
                       onClick={async (e) => {
                         e.stopPropagation();
                         try {
-                          const res = await fetch(apiUrl('/api/claude-settings'), {
+                          const res = await fetch(apiUrl('/api/codex-settings'), {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ showThinkingSummaries: true }),
