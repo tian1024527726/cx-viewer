@@ -274,6 +274,11 @@ async function runCliMode(extraCodexArgs = [], cwd) {
     process.env.CXV_BYPASS_PERMISSIONS = '1';
   }
 
+  // 保存原始 API base URL 供 proxy 转发到上游（proxy 启动后会通过 CXV_ORIGINAL_BASE_URL 读取）
+  if (!process.env.CXV_ORIGINAL_BASE_URL) {
+    process.env.CXV_ORIGINAL_BASE_URL = process.env.ANTHROPIC_BASE_URL || process.env.OPENAI_BASE_URL || '';
+  }
+
   // 启动透明代理（拦截 codex API 请求并记录报文）
   const { startProxy } = await import('./proxy.js');
   const proxyPort = await startProxy();
@@ -440,6 +445,11 @@ async function runCliModeWorkspaceSelector(extraCodexArgs = []) {
   console.log(t('cli.cMode.starting'));
 
   process.env.CXV_CLI_MODE = '1';
+
+  // 保存原始 API base URL 供 proxy 转发到上游
+  if (!process.env.CXV_ORIGINAL_BASE_URL) {
+    process.env.CXV_ORIGINAL_BASE_URL = process.env.ANTHROPIC_BASE_URL || process.env.OPENAI_BASE_URL || '';
+  }
 
   // 启动透明代理（拦截 codex API 请求并记录报文）
   const { startProxy: startProxyWs } = await import('./proxy.js');

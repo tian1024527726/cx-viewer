@@ -151,7 +151,9 @@ export async function spawnCodex(proxyPort, cwd, extraArgs = [], codexPath = nul
 
   // 仅在 proxyPort 指定时设置代理环境变量（直接模式不设置）
   if (proxyPort) {
-    env.OPENAI_BASE_URL = `http://127.0.0.1:${proxyPort}`;
+    const proxyUrl = `http://127.0.0.1:${proxyPort}`;
+    env.OPENAI_BASE_URL = proxyUrl;
+    env.ANTHROPIC_BASE_URL = proxyUrl;
   }
   // 不再设置 CXV_PROXY_MODE，拦截器已禁用
 
