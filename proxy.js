@@ -69,9 +69,6 @@ function getOriginalBaseUrl() {
   if (process.env.OPENAI_BASE_URL) {
     return process.env.OPENAI_BASE_URL;
   }
-  if (process.env.ANTHROPIC_BASE_URL) {
-    return process.env.ANTHROPIC_BASE_URL;
-  }
 
   // 5. Default
   return DEFAULT_API_BASE;

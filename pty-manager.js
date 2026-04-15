@@ -149,16 +149,9 @@ export async function spawnCodex(proxyPort, cwd, extraArgs = [], codexPath = nul
     Object.assign(env, shellProxy);
   }
 
-  // 仅在 proxyPort 指定时，将 codex API 流量路由到透明代理
-  let proxyConfigArgs = [];
+  // 仅在 proxyPort 指定时设置代理环境变量（直接模式不设置）
   if (proxyPort) {
-    const proxyUrl = `http://127.0.0.1:${proxyPort}`;
-    // Codex 原生二进制通过 config.toml 的 openai_base_url 字段读取 base URL（不读环境变量）
-    // 使用 -c 命令行参数覆盖，确保流量经过 proxy
-    proxyConfigArgs = ['-c', `openai_base_url=${proxyUrl}`];
-    // 同时设置环境变量，兼容 npm 版本和其他工具
-    env.OPENAI_BASE_URL = proxyUrl;
-    env.ANTHROPIC_BASE_URL = proxyUrl;
+    env.OPENAI_BASE_URL = `http://127.0.0.1:${proxyPort}`;
   }
   // 不再设置 CXV_PROXY_MODE，拦截器已禁用
 
@@ -184,12 +177,12 @@ export async function spawnCodex(proxyPort, cwd, extraArgs = [], codexPath = nul
   }
 
   let command = codexPath;
-  let args = [...proxyConfigArgs, ...extraArgs];
+  let args = [...extraArgs];
 
   // 如果是 npm 版本（cli.js），需要使用 node 来运行
   if (isNpmVersion && codexPath.endsWith('.js')) {
     command = nodePath;
-    args = [codexPath, ...proxyConfigArgs, ...extraArgs];
+    args = [codexPath, ...extraArgs];
   }
 
   lastExitCode = null;
