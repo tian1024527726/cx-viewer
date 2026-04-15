@@ -304,6 +304,7 @@ async function runCliMode(extraCodexArgs = [], cwd) {
   const otelEndpoint = `http://127.0.0.1:${port}`;
   const otelArgs = [
     '-c', `otel.trace_exporter="otlp-http"`,
+    '-c', `otel.trace_exporter.otlp-http.protocol="http/json"`,
     '-c', `otel.trace_exporter.otlp-http.endpoint="${otelEndpoint}"`,
   ];
   const codexArgsWithOtel = [...otelArgs, ...extraCodexArgs];
