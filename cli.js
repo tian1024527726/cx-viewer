@@ -278,6 +278,10 @@ async function runCliMode(extraCodexArgs = [], cwd) {
   const { startProxy } = await import('./proxy.js');
   const proxyPort = await startProxy();
 
+  // 初始化日志文件（CXV_WORKSPACE_MODE=1 下 interceptor 跳过了自动初始化）
+  const { initForWorkspace } = await import('./interceptor.js');
+  initForWorkspace(workingDir);
+
   // 启动 HTTP 服务器（工作区模式下需要手动调用 startViewer）
   const serverMod = await import('./server.js');
   await serverMod.startViewer();
@@ -293,6 +297,9 @@ async function runCliMode(extraCodexArgs = [], cwd) {
   });
 
   const port = serverMod.getPort();
+
+  // 启动日志监听和统计（startViewer 在 workspace 模式下跳过了这些）
+  serverMod.initPostLaunch();
 
   // 启动 PTY 中的 codex（通过 proxy 拦截 API 流量）
   const { spawnCodex, killPty } = await import('./pty-manager.js');
