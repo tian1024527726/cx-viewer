@@ -274,6 +274,10 @@ async function runCliMode(extraCodexArgs = [], cwd) {
     process.env.CXV_BYPASS_PERMISSIONS = '1';
   }
 
+  // 启动透明代理（拦截 codex API 请求并记录报文）
+  const { startProxy } = await import('./proxy.js');
+  const proxyPort = await startProxy();
+
   // 启动 HTTP 服务器（工作区模式下需要手动调用 startViewer）
   const serverMod = await import('./server.js');
   await serverMod.startViewer();
@@ -290,11 +294,10 @@ async function runCliMode(extraCodexArgs = [], cwd) {
 
   const port = serverMod.getPort();
 
-  // 启动 PTY 中的 codex（直接模式，无 proxy）
+  // 启动 PTY 中的 codex（通过 proxy 拦截 API 流量）
   const { spawnCodex, killPty } = await import('./pty-manager.js');
   try {
-    // 直接启动 codex，不设置 proxy port
-    await spawnCodex(null, workingDir, extraCodexArgs, codexPath, isNpmVersion, port);
+    await spawnCodex(proxyPort, workingDir, extraCodexArgs, codexPath, isNpmVersion, port);
   } catch (err) {
     console.error('[CX Viewer] Failed to spawn Codex:', err.message);
     await serverMod.stopViewer();
@@ -430,8 +433,11 @@ async function runCliModeWorkspaceSelector(extraCodexArgs = []) {
   console.log(t('cli.cMode.starting'));
 
   process.env.CXV_CLI_MODE = '1';
-  // 不启动 proxy，直接运行 codex
-  process.env.CXV_DIRECT_MODE = '1';
+
+  // 启动透明代理（拦截 codex API 请求并记录报文）
+  const { startProxy: startProxyWs } = await import('./proxy.js');
+  const wsProxyPort = await startProxyWs();
+  process.env.CXV_PROXY_PORT = String(wsProxyPort);
 
   // 启动 HTTP 服务器（工作区模式，不初始化 interceptor 日志）
   const serverMod = await import('./server.js');
