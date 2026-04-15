@@ -317,6 +317,14 @@ describe('interceptor', () => {
   // isOpenaiApiPath
   // --------------------------------------------------------------------------
   describe('isOpenAiApiPath', () => {
+    it('matches /v1/messages (Anthropic API)', () => {
+      assert.equal(isOpenAiApiPath('https://api.anthropic.com/v1/messages'), true);
+    });
+
+    it('matches /v1/messages/count_tokens', () => {
+      assert.equal(isOpenAiApiPath('https://api.anthropic.com/v1/messages/count_tokens'), true);
+    });
+
     it('matches /v1/chat/completions', () => {
       assert.equal(isOpenAiApiPath('https://api.openai.com/v1/chat/completions'), true);
     });
@@ -348,6 +356,7 @@ describe('interceptor', () => {
 
     it('fallback regex for invalid URL', () => {
       assert.equal(isOpenAiApiPath('not-a-url/v1/chat/completions'), true);
+      assert.equal(isOpenAiApiPath('not-a-url/v1/messages'), true);
       assert.equal(isOpenAiApiPath('not-a-url/other'), false);
     });
   });
