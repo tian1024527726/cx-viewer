@@ -141,6 +141,27 @@ const i18nData = {
     "tr": "İstekler",
     "uk": "Запити"
   },
+  "ui.clearRequests": {
+    "zh": "清除所有记录",
+    "en": "Clear all",
+    "zh-TW": "清除所有記錄",
+    "ko": "모두 지우기",
+    "ja": "すべてクリア"
+  },
+  "ui.clearRequestsConfirm": {
+    "zh": "确定要清除所有请求记录吗？日志文件也会被清空，此操作不可撤销。",
+    "en": "Are you sure you want to clear all requests? The log file will also be cleared. This cannot be undone.",
+    "zh-TW": "確定要清除所有請求記錄嗎？日誌檔案也會被清空，此操作不可撤銷。",
+    "ko": "모든 요청 기록을 지우시겠습니까? 로그 파일도 삭제됩니다.",
+    "ja": "すべてのリクエスト記録をクリアしますか？ログファイルも消去されます。"
+  },
+  "ui.confirm": {
+    "zh": "确定",
+    "en": "OK",
+    "zh-TW": "確定",
+    "ko": "확인",
+    "ja": "確認"
+  },
   "ui.totalRequests": {
     "zh": "总请求数: {count}",
     "en": "Total: {count}",

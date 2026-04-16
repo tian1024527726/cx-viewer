@@ -30,6 +30,32 @@ class App extends AppBase {
 
   // ─── PC 专属方法 ───────────────────────────────────────
 
+  handleClearRequests = () => {
+    Modal.confirm({
+      title: t('ui.clearRequests'),
+      content: t('ui.clearRequestsConfirm'),
+      okText: t('ui.confirm'),
+      cancelText: t('ui.cancel'),
+      okButtonProps: { danger: true },
+      onOk: () => {
+        fetch(apiUrl('/api/clear-current-log'), { method: 'POST' }).catch(() => {});
+        this.setState({
+          requests: [],
+          selectedIndex: null,
+          mainAgentSessions: [],
+          sessionIndex: [],
+        });
+        this._requestIndexMap.clear();
+        this._cacheLossMap = new Map();
+        this._cacheLossProcessedCount = 0;
+        this._cacheLossLastMainAgent = null;
+        this._lastKvCacheContent = null;
+        this._sseSlimmer = null;
+        this._sseReconstructor = null;
+      },
+    });
+  };
+
   handleViewRequest = (index) => {
     this.setState({ viewMode: 'raw', selectedIndex: index, scrollCenter: true });
   };
@@ -376,6 +402,7 @@ class App extends AppBase {
                   <div className={styles.leftPanelHeader}>
                     <span>{t('ui.requestList')}</span>
                     <span className={styles.leftPanelCount}>{t('ui.totalRequests', { count: filteredRequests.length })}</span>
+                    <DeleteOutlined className={styles.leftPanelClear} title={t('ui.clearRequests')} onClick={this.handleClearRequests} />
                   </div>
                   <div className={styles.leftPanelBody}>
                     <RequestList

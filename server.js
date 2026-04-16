@@ -2476,6 +2476,24 @@ async function handleRequest(req, res) {
   }
 
   // 删除日志文件
+  // 清除当前日志文件内容
+  if (url === '/api/clear-current-log' && method === 'POST') {
+    try {
+      if (LOG_FILE && existsSync(LOG_FILE)) {
+        writeFileSync(LOG_FILE, '');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, file: LOG_FILE }));
+      } else {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, file: null }));
+      }
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
   if (url === '/api/delete-logs' && method === 'POST') {
     let body = '';
     req.on('data', chunk => { body += chunk; if (body.length > MAX_POST_BODY) req.destroy(); });
