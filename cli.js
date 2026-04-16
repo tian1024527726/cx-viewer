@@ -300,7 +300,7 @@ async function runCliMode(extraCodexArgs = [], cwd) {
   // 启动日志监听和统计（startViewer 在 workspace 模式下跳过了这些）
   serverMod.initPostLaunch();
 
-  // 注入 OTel 配置到 config.toml，让 codex 将遥测数据发送到 cx-viewer
+  // 注入 OTel 配置到 config.toml（补充数据源）
   const otelEndpoint = `http://127.0.0.1:${port}`;
   const codexConfigPath = resolve(homedir(), '.codex', 'config.toml');
   let _otelConfigInjected = false;
@@ -308,10 +308,8 @@ async function runCliMode(extraCodexArgs = [], cwd) {
   const OTEL_MARKER_END = '# <<< CX-Viewer OTel <<<';
   try {
     let configContent = existsSync(codexConfigPath) ? readFileSync(codexConfigPath, 'utf-8') : '';
-    // 清理旧的 OTel 注入
     const otelRegex = new RegExp(`\\n?${OTEL_MARKER}[\\s\\S]*?${OTEL_MARKER_END}\\n?`, 'g');
     configContent = configContent.replace(otelRegex, '\n');
-    // 追加 OTel 配置（使用内联表避免 TOML 路径冲突）
     const otelBlock = `\n${OTEL_MARKER}\n[otel]\ntrace_exporter = { otlp-http = { protocol = "json", endpoint = "${otelEndpoint}" } }\n${OTEL_MARKER_END}\n`;
     configContent = configContent.trimEnd() + otelBlock;
     writeFileSync(codexConfigPath, configContent);
@@ -319,14 +317,33 @@ async function runCliMode(extraCodexArgs = [], cwd) {
   } catch (err) {
     console.error('[CX Viewer] Failed to inject OTel config:', err.message);
   }
-  const codexArgsWithOtel = [...extraCodexArgs];
 
-  // 启动 PTY 中的 codex（直接模式，通过 OTel 旁路捕获遥测数据）
+  // 启动 App-Server Bridge（WebSocket 中间代理，获取完整执行日志）
+  const { LOG_FILE: currentLogFile } = await import('./interceptor.js');
+  let _bridge = null;
+  let bridgeArgs = [];
+  try {
+    const { startAppServerBridge } = await import('./lib/appserver-bridge.js');
+    _bridge = await startAppServerBridge({
+      cwd: workingDir,
+      codexPath,
+      logFile: currentLogFile,
+      env: process.env,
+    });
+    // 让 codex TUI 通过 --remote 连接到代理
+    bridgeArgs = ['--remote', `ws://127.0.0.1:${_bridge.proxyPort}`];
+    console.log(`[CX Viewer] App-Server bridge started (proxy:${_bridge.proxyPort} → server:${_bridge.appServerPort})`);
+  } catch (err) {
+    console.warn('[CX Viewer] App-Server bridge failed, falling back to direct mode:', err.message);
+  }
+
+  // 启动 PTY 中的 codex TUI
   const { spawnCodex, killPty } = await import('./pty-manager.js');
   try {
-    await spawnCodex(null, workingDir, codexArgsWithOtel, codexPath, isNpmVersion, port);
+    await spawnCodex(null, workingDir, [...bridgeArgs, ...extraCodexArgs], codexPath, isNpmVersion, port);
   } catch (err) {
     console.error('[CX Viewer] Failed to spawn Codex:', err.message);
+    if (_bridge) _bridge.stop();
     await serverMod.stopViewer();
     process.exit(1);
   }
@@ -360,6 +377,7 @@ async function runCliMode(extraCodexArgs = [], cwd) {
   };
   const cleanup = () => {
     killPty();
+    if (_bridge) _bridge.stop();
     cleanupOtelConfig();
     serverMod.stopViewer().finally(() => process.exit());
   };
