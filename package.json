@@ -1,6 +1,6 @@
 {
   "name": "cx-viewer",
-  "version": "2.0.0",
+  "version": "1.0.0",
   "description": "Codex Logger visualization management tool",
   "license": "MIT",
   "main": "server.js",
@@ -10,7 +10,7 @@
     "./server.js": "./server.js",
     "./interceptor.js": "./interceptor.js"
   },
-  "author": "weiesky",
+  "author": "tian1024527726",
   "bin": {
     "cxv": "cli.js"
   },
@@ -31,18 +31,18 @@
   ],
   "contributors": [
     {
-      "name": "weiesky",
-      "email": "sbxdwz@qq.com"
+      "name": "tian1024527726",
+      "email": "18868814352@163.com"
     }
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/weiesky/cc-viewer.git"
+    "url": "git+https://github.com/tian1024527726/cx-viewer.git"
   },
   "bugs": {
-    "url": "https://github.com/weiesky/cc-viewer/issues"
+    "url": "https://github.com/tian1024527726/cx-viewer/issues"
   },
-  "homepage": "https://github.com/weiesky/cc-viewer#readme",
+  "homepage": "https://github.com/tian1024527726/cx-viewer#readme",
   "engines": {
     "node": ">=20"
   },

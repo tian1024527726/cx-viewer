@@ -4174,6 +4174,34 @@ const i18nData = {
     "tr": "Daha fazla",
     "uk": "Ще"
   },
+  "ui.chatInput.mic": {
+    "zh": "语音输入",
+    "en": "Voice input",
+    "zh-TW": "語音輸入",
+    "ko": "음성 입력",
+    "ja": "音声入力"
+  },
+  "ui.chatInput.micStop": {
+    "zh": "停止录音",
+    "en": "Stop recording",
+    "zh-TW": "停止錄音",
+    "ko": "녹음 중지",
+    "ja": "録音停止"
+  },
+  "ui.chatInput.listening": {
+    "zh": "正在录音...",
+    "en": "Listening...",
+    "zh-TW": "正在錄音...",
+    "ko": "녹음 중...",
+    "ja": "録音中..."
+  },
+  "ui.chatInput.micConnecting": {
+    "zh": "连接中...",
+    "en": "Connecting...",
+    "zh-TW": "連接中...",
+    "ko": "연결 중...",
+    "ja": "接続中..."
+  },
   "ui.chatInput.send": {
     "zh": "发送",
     "en": "Send",

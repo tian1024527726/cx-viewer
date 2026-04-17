@@ -2475,6 +2475,36 @@ async function handleRequest(req, res) {
     return;
   }
 
+  // ASR digest 代理（避免前端 CORS）
+  if (url === '/api/asr-digest' && method === 'POST') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; if (body.length > 1024) req.destroy(); });
+    req.on('end', async () => {
+      try {
+        const params = JSON.parse(body);
+        const upstream = await fetch('https://medigw.alipay.com/medigw/aqpc/chat/getTtsDigest', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-cx-viewer-internal': 'true',
+            'authorization': 'Bearer eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJITVBDX0FMSVBBWV9BVVRIX0xPR0lOIiwiaXNzIjoibWVkYWljb3JlIiwiaWF0IjoxNzcwMDEwOTY5LCJleHAiOjQ4OTIwNzQ5NjksInVzZXJJZCI6IjIwODkxMDIwMzI5MjY2MDAiLCJndWVzdCI6InRydWUifQ.iPWWBOf6qyiBeMWx1mZ3FNTJgNxsNd8ifx4ta0P2uejiSmve33a5lCwVoABMpalwsNYYcLkSICZzp0YUGGxtYJSaWzcX_bH8dKM--PMRC4R4AcRzqBOYJKF0KGZ5TiZRco55or1izSGda-B9pKaDbVdRHI2XfDEhg94pAUpOQ9iB5n9I-QJ-cRH9o0k7hfaDiAUuXSW110gxxZqR5fsXQHpQzD9dsbjzVlLeGUVaFtjuvumxOHdwRKgV8hmupsEIr-t-i9dvEemt2jTfc10-pHIEcAUqsDfU7MHz5zMTYhZolWmXOi3sIZwOF504ZZ_lOzgo_Lgqm9kf3kIhW2pdkg',
+            'did-token': '4DXuS7bmIfoKM249cDdIiMxPMIiVMyNy4IlJzX6SgtLeFzSanQEAAA==',
+            'origin': 'https://chat.antafu.com',
+            'referer': 'https://chat.antafu.com/',
+          },
+          body: JSON.stringify({ appKey: params.appKey || 'f3da547c48744b6a', configType: 'aidoctor0225' }),
+        });
+        const data = await upstream.text();
+        res.writeHead(upstream.status, { 'Content-Type': 'application/json' });
+        res.end(data);
+      } catch (err) {
+        res.writeHead(502, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
+      }
+    });
+    return;
+  }
+
   // 删除日志文件
   // 清除当前日志文件内容
   if (url === '/api/clear-current-log' && method === 'POST') {
@@ -2725,6 +2755,43 @@ export async function startViewer() {
     httpsOptions = (httpsResult.pfx || httpsResult.cert) ? httpsResult : null;
   } catch (err) {
     console.error('[CX Viewer] httpsOptions hook error:', err.message);
+  }
+
+  // 如果没有通过 hook 提供证书，自动生成自签名证书（Safari 需要 HTTPS 才能录音）
+  if (!httpsOptions) {
+    try {
+      const { generateKeyPairSync, createSign, X509Certificate } = await import('node:crypto');
+      const { privateKey, publicKey } = generateKeyPairSync('rsa', {
+        modulusLength: 2048,
+        publicKeyEncoding: { type: 'spki', format: 'pem' },
+        privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+      });
+      // 用 node:tls 的 createSecureContext 验证 key 可用性
+      // 生成自签名证书（简化版：直接用 key + cert）
+      const { execSync: _execSync } = await import('node:child_process');
+      const certDir = join(homedir(), '.codex', 'cx-viewer');
+      const keyPath = join(certDir, 'selfsigned.key');
+      const certPath = join(certDir, 'selfsigned.crt');
+      // 检查已有证书是否过期或不存在
+      let needGen = !existsSync(keyPath) || !existsSync(certPath);
+      if (!needGen) {
+        try {
+          const certPem = readFileSync(certPath, 'utf-8');
+          const x509 = new X509Certificate(certPem);
+          needGen = new Date(x509.validTo) < new Date();
+        } catch { needGen = true; }
+      }
+      if (needGen) {
+        mkdirSync(certDir, { recursive: true });
+        _execSync(`openssl req -x509 -newkey rsa:2048 -keyout "${keyPath}" -out "${certPath}" -days 365 -nodes -subj "/CN=localhost"`, { stdio: 'ignore', timeout: 10000 });
+      }
+      if (existsSync(keyPath) && existsSync(certPath)) {
+        httpsOptions = { key: readFileSync(keyPath), cert: readFileSync(certPath) };
+      }
+    } catch (err) {
+      // openssl 不可用或生成失败，继续用 HTTP
+      if (process.env.CXV_DEBUG) console.error('[CX Viewer] Self-signed cert generation failed:', err.message);
+    }
   }
 
   const useHttps = !!httpsOptions;

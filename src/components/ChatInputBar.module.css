@@ -11,7 +11,7 @@
   border: 1px solid var(--border-secondary);
   border-radius: 16px;
   transition: border-color 0.2s;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .chatInputWrapper:focus-within {
@@ -194,6 +194,55 @@
   width: 16px;
   height: 16px;
 }
+
+/* ─── ASR 麦克风按钮 ─── */
+
+.micBtn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: var(--border-light, rgba(255,255,255,0.1));
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+  margin-right: 6px;
+}
+
+.micIcon {
+  width: 16px;
+  height: 16px;
+}
+
+.micBtn:hover {
+  color: var(--text-primary);
+}
+
+.micBtnActive,
+.micBtnActive:hover {
+  color: #ff4d4f;
+  background: rgba(255, 77, 79, 0.15);
+  animation: micPulse 1.2s ease-in-out infinite;
+}
+
+.micBtnLoading {
+  color: var(--color-primary);
+  opacity: 0.6;
+  cursor: wait;
+}
+
+@keyframes micPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.3); }
+  50% { box-shadow: 0 0 0 8px rgba(255, 77, 79, 0); }
+}
+
 
 .ghostText {
   position: absolute;
@@ -408,6 +457,29 @@
     height: 23px;
   }
 
+  .micBtn {
+    width: 47px;
+    height: 47px;
+  }
+
+  .micBtn svg {
+    width: 23px;
+    height: 23px;
+  }
+
+  .micIcon {
+    width: 23px;
+    height: 23px;
+  }
+
+  .asrLabel {
+    font-size: 15px;
+  }
+
+  .asrText {
+    font-size: 16px;
+  }
+
   .imagePreviewStrip {
     gap: 10px;
     padding: 10px 18px 0;
@@ -458,6 +530,8 @@
 :global(html.pad-mode) .chatInputHint { font-size: 11px; }
 :global(html.pad-mode) .sendBtn { width: 28px; height: 28px; }
 :global(html.pad-mode) .sendBtn svg { width: 16px; height: 16px; }
+:global(html.pad-mode) .micBtn { width: 28px; height: 28px; }
+:global(html.pad-mode) .micIcon { width: 16px; height: 16px; }
 :global(html.pad-mode) .imagePreviewStrip { gap: 8px; padding: 8px 14px 0; }
 :global(html.pad-mode) .imagePreviewItem { width: 48px; height: 48px; border-radius: 6px; }
 :global(html.pad-mode) .imagePreviewRemove { width: 16px; height: 16px; font-size: 12px; opacity: 0; }
@@ -491,4 +565,47 @@
 
 .streamingSvgFading {
   opacity: 0;
+}
+
+
+/* ─── ASR 录音浮层 ─── */
+
+.asrOverlay {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--bg-code, rgba(0, 0, 0, 0.15));
+  border-bottom: 1px solid var(--border-light, rgba(255,255,255,0.06));
+  flex-wrap: wrap;
+}
+
+.asrIndicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff4d4f;
+  flex-shrink: 0;
+  animation: asrBlink 1s ease-in-out infinite;
+}
+
+@keyframes asrBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.asrLabel {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.asrText {
+  width: 100%;
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 80px;
+  overflow-y: auto;
 }

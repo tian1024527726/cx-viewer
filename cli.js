@@ -350,7 +350,7 @@ async function runCliMode(extraCodexArgs = [], cwd) {
 
   // 4. 自动打开浏览器
   const protocol = serverMod.getProtocol();
-  const url = `${protocol}://127.0.0.1:${port}`;
+  const url = `${protocol}://localhost:${port}`;
   try {
     const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
     const { execSync } = await import('node:child_process');
@@ -447,7 +447,7 @@ async function runSdkMode(extraCodexArgs = [], cwd) {
 
   // 自动打开浏览器
   const protocol = serverMod.getProtocol();
-  const url = `${protocol}://127.0.0.1:${port}`;
+  const url = `${protocol}://localhost:${port}`;
   try {
     const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';
     const { execSync } = await import('node:child_process');
