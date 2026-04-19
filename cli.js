@@ -293,6 +293,7 @@ async function runCliMode(extraCodexArgs = [], cwd) {
   });
 
   const port = serverMod.getPort();
+  const protocol = serverMod.getProtocol();
 
   // 标记工作区已启动（跳过前端工作区选择器）
   serverMod.setWorkspaceLaunched(true);
@@ -301,7 +302,7 @@ async function runCliMode(extraCodexArgs = [], cwd) {
   serverMod.initPostLaunch();
 
   // 注入 OTel 配置到 config.toml（补充数据源）
-  const otelEndpoint = `http://127.0.0.1:${port}`;
+  const otelEndpoint = `${protocol}://127.0.0.1:${port}`;
   const codexConfigPath = resolve(homedir(), '.codex', 'config.toml');
   let _otelConfigInjected = false;
   const OTEL_MARKER = '# >>> CX-Viewer OTel >>>';
@@ -349,7 +350,6 @@ async function runCliMode(extraCodexArgs = [], cwd) {
   }
 
   // 4. 自动打开浏览器
-  const protocol = serverMod.getProtocol();
   const url = `${protocol}://localhost:${port}`;
   try {
     const cmd = process.platform === 'darwin' ? 'open' : process.platform === 'win32' ? 'start' : 'xdg-open';

@@ -2,7 +2,7 @@ import { createServer } from 'node:http';
 import { createServer as createHttpsServer } from 'node:https';
 import { createConnection } from 'node:net';
 import { randomBytes } from 'node:crypto';
-import { readFileSync, writeFileSync, existsSync, watchFile, unwatchFile, statSync, readdirSync, renameSync, unlinkSync, rmSync, openSync, readSync, closeSync, realpathSync, mkdirSync, createReadStream, cpSync, copyFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, watchFile, unwatchFile, statSync, readdirSync, renameSync, unlinkSync, rmSync, openSync, readSync, closeSync, realpathSync, mkdirSync, createReadStream, cpSync, copyFileSync, appendFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, extname, resolve, basename } from 'node:path';
 import { homedir, platform, networkInterfaces } from 'node:os';
@@ -2757,8 +2757,9 @@ export async function startViewer() {
     console.error('[CX Viewer] httpsOptions hook error:', err.message);
   }
 
-  // 如果没有通过 hook 提供证书，自动生成自签名证书（Safari 需要 HTTPS 才能录音）
-  if (!httpsOptions) {
+  // CLI 模式默认保持 HTTP，避免本地 OTel/bridge 回退链路被自签 HTTPS 证书阻断。
+  // 非 CLI 场景（浏览器独立打开）才自动生成自签证书以支持麦克风等能力。
+  if (!httpsOptions && !isCliMode) {
     try {
       const { generateKeyPairSync, createSign, X509Certificate } = await import('node:crypto');
       const { privateKey, publicKey } = generateKeyPairSync('rsa', {
@@ -3221,8 +3222,14 @@ async function _doStop() {
 
 // ─── SDK Mode Exports ──────────────────────────────────────────
 
-/** Push a JSONL entry to all SSE clients (for SDK mode). */
+/** Push a JSONL entry to the active log and all SSE clients (for SDK mode). */
 export function pushSdkEntry(entry) {
+  if (entry && LOG_FILE) {
+    try {
+      appendFileSync(LOG_FILE, JSON.stringify(entry) + '\n---\n');
+      notifyStatsWorker(LOG_FILE);
+    } catch {}
+  }
   if (sendToClients) sendToClients(clients, entry);
 }
 

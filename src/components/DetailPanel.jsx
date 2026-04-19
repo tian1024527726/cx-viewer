@@ -19,7 +19,7 @@ class DetailPanel extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      bodyViewMode: { request: 'json', response: 'json', diff: 'json' },
+      bodyViewMode: { request: 'json', response: 'json', diff: 'json', codexRaw: 'json' },
       diffExpanded: false,
       requestHeadersExpanded: false,
       responseHeadersExpanded: false,
@@ -175,6 +175,8 @@ class DetailPanel extends React.Component {
     let data;
     if (type === 'diff') {
       data = this._lastDiffResult;
+    } else if (type === 'codexRaw') {
+      data = request._codexRawRequest;
     } else {
       data = type === 'request' ? request.body : request.response?.body;
     }
@@ -484,6 +486,7 @@ class DetailPanel extends React.Component {
 
     const hasClaudeMd = hasClaudeMdReminder(request.body);
     const hasSkills = hasSkillsReminder(request.body);
+    const codexRawRequest = request._codexRawRequest;
 
     const tabItems = [
       {
@@ -582,6 +585,39 @@ class DetailPanel extends React.Component {
             ) : (
               <Empty description={t('ui.responseNotCaptured')} />
             )}
+          </div>
+        ),
+      },
+      {
+        key: 'codex-raw',
+        label: 'Codex Raw',
+        children: (
+          <div className={styles.tabContent}>
+            <div>
+              <div className={styles.bodyHeader}>
+                <Text strong className={styles.bodyLabel}>Body</Text>
+                <Space size="small">
+                  <Button
+                    size="small"
+                    icon={this.state.bodyViewMode.codexRaw === 'json' ? <FileTextOutlined /> : <CodeOutlined />}
+                    onClick={() => this.toggleBodyViewMode('codexRaw')}
+                  >
+                    {this.state.bodyViewMode.codexRaw === 'json' ? 'Text' : 'JSON'}
+                  </Button>
+                  <Button
+                    size="small"
+                    icon={<CopyOutlined />}
+                    onClick={() => this.copyBody('codexRaw')}
+                    disabled={!codexRawRequest}
+                  >
+                    {t('ui.copy')}
+                  </Button>
+                </Space>
+              </div>
+              {codexRawRequest && Object.keys(codexRawRequest).length > 0
+                ? this.renderBody(codexRawRequest, 'codexRaw')
+                : <Empty description="No raw Codex request captured" />}
+            </div>
           </div>
         ),
       },

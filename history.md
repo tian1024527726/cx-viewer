@@ -6,7 +6,13 @@
 - Fix: session/transient detection only skips incomplete short entries; completed short Codex sessions no longer disappear after a longer prior conversation
 - Fix: local log picker no longer hides available conversations when the current project has no logs; it falls back to the first project with logs and supports project switching
 - Fix: local log listing now includes active `_temp.jsonl` sessions so first-run conversations appear before finalization
+- Fix: CLI mode keeps HTTP by default unless a plugin explicitly supplies HTTPS, preventing self-signed TLS from breaking local OTel / bridge traffic
+- Fix: SDK-mode entries are now appended to the active JSONL log before SSE broadcast, keeping raw mode, chat mode, and persisted history in sync
+- Feat: DetailPanel adds a `Codex Raw` tab so the captured app-server session/turn payloads can be inspected directly
+- Feat: appserver bridge now captures raw client/server frames per session and per turn, storing them on MainAgent entries for debugging
+- Fix: SDK streaming fallback now emits a completed entry when only stream events carry the final assistant content
 - Test: add coverage for completed short-session preservation and temp log listing
+- Test: add server coverage for persisting SDK-pushed entries into the active log file
 
 ## 2.0.0 (2026-04-15)
 

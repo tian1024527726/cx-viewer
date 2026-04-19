@@ -1,18 +1,21 @@
 import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { request } from 'node:http';
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { request as httpRequestLib } from 'node:http';
+import { request as httpsRequestLib } from 'node:https';
+import { mkdtempSync, rmSync, writeFileSync, mkdirSync, existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 // 创建临时目录模拟 LOG_DIR
 const tmpDir = mkdtempSync(join(tmpdir(), 'cxv-server-test-'));
 const fakeLogDir = join(tmpDir, 'logs');
+const fakeWorkspaceDir = join(tmpDir, 'test-project');
 const fakeProjectDir = join(fakeLogDir, 'test-project');
+mkdirSync(fakeWorkspaceDir, { recursive: true });
 mkdirSync(fakeProjectDir, { recursive: true });
 
 // 写一个假的日志文件
-const fakeLogFile = join(fakeProjectDir, 'test.jsonl');
+const fakeLogFile = join(fakeProjectDir, 'test-project_20250101_000000.jsonl');
 writeFileSync(fakeLogFile, JSON.stringify({
   timestamp: '2025-01-01T00:00:00.000Z',
   url: 'https://api.openai.com/v1/messages',
@@ -23,15 +26,18 @@ writeFileSync(fakeLogFile, JSON.stringify({
 // 设置环境变量，阻止自动启动和副作用
 process.env.CXV_WORKSPACE_MODE = '1';
 process.env.CXV_CLI_MODE = '0';
+process.env.CXV_LOG_DIR = fakeLogDir;
 
 /** 用 node:http 发请求（避免被 interceptor patch 的 fetch 干扰） */
-function httpRequest(port, path, { method = 'GET', body = null } = {}) {
+function serverRequest(port, path, { method = 'GET', body = null, protocol = 'http' } = {}) {
   return new Promise((resolve, reject) => {
-    const req = request({
+    const requestImpl = protocol === 'https' ? httpsRequestLib : httpRequestLib;
+    const req = requestImpl({
       hostname: '127.0.0.1',
       port,
       path,
       method,
+      ...(protocol === 'https' ? { rejectUnauthorized: false } : {}),
       headers: body ? { 'Content-Type': 'application/json' } : {},
     }, (res) => {
       let data = '';
@@ -52,18 +58,26 @@ function httpRequest(port, path, { method = 'GET', body = null } = {}) {
 }
 
 describe('server API endpoints', { concurrency: false }, () => {
-  let startViewer, stopViewer, getPort;
+  let startViewer, stopViewer, getPort, getProtocol, pushSdkEntry;
   let port;
+  let protocol = 'http';
+  let activeLogFile = fakeLogFile;
 
   before(async () => {
+    const interceptorMod = await import('../interceptor.js');
+    const initResult = interceptorMod.initForWorkspace(fakeWorkspaceDir);
+    activeLogFile = initResult.filePath;
     const mod = await import('../server.js');
     startViewer = mod.startViewer;
     stopViewer = mod.stopViewer;
     getPort = mod.getPort;
+    getProtocol = mod.getProtocol;
+    pushSdkEntry = mod.pushSdkEntry;
 
     const srv = await startViewer();
     assert.ok(srv, 'server should start');
     port = getPort();
+    protocol = getProtocol();
     assert.ok(port > 0, 'port should be assigned');
   });
 
@@ -81,7 +95,7 @@ describe('server API endpoints', { concurrency: false }, () => {
 
   // --- CORS ---
   it('OPTIONS returns 200 with CORS headers', async () => {
-    const res = await httpRequest(port, '/api/preferences', { method: 'OPTIONS' });
+    const res = await serverRequest(port, '/api/preferences', { method: 'OPTIONS', protocol });
     assert.equal(res.status, 200);
     assert.equal(res.headers['access-control-allow-origin'], '*');
     assert.ok(res.headers['access-control-allow-methods'].includes('GET'));
@@ -89,7 +103,7 @@ describe('server API endpoints', { concurrency: false }, () => {
 
   // --- GET /api/preferences ---
   it('GET /api/preferences returns JSON object', async () => {
-    const res = await httpRequest(port, '/api/preferences');
+    const res = await serverRequest(port, '/api/preferences', { protocol });
     assert.equal(res.status, 200);
     assert.equal(res.headers['content-type'], 'application/json');
     const data = res.json();
@@ -98,9 +112,10 @@ describe('server API endpoints', { concurrency: false }, () => {
 
   // --- POST /api/preferences ---
   it('POST /api/preferences with invalid JSON returns 400', async () => {
-    const res = await httpRequest(port, '/api/preferences', {
+    const res = await serverRequest(port, '/api/preferences', {
       method: 'POST',
       body: '{bad json',
+      protocol,
     });
     assert.equal(res.status, 400);
     assert.ok(res.json().error);
@@ -108,7 +123,7 @@ describe('server API endpoints', { concurrency: false }, () => {
 
   // --- GET /api/cli-mode ---
   it('GET /api/cli-mode returns mode flags', async () => {
-    const res = await httpRequest(port, '/api/cli-mode');
+    const res = await serverRequest(port, '/api/cli-mode', { protocol });
     assert.equal(res.status, 200);
     const data = res.json();
     assert.equal(data.cliMode, false);
@@ -118,7 +133,7 @@ describe('server API endpoints', { concurrency: false }, () => {
 
   // --- GET /api/user-profile ---
   it('GET /api/user-profile returns name', async () => {
-    const res = await httpRequest(port, '/api/user-profile');
+    const res = await serverRequest(port, '/api/user-profile', { protocol });
     assert.equal(res.status, 200);
     const data = res.json();
     assert.ok(data.name, 'should have a name');
@@ -126,62 +141,65 @@ describe('server API endpoints', { concurrency: false }, () => {
 
   // --- GET /api/concept with invalid params ---
   it('GET /api/concept rejects invalid doc param', async () => {
-    const res = await httpRequest(port, '/api/concept?lang=zh&doc=../../etc/passwd');
+    const res = await serverRequest(port, '/api/concept?lang=zh&doc=../../etc/passwd', { protocol });
     assert.equal(res.status, 400);
   });
 
   it('GET /api/concept rejects invalid lang param', async () => {
-    const res = await httpRequest(port, '/api/concept?lang=../xx&doc=Tool-Bash');
+    const res = await serverRequest(port, '/api/concept?lang=../xx&doc=Tool-Bash', { protocol });
     assert.equal(res.status, 400);
   });
 
   // --- GET /api/files path traversal ---
   it('GET /api/files rejects path traversal', async () => {
-    const res = await httpRequest(port, '/api/files?path=../../etc');
+    const res = await serverRequest(port, '/api/files?path=../../etc', { protocol });
     assert.equal(res.status, 400);
     assert.ok(res.json().error.includes('Invalid path'));
   });
 
   it('GET /api/files rejects absolute path', async () => {
-    const res = await httpRequest(port, '/api/files?path=/etc');
+    const res = await serverRequest(port, '/api/files?path=/etc', { protocol });
     assert.equal(res.status, 400);
   });
 
   // --- GET /api/file-content path traversal ---
   it('GET /api/file-content rejects path traversal', async () => {
-    const res = await httpRequest(port, '/api/file-content?path=../../etc/passwd');
+    const res = await serverRequest(port, '/api/file-content?path=../../etc/passwd', { protocol });
     assert.equal(res.status, 400);
     assert.ok(res.json().error.includes('Invalid path'));
   });
 
   it('GET /api/file-content rejects missing path', async () => {
-    const res = await httpRequest(port, '/api/file-content');
+    const res = await serverRequest(port, '/api/file-content', { protocol });
     assert.equal(res.status, 400);
   });
 
   // --- POST /api/resume-choice with invalid choice ---
   it('POST /api/resume-choice rejects invalid choice', async () => {
-    const res = await httpRequest(port, '/api/resume-choice', {
+    const res = await serverRequest(port, '/api/resume-choice', {
       method: 'POST',
       body: { choice: 'invalid' },
+      protocol,
     });
     assert.equal(res.status, 400);
   });
 
   // --- POST /api/merge-logs validation ---
   it('POST /api/merge-logs rejects less than 2 files', async () => {
-    const res = await httpRequest(port, '/api/merge-logs', {
+    const res = await serverRequest(port, '/api/merge-logs', {
       method: 'POST',
       body: { files: ['one.jsonl'] },
+      protocol,
     });
     assert.equal(res.status, 400);
     assert.ok(res.json().error.includes('2 files'));
   });
 
   it('POST /api/merge-logs rejects files from different projects', async () => {
-    const res = await httpRequest(port, '/api/merge-logs', {
+    const res = await serverRequest(port, '/api/merge-logs', {
       method: 'POST',
       body: { files: ['projA/a.jsonl', 'projB/b.jsonl'] },
+      protocol,
     });
     assert.equal(res.status, 400);
     assert.ok(res.json().error.includes('same project'));
@@ -189,7 +207,7 @@ describe('server API endpoints', { concurrency: false }, () => {
 
   // --- Static file / SPA fallback ---
   it('GET / returns HTML (SPA fallback)', async () => {
-    const res = await httpRequest(port, '/');
+    const res = await serverRequest(port, '/', { protocol });
     // 如果 dist/index.html 存在则 200，否则 404
     assert.ok([200, 404].includes(res.status));
     if (res.status === 200) {
@@ -201,11 +219,13 @@ describe('server API endpoints', { concurrency: false }, () => {
   it('GET /api/events returns event-stream', async () => {
     return new Promise((resolve, reject) => {
       let settled = false;
-      const req = request({
+      const requestImpl = protocol === 'https' ? httpsRequestLib : httpRequestLib;
+      const req = requestImpl({
         hostname: '127.0.0.1',
         port,
         path: '/events',
         method: 'GET',
+        ...(protocol === 'https' ? { rejectUnauthorized: false } : {}),
       }, (res) => {
         assert.equal(res.statusCode, 200);
         assert.ok(res.headers['content-type'].includes('text/event-stream'));
@@ -222,6 +242,22 @@ describe('server API endpoints', { concurrency: false }, () => {
     });
   });
 
+  it('pushSdkEntry persists SDK entries to the active log file', async () => {
+    const entry = {
+      timestamp: '2026-04-19T12:00:00.000Z',
+      url: 'codex://sdk/test',
+      method: 'POST',
+      body: { model: 'gpt-5.2' },
+      response: { status: 200, body: { ok: true } },
+    };
+
+    pushSdkEntry(entry);
+
+    const content = readFileSync(activeLogFile, 'utf-8');
+    assert.ok(content.includes('"url":"codex://sdk/test"'));
+    assert.ok(content.includes('"ok":true'));
+  });
+
   // --- Unknown route handling ---
   it('Unknown API routes return 404, others fall through to SPA', async () => {
     // Note: SPA fallback logic in server.js:
@@ -230,7 +266,7 @@ describe('server API endpoints', { concurrency: false }, () => {
     // So /api/nonexistent should be 404, but /nonexistent should be 200 (index.html)
 
     // Case 1: API 404
-    const apiRes = await httpRequest(port, '/api/nonexistent');
+    const apiRes = await serverRequest(port, '/api/nonexistent', { protocol });
     // If running in development mode (no dist/), it might return 404.
     // If running in production mode (dist/ exists), it might return index.html (200) if fallback is too aggressive,
     // OR it correctly returns 404 because it starts with /api/.
@@ -261,7 +297,7 @@ describe('server API endpoints', { concurrency: false }, () => {
     // Since we didn't create a fake dist/index.html in the CWD the server is running from, it returns 404.
     // That is acceptable behavior for "SPA fallback failed because file missing".
     // We just want to ensure it DOES NOT return 500 or crash.
-    const spaRes = await httpRequest(port, '/nonexistent-page');
+    const spaRes = await serverRequest(port, '/nonexistent-page', { protocol });
     // If it returns 200, it served index.html. If 404, it means index.html missing.
     // Both are "valid" outcomes for this test (it didn't crash).
     if (spaRes.status === 200) {
@@ -273,7 +309,7 @@ describe('server API endpoints', { concurrency: false }, () => {
 
   // --- Unknown route falls through to SPA fallback ---
   it('GET /api/nonexistent falls through to SPA fallback', async () => {
-    const res = await httpRequest(port, '/api/nonexistent');
+    const res = await serverRequest(port, '/api/nonexistent', { protocol });
     // SPA fallback serves index.html (200) when dist exists, 404 otherwise (e.g. CI)
     assert.ok([200, 404].includes(res.status));
   });
@@ -293,7 +329,7 @@ describe('server API endpoints', { concurrency: false }, () => {
     process.env.CXV_PROJECT_DIR = workspace;
 
     try {
-      const res = await httpRequest(port, '/api/files?path=.');
+      const res = await serverRequest(port, '/api/files?path=.', { protocol });
       assert.equal(res.status, 200);
       const data = res.json();
       const names = data.map(item => item.name);
@@ -321,7 +357,7 @@ describe('server API endpoints', { concurrency: false }, () => {
     process.env.CXV_PROJECT_DIR = workspace;
 
     try {
-      const res = await httpRequest(port, '/api/files?path=.');
+      const res = await serverRequest(port, '/api/files?path=.', { protocol });
       assert.equal(res.status, 200);
       const data = res.json();
       const names = data.map(item => item.name);
@@ -346,7 +382,7 @@ describe('server API endpoints', { concurrency: false }, () => {
     process.env.CXV_PROJECT_DIR = workspace;
 
     try {
-      const res = await httpRequest(port, '/api/files?path=.');
+      const res = await serverRequest(port, '/api/files?path=.', { protocol });
       assert.equal(res.status, 200);
       const data = res.json();
       const names = data.map(item => item.name);
@@ -379,7 +415,7 @@ describe('server API endpoints', { concurrency: false }, () => {
     process.env.CXV_PROJECT_DIR = workspace;
 
     try {
-      const res = await httpRequest(port, '/api/files?path=.');
+      const res = await serverRequest(port, '/api/files?path=.', { protocol });
       assert.equal(res.status, 200);
       const data = res.json();
 
@@ -414,7 +450,7 @@ describe('server API endpoints', { concurrency: false }, () => {
     process.env.CXV_PROJECT_DIR = workspace;
 
     try {
-      const res = await httpRequest(port, '/api/files?path=.');
+      const res = await serverRequest(port, '/api/files?path=.', { protocol });
       assert.equal(res.status, 200);
       const data = res.json();
       const names = data.map(i => i.name);
@@ -431,7 +467,7 @@ describe('server API endpoints', { concurrency: false }, () => {
 
   // --- POST /api/refresh-stats ---
   it('POST /api/refresh-stats returns 200', async () => {
-    const res = await httpRequest(port, '/api/refresh-stats', { method: 'POST' });
+    const res = await serverRequest(port, '/api/refresh-stats', { method: 'POST', protocol });
     assert.equal(res.status, 200);
     const data = res.json();
     assert.equal(data.ok, true);
