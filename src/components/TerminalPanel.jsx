@@ -1,5 +1,5 @@
 import React from 'react';
-import { message, Tooltip, Popover, Button, Modal, Checkbox, Switch } from 'antd';
+import { message, Tooltip, Popover, Button, Modal, Checkbox } from 'antd';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebglAddon } from '@xterm/addon-webgl';
@@ -7,6 +7,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { Unicode11Addon } from '@xterm/addon-unicode11';
 import '@xterm/xterm/css/xterm.css';
 import { t } from '../i18n';
+// import { tc, getClaudeConfigDir } from '../utils/tClaude';
 import { apiUrl } from '../utils/apiUrl';
 import { isMobile, isIOS, isPad } from '../env';
 import styles from './TerminalPanel.module.css';
@@ -14,6 +15,7 @@ import { BUILTIN_PRESETS } from '../utils/builtinPresets.js';
 import { buildLocalUltraplan } from '../utils/ultraplanTemplates';
 import { getModelMaxTokens } from '../utils/helpers';
 import ConceptHelp from './ConceptHelp';
+import CustomUltraplanEditModal from './CustomUltraplanEditModal';
 
 const darkTerminalTheme = {
   background: '#0a0a0a', foreground: '#d4d4d4', cursor: '#0a0a0a',
@@ -101,9 +103,12 @@ class TerminalPanel extends React.Component {
       agentTeamEnabled: false,
       agentTeamPopoverOpen: false,
       ultraplanOpen: false,
-      ultraplanVariant: 'auto',
+      ultraplanVariant: 'codeExpert',
       ultraplanPrompt: '',
       ultraplanFiles: [],
+      customUltraplanExperts: [],
+      customUltraplanEditOpen: false,
+      customUltraplanEditing: null,
       presetModalVisible: false,
       presetItems: [],
       presetSelected: new Set(),
@@ -118,9 +123,9 @@ class TerminalPanel extends React.Component {
     this.initTerminal();
     this.connectWebSocket();
     this.setupResizeObserver();
-    // 读取 codex settings 判断 Agent Team 是否可用
-    fetch(apiUrl('/api/codex-settings')).then(r => r.json()).then(data => {
-      const enabled = data?.env?.CODEX_EXPERIMENTAL_AGENT_TEAMS === '1';
+    // 读取 claude settings 判断 Agent Team 是否可用
+    fetch(apiUrl('/api/claude-settings')).then(r => r.json()).then(data => {
+      const enabled = data?.env?.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS === '1';
       this.setState({ agentTeamEnabled: enabled });
     }).catch(() => {});
     this._loadPresetShortcuts();
@@ -161,7 +166,15 @@ class TerminalPanel extends React.Component {
         if (dismissed.has(bp.builtinId) || existingBuiltinIds.has(bp.builtinId)) continue;
         items.unshift({ id: Date.now() + Math.random(), builtinId: bp.builtinId, teamName: bp.teamName, description: bp.description });
       }
-      this.setState({ presetItems: items });
+      const customExperts = Array.isArray(data.customUltraplanExperts) ? data.customUltraplanExperts : [];
+      // 若当前选中的自定义专家已不存在（被另一端删除），回退到 codeExpert
+      const current = this.state.ultraplanVariant;
+      const next = { presetItems: items, customUltraplanExperts: customExperts };
+      if (typeof current === 'string' && current.startsWith('custom:')) {
+        const id = current.slice('custom:'.length);
+        if (!customExperts.some(e => e.id === id)) next.ultraplanVariant = 'codeExpert';
+      }
+      this.setState(next);
     }).catch(() => {});
   }
 
@@ -906,12 +919,61 @@ class TerminalPanel extends React.Component {
     if (!trimmed && this.state.ultraplanFiles.length === 0) return;
     const filePaths = this.state.ultraplanFiles.map(f => `"${f.path}"`).join(' ');
     const userInput = filePaths ? (trimmed ? `${filePaths} ${trimmed}` : filePaths) : trimmed;
-    const assembled = buildLocalUltraplan(userInput, this.state.ultraplanVariant);
-    this.setState({ ultraplanOpen: false, ultraplanPrompt: '', ultraplanVariant: 'auto', ultraplanFiles: [] });
-    if (assembled && this.ws && this.ws.readyState === WebSocket.OPEN) {
+    const variant = this.state.ultraplanVariant;
+    let assembled;
+    if (typeof variant === 'string' && variant.startsWith('custom:')) {
+      const id = variant.slice('custom:'.length);
+      const item = this.state.customUltraplanExperts.find(e => e.id === id);
+      if (!item) { return; }
+      assembled = buildLocalUltraplan(userInput, 'custom', undefined, item.content);
+    } else {
+      assembled = buildLocalUltraplan(userInput, variant);
+    }
+    // 先校验再重置，避免空模板导致用户输入被静默清空
+    if (!assembled) return;
+    this.setState({ ultraplanOpen: false, ultraplanPrompt: '', ultraplanVariant: 'codeExpert', ultraplanFiles: [] });
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify({ type: 'input', data: `\x1b[200~${assembled}\x1b[201~\r` }));
     }
     if ((!isMobile || isPad) && this.terminal) this.terminal.focus();
+  };
+
+  openCustomUltraplanEditor = (item) => {
+    this.setState({ customUltraplanEditOpen: true, customUltraplanEditing: item || null });
+  };
+
+  closeCustomUltraplanEditor = () => {
+    this.setState({ customUltraplanEditOpen: false, customUltraplanEditing: null });
+  };
+
+  persistCustomUltraplanExperts = (experts) => {
+    this.setState({ customUltraplanExperts: experts });
+    fetch(apiUrl('/api/preferences'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customUltraplanExperts: experts }),
+    })
+      .then(() => window.dispatchEvent(new Event('ccv-presets-changed')))
+      .catch(() => {});
+  };
+
+  saveCustomUltraplanExpert = (item) => {
+    const existing = this.state.customUltraplanExperts;
+    const idx = existing.findIndex(e => e.id === item.id);
+    const next = idx >= 0
+      ? existing.map(e => (e.id === item.id ? item : e))
+      : [...existing, item];
+    this.persistCustomUltraplanExperts(next);
+    this.closeCustomUltraplanEditor();
+  };
+
+  deleteCustomUltraplanExpert = (id) => {
+    const next = this.state.customUltraplanExperts.filter(e => e.id !== id);
+    this.persistCustomUltraplanExperts(next);
+    if (this.state.ultraplanVariant === 'custom:' + id) {
+      this.setState({ ultraplanVariant: 'codeExpert' });
+    }
+    this.closeCustomUltraplanEditor();
   };
 
   handleUltraplanUpload = async () => {
@@ -963,14 +1025,16 @@ class TerminalPanel extends React.Component {
   };
 
   handleEnableAgentTeam = () => {
-    if (this.state.agentTeamEnabling) return;
-    this.setState({ agentTeamEnabling: true });
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      const prompt = 'Add "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1" to the env object in ~/.claude/settings.json. If the env key does not exist, create it. Preserve all existing content. Only modify this one field. If ~/.claude/settings.json does not exist, instead add the line: export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 to the user\'s shell profile (~/.zshrc or ~/.bashrc).';
-      this.ws.send(JSON.stringify({ type: 'input', data: prompt + '\r' }));
-      message.success('需要重启 Claude Code 才能生效');
-    }
-    if ((!isMobile || isPad) && this.terminal) this.terminal.focus();
+    // if (this.state.agentTeamEnabling) return;
+    // this.setState({ agentTeamEnabling: true });
+    // if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+    //   // 用当前真实的配置目录拼 prompt，避免 CLAUDE_CONFIG_DIR 用户让 Claude 去改错文件
+    //   const settingsPath = `${getClaudeConfigDir()}/settings.json`;
+    //   const prompt = `Add "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1" to the env object in ${settingsPath}. If the env key does not exist, create it. Preserve all existing content. Only modify this one field. If ${settingsPath} does not exist, instead add the line: export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 to the user's shell profile (~/.zshrc or ~/.bashrc).`;
+    //   this.ws.send(JSON.stringify({ type: 'input', data: prompt + '\r' }));
+    //   message.success('需要重启 Claude Code 才能生效');
+    // }
+    // if ((!isMobile || isPad) && this.terminal) this.terminal.focus();
   };
 
   render() {
@@ -1049,7 +1113,7 @@ class TerminalPanel extends React.Component {
                 overlayInnerStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-hover)', borderRadius: 8, padding: '12px 16px', maxWidth: 360 }}
                 content={
                   <div>
-                    <div className={styles.agentTeamDisabledTip}>{t('ui.terminal.agentTeamDisabledTip')}</div>
+                    {/* <div className={styles.agentTeamDisabledTip}>{tc('ui.terminal.agentTeamDisabledTip')}</div> */}
                     <Button type="primary" size="small" loading={this.state.agentTeamEnabling} disabled={this.state.agentTeamEnabling} onClick={this.handleEnableAgentTeam}>{this.state.agentTeamEnabling ? t('ui.terminal.agentTeamEnabling') : t('ui.terminal.agentTeamEnable')}</Button>
                   </div>
                 }
@@ -1069,16 +1133,47 @@ class TerminalPanel extends React.Component {
                 overlayInnerStyle={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-hover)', borderRadius: 8, padding: 0, width: 420 }}
                 content={
                   <div className={styles.ultraplanPanel}>
-                    <div className={styles.ultraplanHeader}>{t('ui.ultraplan.title')}<ConceptHelp doc="UltraPlan" zIndex={1100} /></div>
+                    <div className={styles.ultraplanHeader}>
+                      <span className={styles.ultraplanHeaderTitle}>{t('ui.ultraplan.title')}<ConceptHelp doc="UltraPlan" zIndex={1100} /></span>
+                      <button
+                        className={styles.ultraplanHeaderAddBtn}
+                        onClick={() => this.openCustomUltraplanEditor(null)}
+                        title={t('ui.ultraplan.customAdd')}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M7 12h10"/></svg>
+                      </button>
+                    </div>
                     <div className={styles.ultraplanVariantRow}>
-                      <Switch
-                        size="small"
-                        checked={this.state.ultraplanVariant === 'subagents'}
-                        onChange={(checked) => this.setState({ ultraplanVariant: checked ? 'subagents' : 'auto' })}
-                      />
-                      <span className={styles.ultraplanModeLabel}>
-                        {this.state.ultraplanVariant === 'subagents' ? t('ui.ultraplan.modeForced') : t('ui.ultraplan.modeAuto')}
-                      </span>
+                      <button
+                        className={`${styles.ultraplanRoleBtn} ${this.state.ultraplanVariant === 'codeExpert' ? styles.ultraplanRoleBtnActive : ''}`}
+                        onClick={() => this.setState({ ultraplanVariant: 'codeExpert' })}
+                      ><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>{t('ui.ultraplan.roleCodeExpert')}</button>
+                      <button
+                        className={`${styles.ultraplanRoleBtn} ${this.state.ultraplanVariant === 'researchExpert' ? styles.ultraplanRoleBtnActive : ''}`}
+                        onClick={() => this.setState({ ultraplanVariant: 'researchExpert' })}
+                      ><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>{t('ui.ultraplan.roleResearchExpert')}</button>
+                      {this.state.customUltraplanExperts.map(item => {
+                        const vkey = 'custom:' + item.id;
+                        return (
+                          <span key={item.id} className={styles.ultraplanCustomWrap}>
+                            <button
+                              className={`${styles.ultraplanRoleBtn} ${this.state.ultraplanVariant === vkey ? styles.ultraplanRoleBtnActive : ''}`}
+                              onClick={() => this.setState({ ultraplanVariant: vkey })}
+                              title={item.title}
+                            >
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/></svg>
+                              <span className={styles.ultraplanCustomTitle}>{item.title}</span>
+                            </button>
+                            <span
+                              className={styles.ultraplanEditPencil}
+                              onClick={(e) => { e.stopPropagation(); this.openCustomUltraplanEditor(item); }}
+                              title={t('ui.ultraplan.customEditTitle')}
+                            >
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+                            </span>
+                          </span>
+                        );
+                      })}
                     </div>
                     {(!this.props.modelName || getModelMaxTokens(this.props.modelName) < 1000000) && (
                       <div className={styles.ultraplanContextWarning}>{t('ui.ultraplan.contextWarning')}</div>
@@ -1303,6 +1398,13 @@ class TerminalPanel extends React.Component {
             />
           </div>
         </Modal>
+        <CustomUltraplanEditModal
+          open={this.state.customUltraplanEditOpen}
+          initial={this.state.customUltraplanEditing}
+          onSave={this.saveCustomUltraplanExpert}
+          onDelete={this.deleteCustomUltraplanExpert}
+          onClose={this.closeCustomUltraplanEditor}
+        />
       </div>
     );
   }

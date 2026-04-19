@@ -166,15 +166,37 @@ Once the review report is generated, analyze it to formulate a set of recommende
 
 /**
  * Assemble a local ultraplan prompt.
+ * Wrap user-authored custom instruction body with the same scoped-instruction
+ * preamble used by the built-in variants.
+ */
+export function buildCustomTemplate(content) {
+  const body = (content || '').trim();
+  if (!body) return '';
+  return `<system-reminder>
+[SCOPED INSTRUCTION] The following instructions are intended for the next 1–3 interactions. Once the task is complete, these instructions should be gradually deprioritized and no longer influence subsequent interactions.
+
+${body}
+</system-reminder>`;
+}
+
+/**
+ * Assemble a local ultraplan prompt.
  * Mirrors ~/codex/commands/ultraplan.tsx:63-73 buildUltraplanPrompt()
  *
  * @param {string} userPrompt - User's task description
- * @param {'simple'|'visual'|'subagents'|'auto'} variant - Template variant
+ * @param {'simple'|'visual'|'subagents'|'auto'|'custom'} variant - Template variant
  * @param {string} [seedPlan] - Optional draft plan to refine
+ * @param {string} [customContent] - Required when variant === 'custom': the user-authored body
  * @returns {string} Assembled prompt ready to send to Codex
  */
-export function buildLocalUltraplan(userPrompt, variant = 'auto', seedPlan) {
-  const template = ULTRAPLAN_VARIANTS[variant] || ULTRAPLAN_VARIANTS.auto;
+export function buildLocalUltraplan(userPrompt, variant = 'auto', seedPlan, customContent) {
+  let template;
+  if (variant === 'custom') {
+    template = buildCustomTemplate(customContent);
+    if (!template) return '';
+  } else {
+    template = ULTRAPLAN_VARIANTS[variant] || ULTRAPLAN_VARIANTS.auto;
+  }
   const parts = [];
   if (seedPlan) {
     parts.push('Here is a draft plan to refine:', '', seedPlan, '');

@@ -1,0 +1,58 @@
+.titleRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.field {
+  margin-bottom: 12px;
+}
+
+.titleInput {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border-primary);
+  border-radius: 6px;
+  background: var(--bg-container);
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.titleInput:focus {
+  border-color: var(--color-primary);
+}
+
+.contentTextarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-primary);
+  border-radius: 6px;
+  background: var(--bg-container);
+  color: var(--text-primary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+  min-height: 180px;
+  max-height: 50vh;
+}
+
+.contentTextarea:focus {
+  border-color: var(--color-primary);
+}
+
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.footerRight {
+  display: flex;
+  gap: 8px;
+}
