@@ -341,7 +341,7 @@ class Mobile extends AppBase {
               <ConfigProvider theme={this.themeConfig}>
                 <div className={styles.mobileChatInner}>
                   <ChatView
-                    requests={filteredRequests}
+                    requests={this.state.requests}
                     mainAgentSessions={mainAgentSessions}
                     userProfile={this.state.userProfile}
                     collapseToolResults={this.state.collapseToolResults}
@@ -399,6 +399,7 @@ class Mobile extends AppBase {
               </button>
             </div>
             <div className={styles.mobileLogMgmtActions}>
+              {this.renderLogProjectSelector(true)}
               <Button
                 size="small"
                 type={this.state.selectedLogs.size >= 2 ? 'primary' : 'default'}

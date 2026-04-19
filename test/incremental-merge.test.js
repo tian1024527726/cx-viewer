@@ -15,11 +15,12 @@ function makeMsg(role, text, opts = {}) {
 function makeEntry(messages, opts = {}) {
   return {
     timestamp: opts.timestamp || new Date().toISOString(),
+    ...(opts.inProgress ? { inProgress: true } : {}),
     body: {
       messages,
       metadata: { user_id: 'userId' in opts ? opts.userId : 'user-1' },
     },
-    response: opts.response || { status: 200, body: { content: [] } },
+    response: 'response' in opts ? opts.response : { status: 200, body: { content: [] } },
   };
 }
 
@@ -133,19 +134,36 @@ describe('new session (different user)', () => {
 // ─── 5. Transient filter ──────────────────────────────────────────────────────
 
 describe('transient filter', () => {
-  it('skips merge when isNewConversation with <= 4 messages and prevCount > 4', () => {
+  it('skips merge only for incomplete short entries after a long conversation', () => {
     const existingMsgs = Array.from({ length: 10 }, (_, i) => makeMsg(i % 2 === 0 ? 'user' : 'assistant', `m${i}`));
     const session = makeSession(existingMsgs, { userId: null });
 
     // 3 messages, prevCount=10 → isNewConversation=true (3 < 5 && diff=7 > 4), newMessages.length <= 4 → skip
     const newMsgs = [makeMsg('user', 'q'), makeMsg('assistant', 'a'), makeMsg('user', 'q2')];
-    const entry = makeEntry(newMsgs, { userId: null });
+    const entry = makeEntry(newMsgs, { userId: null, response: null, inProgress: true });
 
     const result = mergeMainAgentSessions([session], entry);
 
     // Should return prevSessions unchanged
     assert.equal(result.length, 1);
     assert.equal(result[0].messages.length, 10);
+  });
+
+  it('creates a new session for completed short entries after a long conversation', () => {
+    const existingMsgs = Array.from({ length: 10 }, (_, i) => makeMsg(i % 2 === 0 ? 'user' : 'assistant', `m${i}`));
+    const session = makeSession(existingMsgs, { userId: null });
+
+    const newMsgs = [makeMsg('user', 'q'), makeMsg('assistant', 'a')];
+    const entry = makeEntry(newMsgs, {
+      userId: null,
+      response: { status: 200, body: { content: [{ type: 'text', text: 'done' }] } },
+    });
+
+    const result = mergeMainAgentSessions([session], entry);
+
+    assert.equal(result.length, 2);
+    assert.equal(result[1].messages.length, 2);
+    assert.equal(result[1].messages[0].content, 'q');
   });
 });
 
@@ -255,7 +273,7 @@ describe('userId null handling', () => {
       Array.from({ length: 6 }, (_, i) => makeMsg(i % 2 === 0 ? 'user' : 'assistant', `m${i}`)),
       { userId: null }
     );
-    const entry = makeEntry([makeMsg('user', 'new')], { userId: null });
+    const entry = makeEntry([makeMsg('user', 'new')], { userId: null, response: null, inProgress: true });
 
     const result = mergeMainAgentSessions([session], entry);
 
@@ -357,7 +375,7 @@ describe('empty newMessages array', () => {
   it('treats empty messages as transient and skips merge', () => {
     const existingMsgs = Array.from({ length: 20 }, (_, i) => makeMsg('user', `q${i}`));
     const session = makeSession(existingMsgs);
-    const entry = makeEntry([], { userId: 'user-1' });
+    const entry = makeEntry([], { userId: 'user-1', response: null, inProgress: true });
 
     const result = mergeMainAgentSessions([session], entry);
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.1 (2026-04-20)
+
+- Fix: ChatView now consumes the full request stream instead of filteredRequests, restoring timestamp mapping, sub-agent insertion, and fallback rendering for Codex conversations
+- Fix: session/transient detection only skips incomplete short entries; completed short Codex sessions no longer disappear after a longer prior conversation
+- Fix: local log picker no longer hides available conversations when the current project has no logs; it falls back to the first project with logs and supports project switching
+- Fix: local log listing now includes active `_temp.jsonl` sessions so first-run conversations appear before finalization
+- Test: add coverage for completed short-session preservation and temp log listing
+
 ## 2.0.0 (2026-04-15)
 
 - Major: Rebrand from cc-viewer to cx-viewer, switch proxy target from Claude Code to OpenAI Codex
@@ -1267,4 +1275,3 @@
 ### 0.0.1 (2026-02-17) — 初始版本
 
 - 拦截并记录 Claude API 请求/响应
-

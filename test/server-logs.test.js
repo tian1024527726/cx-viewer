@@ -40,6 +40,8 @@ describe('server local logs endpoints', { concurrency: false }, () => {
   const projectName = `projX_${Date.now()}`;
   const fileName = `${projectName}_20260101_120000.jsonl`;
   const fileRel = `${projectName}/${fileName}`;
+  const tempFileName = `${projectName}_20260101_120500_temp.jsonl`;
+  const tempFileRel = `${projectName}/${tempFileName}`;
   const projectDir = join(LOG_DIR, projectName);
 
   before(async () => {
@@ -57,6 +59,13 @@ describe('server local logs endpoints', { concurrency: false }, () => {
       }));
     }
     writeFileSync(join(projectDir, fileName), entries.join('\n---\n') + '\n---\n');
+    writeFileSync(join(projectDir, tempFileName), JSON.stringify({
+      timestamp: '2026-01-01T12:05:00Z',
+      url: '/v1/messages',
+      mainAgent: true,
+      body: { model: 'claude-opus-4-6', messages: [{ role: 'user', content: 'first-run prompt' }] },
+      response: { status: 200, body: { content: [{ type: 'text', text: 'first-run response' }] } },
+    }) + '\n---\n');
     writeFileSync(join(projectDir, `${projectName}.json`), JSON.stringify({ files: { [fileName]: { summary: { sessionCount: 3 } } } }));
 
     const mod = await import('../server.js');
@@ -79,10 +88,12 @@ describe('server local logs endpoints', { concurrency: false }, () => {
     const data = res.json();
     assert.equal(typeof data._currentProject, 'string');
     assert.ok(Array.isArray(data[projectName]));
-    assert.equal(data[projectName].length, 1);
-    assert.equal(data[projectName][0].file, fileRel);
-    assert.equal(data[projectName][0].turns, 3);
-    assert.equal(data[projectName][0].timestamp, '20260101_120000');
+    assert.equal(data[projectName].length, 2);
+    assert.equal(data[projectName][0].file, tempFileRel);
+    assert.equal(data[projectName][0].timestamp, '20260101_120500');
+    assert.equal(data[projectName][1].file, fileRel);
+    assert.equal(data[projectName][1].turns, 3);
+    assert.equal(data[projectName][1].timestamp, '20260101_120000');
   });
 
   it('GET /api/download-log rejects invalid file name', async () => {

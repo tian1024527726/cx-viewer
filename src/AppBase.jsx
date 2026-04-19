@@ -1,5 +1,5 @@
 import React from 'react';
-import { ConfigProvider, theme, Modal, Table, Tag, Spin, Button, Checkbox, Popover, message } from 'antd';
+import { ConfigProvider, theme, Modal, Table, Tag, Spin, Button, Checkbox, Popover, Select, message } from 'antd';
 import { DownloadOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
 import { isMobile, isPad } from './env';
 import WorkspaceList from './components/WorkspaceList';
@@ -170,9 +170,11 @@ class AppBase extends React.Component {
           (count < prevCount * 0.5 && (prevCount - count) > 4) ||
           (prevUserId && userId && userId !== prevUserId)
         );
-        // Transient 保护：极短 entry（<=4 msgs）在长对话后不应重置 timestamps 累积
-        // 这些通常是中间态请求（request body 只有 user message，尚未拿到 response）
-        const isTransient = isNewSession && count <= 4 && prevCount > 4 && count < prevCount * 0.5;
+        // Transient 保护：仅对未完成的极短 entry（<=4 msgs）生效，避免
+        // 长对话后的 in-progress 中间态重置 timestamps；已完成的新短会话必须保留。
+        const isTransient = isNewSession &&
+          (entry.inProgress === true || !entry.response) &&
+          count <= 4 && prevCount > 4 && count < prevCount * 0.5;
         if (isNewSession && !isTransient) {
           currentSessionId = timestamp;
           timestamps = [];
@@ -981,7 +983,8 @@ class AppBase extends React.Component {
           const sameUser = userId !== null && lastSession?.userId === userId;
           const isNewSession = !sameUser && prevCount > 0 && messages.length < prevCount * 0.5 && (prevCount - messages.length) > 4;
 
-          const isTransient = prevCount > 4 && messages.length <= 4 && messages.length < prevCount * 0.5;
+          const isTransient = (entry.inProgress === true || !entry.response) &&
+            prevCount > 4 && messages.length <= 4 && messages.length < prevCount * 0.5;
           if (isTransient) continue;
 
           // Fix #2: 标记 _sessionId
@@ -1301,7 +1304,11 @@ class AppBase extends React.Component {
       .then(res => res.json())
       .then(data => {
         const { _currentProject, ...logs } = data;
-        this.setState({ localLogs: logs, currentProject: _currentProject || '', localLogsLoading: false });
+        const projectKeys = Object.keys(logs);
+        const fallbackProject = (logs[_currentProject] && logs[_currentProject].length > 0)
+          ? _currentProject
+          : (projectKeys.find(key => Array.isArray(logs[key]) && logs[key].length > 0) || _currentProject || '');
+        this.setState({ localLogs: logs, currentProject: fallbackProject, localLogsLoading: false });
       })
       .catch(() => {
         this.setState({ localLogs: {}, localLogsLoading: false });
@@ -1323,7 +1330,13 @@ class AppBase extends React.Component {
       .then(res => res.json())
       .then(data => {
         const { _currentProject, ...logs } = data;
-        this.setState({ localLogs: logs, refreshingStats: false });
+        const projectKeys = Object.keys(logs);
+        const fallbackProject = (logs[this.state.currentProject] && logs[this.state.currentProject].length > 0)
+          ? this.state.currentProject
+          : (logs[_currentProject] && logs[_currentProject].length > 0)
+            ? _currentProject
+            : (projectKeys.find(key => Array.isArray(logs[key]) && logs[key].length > 0) || _currentProject || this.state.currentProject || '');
+        this.setState({ localLogs: logs, currentProject: fallbackProject, refreshingStats: false });
         message.success(t('ui.refreshStatsSuccess'));
       })
       .catch(() => {
@@ -1440,6 +1453,21 @@ class AppBase extends React.Component {
           },
           style: { cursor: 'pointer' },
         })}
+      />
+    );
+  }
+
+  renderLogProjectSelector(mobile = false) {
+    const projects = Object.keys(this.state.localLogs || {});
+    if (projects.length <= 1) return null;
+    return (
+      <Select
+        size="small"
+        value={this.state.currentProject || undefined}
+        onChange={(value) => this.setState({ currentProject: value, selectedLogs: new Set() })}
+        options={projects.map(project => ({ label: project, value: project }))}
+        className={mobile ? styles.mobileProjectSelect : styles.projectSelect}
+        popupMatchSelectWidth={false}
       />
     );
   }

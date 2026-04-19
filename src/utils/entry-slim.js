@@ -51,7 +51,7 @@ export function createEntrySlimmer(isMainAgentFn) {
       );
 
       // 瞬态请求过滤（阈值与 App.jsx _flushPendingEntries 保持一致：>4）
-      if (isNewSession && count <= 4 && prevMsgCount > 4) {
+      if (isNewSession && (entry.inProgress === true || !entry.response) && count <= 4 && prevMsgCount > 4) {
         return entry;
       }
 
@@ -112,7 +112,7 @@ export function createEntrySlimmer(isMainAgentFn) {
           (count < pCount * 0.5 && (pCount - count) > 4) ||
           (pUserId && userId && userId !== pUserId)
         );
-        if (isNew && count <= 4 && pCount > 10) continue;
+        if (isNew && (e.inProgress === true || !e.response) && count <= 4 && pCount > 10) continue;
 
         if (isNew) {
           // 上一个 session 结束：回填 _fullEntryIndex
@@ -208,7 +208,7 @@ export function createIncrementalSlimmer(isMainAgentFn) {
       );
 
       // 瞬态请求过滤（阈值与 App.jsx _flushPendingEntries 保持一致：>4）
-      if (isNewSession && count <= 4 && prevMsgCount > 4) {
+      if (isNewSession && (entry.inProgress === true || !entry.response) && count <= 4 && prevMsgCount > 4) {
         return entry;
       }
 

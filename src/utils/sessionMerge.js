@@ -12,6 +12,7 @@ export function mergeMainAgentSessions(prevSessions, entry) {
   const newMessages = entry.body.messages;
   const newResponse = entry.response;
   const userId = entry.body.metadata?.user_id || null;
+  const isIncompleteEntry = entry.inProgress === true || !entry.response;
 
   const entryTimestamp = entry.timestamp || null;
 
@@ -25,7 +26,7 @@ export function mergeMainAgentSessions(prevSessions, entry) {
   const isNewConversation = prevMsgCount > 0 && newMessages.length < prevMsgCount * 0.5 && (prevMsgCount - newMessages.length) > 4;
   const sameUser = userId !== null && userId === lastSession.userId;
 
-  if (isNewConversation && newMessages.length <= 4 && prevMsgCount > 4) {
+  if (isNewConversation && newMessages.length <= 4 && prevMsgCount > 4 && isIncompleteEntry) {
     return prevSessions;
   }
 

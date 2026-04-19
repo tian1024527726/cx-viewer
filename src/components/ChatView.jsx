@@ -372,7 +372,8 @@ class ChatView extends React.Component {
       this._updateSuggestion();
       this._checkToolFileChanges();
     } else if (prevProps.requests !== this.props.requests) {
-      // requests（filteredRequests）变化但 mainAgentSessions 未变 → 重建 tsToIndex 避免索引偏移
+      // ChatView consumes the full request stream; when requests change without a
+      // session object change, rebuild tsToIndex/sub-agent caches to keep mapping stable.
       this._reqScanCache.tsToIndex = {};
       this._reqScanCache.processedCount = 0;
       this._reqScanCache.subAgentEntries = [];
