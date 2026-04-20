@@ -3058,35 +3058,27 @@ class ChatView extends React.Component {
               </svg>
             </div>
           )}
-          {cliMode && !this.props.sdkMode && (
+          {terminalVisible && (
             <>
-              {terminalVisible && (
-                <div className={styles.vResizer} onMouseDown={this.handleSplitMouseDown} />
-              )}
-              <div
-                className={`${styles.terminalPanelWrap}${!terminalVisible ? ` ${styles.terminalPanelWrapHidden}` : ''}`}
-                style={{ width: terminalVisible ? terminalWidth : 0 }}
-              >
-                <TerminalPanel
-                  isVisible={terminalVisible && this.props.chatVisible !== false}
-                  onEditorOpen={(sessionId, filePath) => {
-                    this.setState({
-                      editorSessionId: sessionId,
-                      editorFilePath: filePath,
-                      currentFile: filePath,
-                      currentGitDiff: null,
-                      scrollToLine: null,
-                      fileVersion: (this.state.fileVersion || 0) + 1,
-                    });
-                  }}
-                  onFilePath={(path) => {
-                    // 加入 pendingImages，在终端 Enter 时统一注入 PTY
-                    this._addPendingImage(path, 'terminal');
-                  }}
-                  pendingImages={this.state.pendingImages}
-                  onRemovePendingImage={this._removePendingImage}
-                  onClearPendingImages={this._clearPendingImages}
-                  modelName={this._reqScanCache?.modelName}
+              <div className={styles.vResizer} onMouseDown={this.handleSplitMouseDown} />
+              <div className={styles.terminalPanelWrap} style={{ width: terminalWidth }}>
+                <TerminalPanel onEditorOpen={(sessionId, filePath) => {
+                  this.setState({
+                    editorSessionId: sessionId,
+                    editorFilePath: filePath,
+                    currentFile: filePath,
+                    currentGitDiff: null,
+                    scrollToLine: null,
+                    fileVersion: (this.state.fileVersion || 0) + 1,
+                  });
+                }} onFilePath={(path) => {
+                  // 加入 pendingImages，在终端 Enter 时统一注入 PTY
+                  this._addPendingImage(path, 'terminal');
+                }}
+                pendingImages={this.state.pendingImages}
+                onRemovePendingImage={this._removePendingImage}
+                onClearPendingImages={this._clearPendingImages}
+                modelName={this._reqScanCache?.modelName}
                 />
               </div>
             </>
