@@ -1,10 +1,13 @@
 import React, { useState, useCallback } from 'react';
+import { Modal, Input, message } from 'antd';
 import { uploadFileAndGetPath } from './TerminalPanel';
 import { apiUrl } from '../utils/apiUrl';
 import { isMobile, isPad } from '../env';
 import { t } from '../i18n';
 import { useWsAsr } from '../hooks/useWsAsr';
 import styles from './ChatInputBar.module.css';
+
+const ASR_APPKEY_STORAGE_KEY = 'cxv-asr-appkey';
 
 function ChatInputBar({ inputRef, inputEmpty, inputSuggestion, terminalVisible, onKeyDown, onChange, onSend, onSuggestionClick, onUploadPath, presetItems, onPresetSend, onOpenPresetModal, isStreaming, streamingFading, pendingImages, onRemovePendingImage }) {
   const [plusOpen, setPlusOpen] = useState(false);
@@ -23,18 +26,57 @@ function ChatInputBar({ inputRef, inputEmpty, inputSuggestion, terminalVisible, 
     ta.dispatchEvent(nativeInputEvent);
   }, [inputRef]);
 
+  const [appKeyModalOpen, setAppKeyModalOpen] = useState(false);
+  const [appKeyInput, setAppKeyInput] = useState('');
+  const [appKeyCached, setAppKeyCached] = useState('');
+  // 本次会话已确认的 appKey，避免每次点击都弹窗
+  const sessionAppKeyRef = React.useRef(null);
+
   const { start: startAsr, stop: stopAsr, isRunning: asrRunning, isLoading: asrLoading } = useWsAsr({
     onChange: setInterimText,
     onCompleted: handleAsrCompleted,
+    onError: () => { sessionAppKeyRef.current = null; }, // 连接异常时清除，下次重新询问
   });
+
+  const doStartAsr = useCallback((key) => {
+    if (key) {
+      sessionAppKeyRef.current = key;
+      try { localStorage.setItem(ASR_APPKEY_STORAGE_KEY, key); } catch {}
+      startAsr(key);
+    }
+  }, [startAsr]);
 
   const handleMicClick = useCallback(() => {
     if (asrRunning || asrLoading) {
       stopAsr();
-    } else {
-      startAsr();
+      return;
     }
-  }, [asrRunning, asrLoading, startAsr, stopAsr]);
+    // 本次会话已有确认过的 key，直接使用
+    if (sessionAppKeyRef.current) {
+      startAsr(sessionAppKeyRef.current);
+      return;
+    }
+    // 检查浏览器缓存
+    const cached = localStorage.getItem(ASR_APPKEY_STORAGE_KEY) || '';
+    if (cached) {
+      setAppKeyCached(cached);
+      setAppKeyInput(cached);
+    } else {
+      setAppKeyCached('');
+      setAppKeyInput('');
+    }
+    setAppKeyModalOpen(true);
+  }, [asrRunning, asrLoading, stopAsr, startAsr]);
+
+  const handleAppKeyConfirm = useCallback(() => {
+    const key = appKeyInput.trim();
+    if (!key) {
+      message.warning(t('ui.chatInput.appKeyEmpty'));
+      return;
+    }
+    setAppKeyModalOpen(false);
+    doStartAsr(key);
+  }, [appKeyInput, doStartAsr]);
 
   const handlePaste = async (e) => {
     const items = e.clipboardData?.items;
@@ -258,6 +300,27 @@ function ChatInputBar({ inputRef, inputEmpty, inputSuggestion, terminalVisible, 
           </button>
         </div>
       </div>
+      <Modal
+        title={t('ui.chatInput.appKeyTitle')}
+        open={appKeyModalOpen}
+        onCancel={() => setAppKeyModalOpen(false)}
+        onOk={handleAppKeyConfirm}
+        okText={t('ui.chatInput.appKeyStart')}
+        cancelText={t('ui.cancel')}
+        okButtonProps={{ disabled: !appKeyInput.trim() }}
+        width={400}
+        destroyOnClose
+        styles={{ content: { background: 'var(--bg-elevated)', border: '1px solid var(--border-light)' }, header: { background: 'var(--bg-elevated)', borderBottom: 'none' } }}
+      >
+        {appKeyCached && <div className={styles.appKeyHint}>{t('ui.chatInput.appKeyCachedHint')}</div>}
+        <Input
+          value={appKeyInput}
+          onChange={e => setAppKeyInput(e.target.value)}
+          placeholder={t('ui.chatInput.appKeyPlaceholder')}
+          onPressEnter={handleAppKeyConfirm}
+          autoFocus
+        />
+      </Modal>
     </div>
   );
 }

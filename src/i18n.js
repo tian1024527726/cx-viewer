@@ -4202,6 +4202,29 @@ const i18nData = {
     "ko": "연결 중...",
     "ja": "接続中..."
   },
+  "ui.chatInput.appKeyTitle": {
+    "zh": "语音识别 AppKey", "en": "ASR AppKey", "zh-TW": "語音辨識 AppKey",
+    "ko": "음성인식 AppKey", "ja": "音声認識 AppKey"
+  },
+  "ui.chatInput.appKeyPlaceholder": {
+    "zh": "请输入 ASR AppKey", "en": "Enter ASR AppKey", "zh-TW": "請輸入 ASR AppKey",
+    "ko": "ASR AppKey 입력", "ja": "ASR AppKeyを入力"
+  },
+  "ui.chatInput.appKeyCachedHint": {
+    "zh": "已检测到上次使用的 AppKey，可直接使用或修改后开始",
+    "en": "Found previously used AppKey. Use as-is or modify before starting.",
+    "zh-TW": "已偵測到上次使用的 AppKey，可直接使用或修改後開始",
+    "ko": "이전에 사용한 AppKey가 감지되었습니다. 그대로 사용하거나 수정 후 시작하세요.",
+    "ja": "前回使用した AppKey が検出されました。そのまま使用するか変更してください。"
+  },
+  "ui.chatInput.appKeyStart": {
+    "zh": "开始录音", "en": "Start Recording", "zh-TW": "開始錄音",
+    "ko": "녹음 시작", "ja": "録音開始"
+  },
+  "ui.chatInput.appKeyEmpty": {
+    "zh": "请输入 AppKey", "en": "Please enter AppKey", "zh-TW": "請輸入 AppKey",
+    "ko": "AppKey를 입력하세요", "ja": "AppKeyを入力してください"
+  },
   "ui.chatInput.send": {
     "zh": "发送",
     "en": "Send",

@@ -2499,7 +2499,7 @@ async function handleRequest(req, res) {
     req.on('end', async () => {
       try {
         const params = JSON.parse(body);
-        const upstream = await fetch('https://medigw.alipay.com/medigw/aqpc/chat/getTtsDigest', {
+        const upstream = await fetch('https://medigwpre.alipay.com/medigw/aqpc/chat/getTtsDigest', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -2509,7 +2509,7 @@ async function handleRequest(req, res) {
             'origin': 'https://chat.antafu.com',
             'referer': 'https://chat.antafu.com/',
           },
-          body: JSON.stringify({ appKey: params.appKey || 'f3da547c48744b6a', configType: 'aidoctor0225' }),
+          body: JSON.stringify({ appKey: params.appKey || '', configType: 'aidoctor0225' }),
         });
         const data = await upstream.text();
         res.writeHead(upstream.status, { 'Content-Type': 'application/json' });

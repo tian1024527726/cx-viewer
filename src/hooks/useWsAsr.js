@@ -8,7 +8,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { apiUrl } from '../utils/apiUrl';
 
-const ASR_APPKEY = 'f3da547c48744b6a';
 const ASR_WS_URL = 'wss://mediafeature.alipay.com:443';
 const SAMPLE_RATE = 16000;
 
@@ -171,9 +170,13 @@ export function useWsAsr({ onChange, onCompleted, onError } = {}) {
     }
   }, [closeAll, stopCapture]);
 
-  // ─── 开始 ───
-  const start = useCallback(async () => {
+  // ─── 开始（appKey 由调用方传入） ───
+  const start = useCallback(async (appKey) => {
     if (isRunning || isLoading) return;
+    if (!appKey) {
+      onErrorRef.current?.('未提供 ASR appKey');
+      return;
+    }
     setIsLoading(true);
     isStoppedRef.current = false;
     confirmedTextRef.current = '';
@@ -193,7 +196,7 @@ export function useWsAsr({ onChange, onCompleted, onError } = {}) {
       const digestRes = await fetch(apiUrl('/api/asr-digest'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appKey: ASR_APPKEY }),
+        body: JSON.stringify({ appKey }),
       });
       const digestData = await digestRes.json();
       if (!digestData.success || !digestData.timeStamp || !digestData.digest) {
@@ -201,7 +204,7 @@ export function useWsAsr({ onChange, onCompleted, onError } = {}) {
       }
 
       // 3. 连接 WebSocket
-      const qs = `Alipay-Mf-Appkey=${ASR_APPKEY}&Alipay-Mf-Timestamp=${digestData.timeStamp}&Alipay-Mf-Digest=${digestData.digest}`;
+      const qs = `Alipay-Mf-Appkey=${appKey}&Alipay-Mf-Timestamp=${digestData.timeStamp}&Alipay-Mf-Digest=${digestData.digest}`;
       const ws = new WebSocket(`${ASR_WS_URL}/asr?${qs}`);
       wsRef.current = ws;
 
