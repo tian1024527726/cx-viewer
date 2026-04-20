@@ -54,7 +54,7 @@ class AppHeader extends React.Component {
   componentDidMount() {
     this.startCountdown();
     fetch(apiUrl('/api/local-url')).then(r => r.json()).then(data => {
-      if (data.url) this.setState({ localUrl: data.url });
+      if (data.url) this.setState({ localUrl: data.url, vpnUrl: data.vpnUrl || null });
     }).catch(() => {});
     fetch(apiUrl('/api/codex-settings')).then(r => r.json()).then(data => {
       if (data.model) this.setState({ settingsModel: data.model });
@@ -1402,22 +1402,25 @@ class AppHeader extends React.Component {
               content={
                 <div className={styles.qrcodePopover}>
                   <div className={styles.qrcodeTitle}>{t('ui.scanToCoding')} <ConceptHelp doc="QRCode" /></div>
-                  <QRCodeCanvas value={this.state.localUrl} size={200} bgColor={themeColor === 'light' ? '#ffffff' : '#141414'} fgColor={themeColor === 'light' ? '#1a1a1a' : '#d9d9d9'} level="M" />
-                  <Input
-                    readOnly
-                    value={this.state.localUrl}
-                    className={styles.qrcodeUrlInput}
-                    suffix={
-                      <CopyOutlined
-                        className={styles.qrcodeUrlCopy}
-                        onClick={() => {
-                          navigator.clipboard.writeText(this.state.localUrl).then(() => {
-                            message.success(t('ui.copied'));
-                          }).catch(() => {});
-                        }}
-                      />
-                    }
-                  />
+                  {this.state.vpnUrl ? (
+                    <div className={styles.qrcodeGrid}>
+                      <div className={styles.qrcodeGridItem}>
+                        <div className={styles.qrcodeLabel}>LAN</div>
+                        <QRCodeCanvas value={this.state.localUrl} size={150} bgColor={themeColor === 'light' ? '#ffffff' : '#141414'} fgColor={themeColor === 'light' ? '#1a1a1a' : '#d9d9d9'} level="M" />
+                        <Input readOnly value={this.state.localUrl} className={styles.qrcodeUrlInput} suffix={<CopyOutlined className={styles.qrcodeUrlCopy} onClick={() => { navigator.clipboard.writeText(this.state.localUrl).then(() => message.success(t('ui.copied'))).catch(() => {}); }} />} />
+                      </div>
+                      <div className={styles.qrcodeGridItem}>
+                        <div className={styles.qrcodeLabel}>VPN</div>
+                        <QRCodeCanvas value={this.state.vpnUrl} size={150} bgColor={themeColor === 'light' ? '#ffffff' : '#141414'} fgColor={themeColor === 'light' ? '#1a1a1a' : '#d9d9d9'} level="M" />
+                        <Input readOnly value={this.state.vpnUrl} className={styles.qrcodeUrlInput} suffix={<CopyOutlined className={styles.qrcodeUrlCopy} onClick={() => { navigator.clipboard.writeText(this.state.vpnUrl).then(() => message.success(t('ui.copied'))).catch(() => {}); }} />} />
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <QRCodeCanvas value={this.state.localUrl} size={200} bgColor={themeColor === 'light' ? '#ffffff' : '#141414'} fgColor={themeColor === 'light' ? '#1a1a1a' : '#d9d9d9'} level="M" />
+                      <Input readOnly value={this.state.localUrl} className={styles.qrcodeUrlInput} suffix={<CopyOutlined className={styles.qrcodeUrlCopy} onClick={() => { navigator.clipboard.writeText(this.state.localUrl).then(() => message.success(t('ui.copied'))).catch(() => {}); }} />} />
+                    </>
+                  )}
                 </div>
               }
               trigger="hover"
