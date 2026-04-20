@@ -139,25 +139,6 @@
   margin-bottom: 12px;
 }
 
-.qrcodeGrid {
-  display: flex;
-  gap: 16px;
-}
-
-.qrcodeGridItem {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.qrcodeLabel {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-tertiary);
-  margin-bottom: 6px;
-  letter-spacing: 0.5px;
-}
-
 .qrcodeUrlInput {
   margin-top: 12px;
   font-size: 12px;

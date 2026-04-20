@@ -231,18 +231,6 @@ function getAllLocalIps() {
   return ips;
 }
 
-/** 返回 VPN 接口 IP（macOS: utun*, Linux: tun*），无 VPN 时返回 null */
-function getVpnIp() {
-  const nets = networkInterfaces();
-  for (const name of Object.keys(nets)) {
-    if (!/^(utun|tun)\d/i.test(name)) continue;
-    for (const net of nets[name]) {
-      if (net.family === 'IPv4' && !net.internal) return net.address;
-    }
-  }
-  return null;
-}
-
 async function handleRequest(req, res) {
   const parsedUrl = new URL(req.url, `${serverProtocol}://${req.headers.host}`);
   const url = parsedUrl.pathname;
@@ -2360,13 +2348,8 @@ async function handleRequest(req, res) {
     const localIp = getLocalIp();
     const defaultUrl = `${serverProtocol}://${localIp}:${actualPort}?token=${ACCESS_TOKEN}`;
     const hookResult = await runWaterfallHook('localUrl', { url: defaultUrl, ip: localIp, port: actualPort, token: ACCESS_TOKEN });
-    const result = { url: hookResult.url };
-    const vpnIp = getVpnIp();
-    if (vpnIp && vpnIp !== localIp) {
-      result.vpnUrl = `${serverProtocol}://${vpnIp}:${actualPort}?token=${ACCESS_TOKEN}`;
-    }
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(result));
+    res.end(JSON.stringify({ url: hookResult.url }));
     return;
   }
 
