@@ -17,6 +17,9 @@ import { getModelMaxTokens } from '../utils/helpers';
 import ConceptHelp from './ConceptHelp';
 import CustomUltraplanEditModal from './CustomUltraplanEditModal';
 
+const TERMINAL_HISTORY_META_KEY = 'cxv_terminal_history_meta';
+const TERMINAL_HISTORY_PREFIX = 'cxv_terminal_history_';
+
 const darkTerminalTheme = {
   background: '#0a0a0a', foreground: '#d4d4d4', cursor: '#0a0a0a',
   selectionBackground: '#264f78',
@@ -117,11 +120,13 @@ class TerminalPanel extends React.Component {
       presetAddName: '',
       presetEditId: null,
     };
+    this._historyId = null;
+    this._historyRestoreDone = false;
   }
 
   componentDidMount() {
     this.initTerminal();
-    this.connectWebSocket();
+    this.loadTerminalHistory().finally(() => this.connectWebSocket());
     this.setupResizeObserver();
     // 读取 claude settings 判断 Agent Team 是否可用
     fetch(apiUrl('/api/claude-settings')).then(r => r.json()).then(data => {
@@ -236,6 +241,7 @@ class TerminalPanel extends React.Component {
     this.terminal.unicode.activeVersion = '11';
 
     this.terminal.open(this.containerRef.current);
+    this._restoreTerminalHistory();
 
     // 终端 focus/blur → 边框高亮 (xterm v6 removed onFocus/onBlur, use DOM events)
     this._handleTermFocus = () => this.setState({ terminalFocused: true });
@@ -458,7 +464,9 @@ class TerminalPanel extends React.Component {
 
   connectWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/terminal`;
+    const storedHistoryId = this._getStoredHistoryMeta()?.historyId;
+    const qs = storedHistoryId ? `?historyId=${encodeURIComponent(storedHistoryId)}` : '';
+    const wsUrl = `${protocol}//${window.location.host}/ws/terminal${qs}`;
 
     this.ws = new WebSocket(wsUrl);
 
@@ -476,6 +484,7 @@ class TerminalPanel extends React.Component {
             this.props.onEditorOpen(msg.sessionId, msg.filePath);
           }
         } else if (msg.type === 'state') {
+          this._handleTerminalState(msg);
           if (!msg.running && msg.exitCode !== null) {
             this._flushWrite();
             this.terminal.write(`\x1b[33m${t('ui.terminal.exited', { code: msg.exitCode })}\x1b[0m\r\n`);
@@ -500,6 +509,77 @@ class TerminalPanel extends React.Component {
     this.ws.onopen = () => {
       this.sendResize();
     };
+  }
+
+  async loadTerminalHistory() {
+    try {
+      const res = await fetch(apiUrl('/api/terminal-history'));
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.historyId) {
+        this._handleTerminalState(data);
+      }
+      if (data.data && this.terminal) {
+        this.terminal.reset();
+        this.terminal.write(data.data);
+        if (this._historyId) {
+          const storageKey = this._getHistoryStorageKey(this._historyId);
+          if (storageKey) {
+            try { sessionStorage.setItem(storageKey, data.data); } catch {}
+          }
+        }
+      }
+    } catch {}
+  }
+
+  _getStoredHistoryMeta() {
+    try {
+      const raw = sessionStorage.getItem(TERMINAL_HISTORY_META_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  _getHistoryStorageKey(historyId) {
+    return historyId ? `${TERMINAL_HISTORY_PREFIX}${historyId}` : null;
+  }
+
+  _restoreTerminalHistory() {
+    if (this._historyRestoreDone || !this.terminal) return;
+    this._historyRestoreDone = true;
+    const meta = this._getStoredHistoryMeta();
+    if (!meta?.historyId) return;
+    const storageKey = this._getHistoryStorageKey(meta.historyId);
+    if (!storageKey) return;
+    try {
+      const data = sessionStorage.getItem(storageKey);
+      if (data) {
+        this._historyId = meta.historyId;
+        this.terminal.write(data);
+      }
+    } catch {}
+  }
+
+  _handleTerminalState(msg) {
+    const nextHistoryId = msg?.historyId || null;
+    if (!nextHistoryId) return;
+    const prevHistoryId = this._historyId;
+    if (prevHistoryId && prevHistoryId !== nextHistoryId) {
+      this.terminal?.reset();
+      const oldKey = this._getHistoryStorageKey(prevHistoryId);
+      if (oldKey) {
+        try { sessionStorage.removeItem(oldKey); } catch {}
+      }
+    }
+    this._historyId = nextHistoryId;
+    try {
+      sessionStorage.setItem(TERMINAL_HISTORY_META_KEY, JSON.stringify({ historyId: nextHistoryId }));
+      const storageKey = this._getHistoryStorageKey(nextHistoryId);
+      if (storageKey && !sessionStorage.getItem(storageKey)) {
+        sessionStorage.setItem(storageKey, '');
+      }
+    } catch {}
   }
 
   sendResize() {
@@ -618,6 +698,17 @@ class TerminalPanel extends React.Component {
    */
   _throttledWrite(data) {
     this._writeBuffer += data;
+    if (this._historyId) {
+      try {
+        const storageKey = this._getHistoryStorageKey(this._historyId);
+        if (storageKey) {
+          const prev = sessionStorage.getItem(storageKey) || '';
+          const next = prev + data;
+          const keep = next.length > 2_000_000 ? next.slice(-2_000_000) : next;
+          sessionStorage.setItem(storageKey, keep);
+        }
+      } catch {}
+    }
     if (!this._writeTimer) {
       this._writeTimer = requestAnimationFrame(() => {
         this._flushWrite();

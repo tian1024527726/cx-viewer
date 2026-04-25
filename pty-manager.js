@@ -1,8 +1,8 @@
 import { resolveNativePath, BINARY_NAME } from './findcx.js';
 import { fileURLToPath } from 'node:url';
-import { join, dirname } from 'node:path';
-import { chmodSync, statSync } from 'node:fs';
-import { platform, arch } from 'node:os';
+import { join, dirname, basename } from 'node:path';
+import { chmodSync, statSync, mkdirSync, appendFileSync, readFileSync } from 'node:fs';
+import { platform, arch, homedir } from 'node:os';
 import { execSync } from 'node:child_process';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -21,6 +21,16 @@ const MAX_BUFFER = 200000;
 let batchBuffer = '';
 let batchScheduled = false;
 let _ptyImportForTests = null;
+let outputHistoryPath = null;
+
+function ensureOutputHistory({ reset = false } = {}) {
+  const historyDir = join(homedir(), '.codex', 'cx-viewer', 'runtime');
+  mkdirSync(historyDir, { recursive: true });
+  if (reset || !outputHistoryPath) {
+    outputHistoryPath = join(historyDir, `terminal-history-${Date.now()}.log`);
+    appendFileSync(outputHistoryPath, '', 'utf8');
+  }
+}
 
 export function _setPtyImportForTests(fn) {
   _ptyImportForTests = fn;
@@ -78,6 +88,9 @@ function flushBatch() {
   if (!batchBuffer) return;
   const chunk = batchBuffer;
   batchBuffer = '';
+  if (outputHistoryPath) {
+    try { appendFileSync(outputHistoryPath, chunk, 'utf8'); } catch { }
+  }
   for (const cb of dataListeners) {
     try { cb(chunk); } catch { }
   }
@@ -187,6 +200,7 @@ export async function spawnCodex(proxyPort, cwd, extraArgs = [], codexPath = nul
 
   lastExitCode = null;
   outputBuffer = '';
+  ensureOutputHistory({ reset: true });
   currentWorkspacePath = cwd || process.cwd();
   lastWorkspacePath = currentWorkspacePath;
 
@@ -309,6 +323,7 @@ export async function spawnShell() {
 
   lastExitCode = null;
   currentWorkspacePath = cwd;
+  ensureOutputHistory();
 
   // Clean env: remove cx-viewer specific vars so child shells don't inherit them
   // (prevents CXVIEWER_PORT leaking to non-cx-viewer Codex instances)
@@ -403,5 +418,14 @@ export function getCurrentWorkspace() {
 }
 
 export function getOutputBuffer() {
+  if (outputHistoryPath) {
+    try {
+      return readFileSync(outputHistoryPath, 'utf8');
+    } catch { }
+  }
   return outputBuffer;
+}
+
+export function getOutputHistoryId() {
+  return outputHistoryPath ? basename(outputHistoryPath) : null;
 }

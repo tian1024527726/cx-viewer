@@ -973,6 +973,17 @@ async function handleRequest(req, res) {
     return;
   }
 
+  if (url === '/api/terminal-history' && method === 'GET') {
+    const { getPtyState, getOutputBuffer, getOutputHistoryId } = await import('./pty-manager.js');
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      ...getPtyState(),
+      historyId: getOutputHistoryId(),
+      data: getOutputBuffer() || '',
+    }));
+    return;
+  }
+
   // 当前版本号
   if (url === '/api/version-info' && method === 'GET') {
     try {
@@ -2886,7 +2897,7 @@ export async function startViewer() {
 async function setupTerminalWebSocket(httpServer) {
   try {
     const { WebSocketServer } = await import('ws');
-    const { writeToPty, writeToPtySequential, resizePty, onPtyData, onPtyExit, getPtyState, getOutputBuffer, getCurrentWorkspace, spawnShell } = await import('./pty-manager.js');
+    const { writeToPty, writeToPtySequential, resizePty, onPtyData, onPtyExit, getPtyState, getOutputBuffer, getOutputHistoryId, getCurrentWorkspace, spawnShell } = await import('./pty-manager.js');
     _writeToPty = writeToPty;
     _onPtyData = onPtyData;
     const wss = new WebSocketServer({ noServer: true });
@@ -2922,15 +2933,25 @@ async function setupTerminalWebSocket(httpServer) {
       }
     });
 
-    wss.on('connection', (ws) => {
+    wss.on('connection', (ws, req) => {
+      const sendReplayData = (data) => {
+        const CHUNK_SIZE = 64 * 1024;
+        for (let i = 0; i < data.length; i += CHUNK_SIZE) {
+          if (ws.readyState !== 1) break;
+          ws.send(JSON.stringify({ type: 'data', data: data.slice(i, i + CHUNK_SIZE) }));
+        }
+      };
+
       // 发送当前 PTY 状态
       const state = getPtyState();
-      ws.send(JSON.stringify({ type: 'state', ...state }));
+      const historyId = getOutputHistoryId();
+      ws.send(JSON.stringify({ type: 'state', ...state, historyId }));
 
       // 发送历史输出缓冲
+      const clientHistoryId = new URL(req.url, `${serverProtocol}://${req.headers.host}`).searchParams.get('historyId');
       const buffer = getOutputBuffer();
-      if (buffer) {
-        ws.send(JSON.stringify({ type: 'data', data: buffer }));
+      if (buffer && historyId !== clientHistoryId) {
+        sendReplayData(buffer);
       }
 
       // PTY 输出 → WebSocket
