@@ -10,8 +10,12 @@ import ToolApprovalPanel from './components/ToolApprovalPanel';
 import MobileGitDiff from './components/MobileGitDiff';
 import MobileStats from './components/MobileStats';
 import OpenFolderIcon from './components/OpenFolderIcon';
+import FileExplorer from './components/FileExplorer';
+import FileContentView from './components/FileContentView';
+import ImageViewer from './components/ImageViewer';
 import { t } from './i18n';
 import { apiUrl } from './utils/apiUrl';
+import { isImageFile } from './utils/commandValidator';
 
 class Mobile extends AppBase {
   constructor(props) {
@@ -26,6 +30,11 @@ class Mobile extends AppBase {
       mobileSettingsVisible: false,
       mobilePromptVisible: false,
       mobileTerminalVisible: false,
+      mobileFileExplorerVisible: false,
+      mobileCurrentFile: null,
+      mobileScrollToLine: null,
+      mobileFileExplorerExpandedPaths: new Set(),
+      mobileFileExplorerRefresh: 0,
       globalPermission: null,     // { permission, handlers } — 全局权限审批浮层
       globalPlanApproval: null,   // { plan, handlers } — 全局计划审批浮层
       autoApproveSeconds: 0,
@@ -256,7 +265,7 @@ class Mobile extends AppBase {
                 type="text"
                 size="small"
                 icon={<BranchesOutlined />}
-                onClick={() => this.setState(prev => ({ mobileGitDiffVisible: !prev.mobileGitDiffVisible, mobileChatVisible: false, mobileTerminalVisible: false, mobileStatsVisible: false, mobileLogMgmtVisible: false, mobileSettingsVisible: false }))}
+                onClick={() => this.setState(prev => ({ mobileGitDiffVisible: !prev.mobileGitDiffVisible, mobileChatVisible: false, mobileTerminalVisible: false, mobileStatsVisible: false, mobileLogMgmtVisible: false, mobileSettingsVisible: false, mobileFileExplorerVisible: false, mobileCurrentFile: null, mobileScrollToLine: null }))}
                 style={{ color: this.state.mobileGitDiffVisible ? 'var(--color-primary)' : 'var(--text-tertiary)', fontSize: 12 }}
               >
                 {this.state.mobileGitDiffVisible ? t('ui.mobileGitDiffExit') : t('ui.mobileGitDiffBrowse')}
@@ -267,7 +276,7 @@ class Mobile extends AppBase {
                 type="text"
                 size="small"
                 icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 17 10 11 4 5" /><line x1="12" y1="19" x2="20" y2="19" /></svg>}
-                onClick={() => this.setState(prev => ({ mobileTerminalVisible: !prev.mobileTerminalVisible, mobileGitDiffVisible: false, mobileStatsVisible: false, mobileLogMgmtVisible: false, mobileSettingsVisible: false }))}
+                onClick={() => this.setState(prev => ({ mobileTerminalVisible: !prev.mobileTerminalVisible, mobileGitDiffVisible: false, mobileStatsVisible: false, mobileLogMgmtVisible: false, mobileSettingsVisible: false, mobileFileExplorerVisible: false, mobileCurrentFile: null, mobileScrollToLine: null }))}
                 style={{ color: this.state.mobileTerminalVisible ? 'var(--color-primary)' : 'var(--text-tertiary)', fontSize: 12 }}
               >
                 {this.state.mobileTerminalVisible ? t('ui.mobileTerminalExit') : t('ui.mobileTerminalBrowse')}
@@ -278,9 +287,20 @@ class Mobile extends AppBase {
             <>
               <div className={styles.mobileMenuOverlay} onClick={() => this.setState({ mobileMenuVisible: false })} />
               <div className={styles.mobileMenuDropdown}>
+                {!mobileIsLocalLog && (
+                  <button
+                    className={styles.mobileMenuItem}
+                    onClick={() => { this.setState({ mobileMenuVisible: false, mobileFileExplorerVisible: true, mobileCurrentFile: null, mobileScrollToLine: null, mobileLogMgmtVisible: false, mobileStatsVisible: false, mobileGitDiffVisible: false, mobileChatVisible: false, mobileTerminalVisible: false, mobileSettingsVisible: false, mobilePromptVisible: false }); }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                    </svg>
+                    {t('ui.projectFolder')}
+                  </button>
+                )}
                 <button
                   className={styles.mobileMenuItem}
-                  onClick={() => { this.setState({ mobileMenuVisible: false, mobileLogMgmtVisible: true, mobileStatsVisible: false, mobileGitDiffVisible: false, mobileChatVisible: false, mobileTerminalVisible: false, mobileSettingsVisible: false, mobilePromptVisible: false }); this.handleImportLocalLogs(); }}
+                  onClick={() => { this.setState({ mobileMenuVisible: false, mobileLogMgmtVisible: true, mobileStatsVisible: false, mobileGitDiffVisible: false, mobileChatVisible: false, mobileTerminalVisible: false, mobileSettingsVisible: false, mobilePromptVisible: false, mobileFileExplorerVisible: false, mobileCurrentFile: null, mobileScrollToLine: null }); this.handleImportLocalLogs(); }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -292,7 +312,7 @@ class Mobile extends AppBase {
                 </button>
                 <button
                   className={styles.mobileMenuItem}
-                  onClick={() => { this.setState({ mobileMenuVisible: false, mobileStatsVisible: true, mobileGitDiffVisible: false, mobileChatVisible: false, mobileTerminalVisible: false, mobileLogMgmtVisible: false, mobileSettingsVisible: false, mobilePromptVisible: false }); }}
+                  onClick={() => { this.setState({ mobileMenuVisible: false, mobileStatsVisible: true, mobileGitDiffVisible: false, mobileChatVisible: false, mobileTerminalVisible: false, mobileLogMgmtVisible: false, mobileSettingsVisible: false, mobilePromptVisible: false, mobileFileExplorerVisible: false, mobileCurrentFile: null, mobileScrollToLine: null }); }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect x="3" y="3" width="7" height="7" />
@@ -304,7 +324,7 @@ class Mobile extends AppBase {
                 </button>
                 <button
                   className={styles.mobileMenuItem}
-                  onClick={() => { this.setState({ mobileMenuVisible: false, mobileSettingsVisible: true, mobileStatsVisible: false, mobileGitDiffVisible: false, mobileChatVisible: false, mobileTerminalVisible: false, mobileLogMgmtVisible: false, mobilePromptVisible: false }); }}
+                  onClick={() => { this.setState({ mobileMenuVisible: false, mobileSettingsVisible: true, mobileStatsVisible: false, mobileGitDiffVisible: false, mobileChatVisible: false, mobileTerminalVisible: false, mobileLogMgmtVisible: false, mobilePromptVisible: false, mobileFileExplorerVisible: false, mobileCurrentFile: null, mobileScrollToLine: null }); }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="3" />
@@ -314,7 +334,7 @@ class Mobile extends AppBase {
                 </button>
                 <button
                   className={styles.mobileMenuItem}
-                  onClick={() => { this.setState({ mobileMenuVisible: false, mobilePromptVisible: true, mobileStatsVisible: false, mobileGitDiffVisible: false, mobileChatVisible: false, mobileTerminalVisible: false, mobileLogMgmtVisible: false, mobileSettingsVisible: false }); }}
+                  onClick={() => { this.setState({ mobileMenuVisible: false, mobilePromptVisible: true, mobileStatsVisible: false, mobileGitDiffVisible: false, mobileChatVisible: false, mobileTerminalVisible: false, mobileLogMgmtVisible: false, mobileSettingsVisible: false, mobileFileExplorerVisible: false, mobileCurrentFile: null, mobileScrollToLine: null }); }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -377,6 +397,44 @@ class Mobile extends AppBase {
           <div className={`${styles.mobileGitDiffOverlay} ${this.state.mobileGitDiffVisible ? styles.mobileGitDiffOverlayVisible : ''}`}>
             <div className={styles.mobileGitDiffInner}>
               <MobileGitDiff visible={this.state.mobileGitDiffVisible} />
+            </div>
+          </div>
+          <div className={`${styles.mobileGitDiffOverlay} ${this.state.mobileFileExplorerVisible ? styles.mobileGitDiffOverlayVisible : ''}`}>
+            <div className={styles.mobileGitDiffInner}>
+              {this.state.mobileCurrentFile ? (
+                isImageFile(this.state.mobileCurrentFile) ? (
+                  <ImageViewer
+                    filePath={this.state.mobileCurrentFile}
+                    onClose={() => this.setState({ mobileCurrentFile: null, mobileScrollToLine: null })}
+                  />
+                ) : (
+                  <FileContentView
+                    filePath={this.state.mobileCurrentFile}
+                    scrollToLine={this.state.mobileScrollToLine}
+                    onClose={() => this.setState({ mobileCurrentFile: null, mobileScrollToLine: null })}
+                  />
+                )
+              ) : (
+                <FileExplorer
+                  style={{ width: '100%', height: '100%' }}
+                  titleText={t('ui.projectFolder')}
+                  refreshTrigger={this.state.mobileFileExplorerRefresh}
+                  onClose={() => this.setState({ mobileFileExplorerVisible: false, mobileCurrentFile: null, mobileScrollToLine: null })}
+                  onFileClick={(path) => this.setState({ mobileCurrentFile: path, mobileScrollToLine: null })}
+                  expandedPaths={this.state.mobileFileExplorerExpandedPaths}
+                  onToggleExpand={(path) => this.setState(prev => {
+                    const next = new Set(prev.mobileFileExplorerExpandedPaths);
+                    if (next.has(path)) next.delete(path);
+                    else next.add(path);
+                    return { mobileFileExplorerExpandedPaths: next };
+                  })}
+                  currentFile={this.state.mobileCurrentFile}
+                  onFileRenamed={(oldPath, newPath) => this.setState(prev => ({
+                    mobileCurrentFile: prev.mobileCurrentFile === oldPath ? (newPath || null) : prev.mobileCurrentFile,
+                    mobileFileExplorerRefresh: prev.mobileFileExplorerRefresh + 1,
+                  }))}
+                />
+              )}
             </div>
           </div>
           <div className={`${styles.mobileStatsOverlay} ${this.state.mobileStatsVisible ? styles.mobileStatsOverlayVisible : ''}`}>

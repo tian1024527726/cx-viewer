@@ -440,7 +440,7 @@ function TreeNode({ item, path, depth, onFileClick, expandedPaths, onToggleExpan
   );
 }
 
-export default function FileExplorer({ style, onClose, onFileClick, expandedPaths, onToggleExpand, currentFile, refreshTrigger, onFileRenamed, onAttachToChat }) {
+export default function FileExplorer({ style, onClose, onFileClick, expandedPaths, onToggleExpand, currentFile, refreshTrigger, onFileRenamed, onAttachToChat, titleText }) {
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
   const [htmlPreviewPath, setHtmlPreviewPath] = useState(null);
@@ -628,7 +628,7 @@ export default function FileExplorer({ style, onClose, onFileClick, expandedPath
         <Dropdown menu={{ items: headerMenuItems, onClick: handleHeaderMenuClick }} trigger={['contextMenu']}>
           <span className={styles.headerTitle}>
             <OpenFolderIcon apiEndpoint={apiUrl('/api/open-project-dir')} title={t('ui.openProjectDir')} size={14} />
-            {t('ui.fileExplorer')}
+            {titleText || t('ui.fileExplorer')}
           </span>
         </Dropdown>
         <button className={styles.collapseBtn} onClick={onClose} title="Close">
