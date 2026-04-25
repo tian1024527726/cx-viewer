@@ -40,7 +40,6 @@ const MOBILE_ITEM_LIMIT = 240;
 const IOS_ITEM_LIMIT = 150;
 const MOBILE_LOAD_MORE_STEP = 100;
 const useVirtuoso = isMobile && !isIOS;
-const isCompactMobile = isMobile && !isPad;
 
 // 稳定空对象引用，避免每次 render 创建新 {} 导致子组件重渲染
 const EMPTY_OBJ = {};
@@ -99,9 +98,7 @@ class ChatView extends React.Component {
       ptyPrompt: null,
       ptyPromptHistory: [],
       inputSuggestion: null,
-      fileExplorerOpen: this.props.mobileFileExplorerVisible != null
-        ? this.props.mobileFileExplorerVisible
-        : ((!isMobile || isPad) && localStorage.getItem('cxv_fileExplorerOpen') !== 'false'),
+      fileExplorerOpen: (!isMobile || isPad) && localStorage.getItem('cxv_fileExplorerOpen') !== 'false',
       currentFile: null,
       currentGitDiff: null,
       scrollToLine: null,
@@ -158,9 +155,6 @@ class ChatView extends React.Component {
   _setFileExplorerOpen(open) {
     localStorage.setItem('cxv_fileExplorerOpen', String(open));
     this.setState({ fileExplorerOpen: open });
-    if (this.props.onMobileFileExplorerVisibleChange) {
-      this.props.onMobileFileExplorerVisibleChange(open);
-    }
   }
 
   _checkToolFileChanges() {
@@ -295,11 +289,6 @@ class ChatView extends React.Component {
   }
 
   componentDidUpdate(prevProps, prevState) {
-    if (this.props.mobileFileExplorerVisible != null
-      && this.props.mobileFileExplorerVisible !== prevProps.mobileFileExplorerVisible
-      && this.props.mobileFileExplorerVisible !== this.state.fileExplorerOpen) {
-      this.setState({ fileExplorerOpen: this.props.mobileFileExplorerVisible });
-    }
     // 通知父组件权限审批状态变化（用于移动端全局浮层）
     if (prevState.pendingPermission !== this.state.pendingPermission && this.props.onPendingPermission) {
       if (this.state.pendingPermission) {
@@ -2888,7 +2877,7 @@ class ChatView extends React.Component {
         </div>
         <div className={styles.innerSplitArea} ref={this.innerSplitRef}>
           <SnapLineOverlay isDragging={this.state.isDragging} activeSnapLine={this.state.activeSnapLine} snapLines={this.state.snapLines} currentLeft={snapCurrentLeft} />
-          {!isCompactMobile && this.state.fileExplorerOpen && (
+          {this.state.fileExplorerOpen && (
             <FileExplorer
               style={{ width: this.state.sidebarWidth }}
               refreshTrigger={this.state.fileExplorerRefresh}
@@ -2932,37 +2921,14 @@ class ChatView extends React.Component {
               }}
             />
           )}
-          {(!isCompactMobile && (this.state.fileExplorerOpen || this.state.gitChangesOpen)) && (
+          {(this.state.fileExplorerOpen || this.state.gitChangesOpen) && (
             <div className={styles.vResizer} onMouseDown={this.handleSidebarMouseDown} />
           )}
           <div className={styles.chatSection}>
             <div className={styles.chatSectionFlex}>
-            {isCompactMobile && this.state.fileExplorerOpen && !this.state.currentFile && !this.state.currentGitDiff && (
-              <div className={styles.overlayPanel}>
-                <FileExplorer
-                  style={{ width: '100%' }}
-                  refreshTrigger={this.state.fileExplorerRefresh}
-                  onClose={() => this._setFileExplorerOpen(false)}
-                  onFileClick={(path) => {
-                    if (tryOpenWithSystem(path, 'file-explorer')) return;
-                    this.setState({ currentFile: path, currentGitDiff: null, scrollToLine: null });
-                  }}
-                  expandedPaths={this.state.fileExplorerExpandedPaths}
-                  onToggleExpand={this.handleToggleExpandPath}
-                  currentFile={this.state.currentFile}
-                  onAttachToChat={(filePath) => this._addPendingImage(filePath, 'explorer')}
-                  onFileRenamed={(oldPath, newPath) => {
-                    this.setState(prev => ({
-                      currentFile: prev.currentFile === oldPath ? newPath : prev.currentFile,
-                      fileExplorerRefresh: prev.fileExplorerRefresh + 1,
-                    }));
-                  }}
-                />
-              </div>
-            )}
-            {this.state.currentGitDiff && (
-              <div className={styles.overlayPanel}>
-                <GitDiffView
+              {this.state.currentGitDiff && (
+                <div className={styles.overlayPanel}>
+                  <GitDiffView
                   filePath={this.state.currentGitDiff}
                   onClose={() => this.setState({ currentGitDiff: null })}
                   onOpenFile={(path, line) => {
