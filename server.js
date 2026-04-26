@@ -53,6 +53,31 @@ import { countLogEntries, streamRawEntriesAsync, readPagedEntries } from './lib/
 
 // 动态获取 getPrefsFile()（LOG_DIR 可能在运行时被 setLogDir 修改）
 function getPrefsFile() { return join(LOG_DIR, 'preferences.json'); }
+function readPreferences() {
+  let prefs = {};
+  try { if (existsSync(getPrefsFile())) prefs = JSON.parse(readFileSync(getPrefsFile(), 'utf-8')); } catch { }
+  return prefs;
+}
+function writePreferences(prefs) {
+  const prefsFile = getPrefsFile();
+  const prefsDir = dirname(prefsFile);
+  if (!existsSync(prefsDir)) mkdirSync(prefsDir, { recursive: true });
+  writeFileSync(prefsFile, JSON.stringify(prefs, null, 2));
+}
+function normalizePluginFilename(name) {
+  return String(name || '').replace(/.*[/\\]/, '');
+}
+function removeDisabledPluginNames(names) {
+  const targetNames = Array.from(new Set((names || []).filter(Boolean)));
+  if (targetNames.length === 0) return false;
+  const prefs = readPreferences();
+  const disabledPlugins = Array.isArray(prefs.disabledPlugins) ? prefs.disabledPlugins : [];
+  const next = disabledPlugins.filter(name => !targetNames.includes(name));
+  if (next.length === disabledPlugins.length) return false;
+  prefs.disabledPlugins = next;
+  writePreferences(prefs);
+  return true;
+}
 
 // 启动时一次性读取 ~/.codex/settings.json（不 watch）
 let codexSettings = {};
@@ -155,8 +180,39 @@ let clients = [];
 let server;
 let actualPort = 0;
 let serverProtocol = 'http';
+let pluginRoutes = [];
 // Stats Worker 实例
 let statsWorker = null;
+
+function registerPluginRoute(method, path, handler) {
+  const normalizedMethod = String(method || 'GET').toUpperCase();
+  const normalizedPath = String(path || '').trim();
+  if (!normalizedPath.startsWith('/')) {
+    throw new Error('Plugin route path must start with "/"');
+  }
+  if (typeof handler !== 'function') {
+    throw new Error('Plugin route handler must be a function');
+  }
+  const nextRoute = { method: normalizedMethod, path: normalizedPath, handler };
+  const idx = pluginRoutes.findIndex(route => route.method === normalizedMethod && route.path === normalizedPath);
+  if (idx >= 0) pluginRoutes[idx] = nextRoute;
+  else pluginRoutes.push(nextRoute);
+}
+
+async function refreshPluginRuntime() {
+  pluginRoutes = [];
+  if (!server || !actualPort) return;
+  await runParallelHook('serverStarted', {
+    port: actualPort,
+    host: HOST,
+    url: `${serverProtocol}://127.0.0.1:${actualPort}`,
+    ip: getLocalIp(),
+    token: ACCESS_TOKEN,
+    protocol: serverProtocol,
+    httpServer: server,
+    registerRoute: registerPluginRoute,
+  });
+}
 
 function startStatsWorker() {
   try {
@@ -268,6 +324,21 @@ async function handleRequest(req, res) {
       res.end(JSON.stringify({ error: 'Forbidden: invalid token' }));
       return;
     }
+  }
+
+  const pluginRoute = pluginRoutes.find(route => route.method === method && route.path === url);
+  if (pluginRoute) {
+    try {
+      await pluginRoute.handler(req, res, parsedUrl);
+    } catch (err) {
+      if (!res.headersSent) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: err.message }));
+      } else {
+        try { res.end(); } catch {}
+      }
+    }
+    return;
   }
 
   // OTLP HTTP 接收端点 — 接收 Codex 原生 OTel trace 数据
@@ -466,8 +537,7 @@ async function handleRequest(req, res) {
   }
 
   if (url === '/api/preferences' && method === 'GET') {
-    let prefs = {};
-    try { if (existsSync(getPrefsFile())) prefs = JSON.parse(readFileSync(getPrefsFile(), 'utf-8')); } catch { }
+    let prefs = readPreferences();
     prefs.logDir = LOG_DIR; // 始终返回当前运行时的日志目录
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(prefs));
@@ -484,14 +554,9 @@ async function handleRequest(req, res) {
         if (incoming.logDir && typeof incoming.logDir === 'string') {
           setLogDir(incoming.logDir);
         }
-        let prefs = {};
-        try { if (existsSync(getPrefsFile())) prefs = JSON.parse(readFileSync(getPrefsFile(), 'utf-8')); } catch { }
+        let prefs = readPreferences();
         Object.assign(prefs, incoming);
-        // 确保目录存在
-        const prefsFile = getPrefsFile();
-        const prefsDir = dirname(prefsFile);
-        if (!existsSync(prefsDir)) mkdirSync(prefsDir, { recursive: true });
-        writeFileSync(prefsFile, JSON.stringify(prefs, null, 2));
+        writePreferences(prefs);
         // 主题切换时同步到 Codex Code CLI：发 /theme，监听输出验证结果，不对就再发一次
         if (incoming.themeColor && _writeToPty && _onPtyData) {
           const target = incoming.themeColor === 'light' ? 'light' : 'dark';
@@ -2274,6 +2339,32 @@ async function handleRequest(req, res) {
     return;
   }
 
+  if (url === '/api/plugins/module' && method === 'GET') {
+    try {
+      const file = normalizePluginFilename(parsedUrl.searchParams.get('file'));
+      if (!file || (extname(file) !== '.js' && extname(file) !== '.mjs')) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid plugin filename' }));
+        return;
+      }
+      const filePath = join(getPluginsDir(), file);
+      if (!existsSync(filePath) || !statSync(filePath).isFile()) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Plugin file not found' }));
+        return;
+      }
+      res.writeHead(200, {
+        'Content-Type': 'application/javascript; charset=utf-8',
+        'Cache-Control': 'no-store',
+      });
+      res.end(readFileSync(filePath, 'utf-8'));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    }
+    return;
+  }
+
   if (url === '/api/plugins' && method === 'DELETE') {
     const file = parsedUrl.searchParams.get('file');
     if (!file || file.includes('..') || file.includes('/') || file.includes('\\')) {
@@ -2288,8 +2379,11 @@ async function handleRequest(req, res) {
         res.end(JSON.stringify({ error: 'File not found' }));
         return;
       }
+      const targetPlugin = getPluginsInfo().find(p => p.file === file);
       unlinkSync(filePath);
+      if (targetPlugin?.name) removeDisabledPluginNames([targetPlugin.name]);
       await loadPlugins();
+      await refreshPluginRuntime();
       const plugins = getPluginsInfo();
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: true, plugins, pluginsDir: getPluginsDir() }));
@@ -2303,6 +2397,7 @@ async function handleRequest(req, res) {
   if (url === '/api/plugins/reload' && method === 'POST') {
     try {
       await loadPlugins();
+      await refreshPluginRuntime();
       const plugins = getPluginsInfo();
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: true, plugins, pluginsDir: getPluginsDir() }));
@@ -2321,7 +2416,15 @@ async function handleRequest(req, res) {
         const { files: fileList } = JSON.parse(body);
         uploadPlugins(getPluginsDir(), fileList);
         await loadPlugins();
-        const plugins = getPluginsInfo();
+        await refreshPluginRuntime();
+        let plugins = getPluginsInfo();
+        const uploadedFiles = new Set((fileList || []).map(file => normalizePluginFilename(file?.name)));
+        const uploadedNames = plugins.filter(plugin => uploadedFiles.has(plugin.file)).map(plugin => plugin.name);
+        if (removeDisabledPluginNames(uploadedNames)) {
+          await loadPlugins();
+          await refreshPluginRuntime();
+          plugins = getPluginsInfo();
+        }
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true, plugins, pluginsDir: getPluginsDir() }));
       } catch (err) {
@@ -2340,9 +2443,16 @@ async function handleRequest(req, res) {
       try {
         const { url: fileUrl } = JSON.parse(body);
         const extractScript = join(__dirname, 'lib', 'extract-plugin-name.mjs');
-        await installPluginFromUrl(getPluginsDir(), fileUrl, extractScript);
+        const { filename } = await installPluginFromUrl(getPluginsDir(), fileUrl, extractScript);
         await loadPlugins();
-        const plugins = getPluginsInfo();
+        await refreshPluginRuntime();
+        let plugins = getPluginsInfo();
+        const installedNames = plugins.filter(plugin => plugin.file === filename).map(plugin => plugin.name);
+        if (removeDisabledPluginNames(installedNames)) {
+          await loadPlugins();
+          await refreshPluginRuntime();
+          plugins = getPluginsInfo();
+        }
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ ok: true, plugins, pluginsDir: getPluginsDir() }));
       } catch (err) {
@@ -2483,36 +2593,6 @@ async function handleRequest(req, res) {
         res.end();
       }
     }
-    return;
-  }
-
-  // ASR digest 代理（避免前端 CORS）
-  if (url === '/api/asr-digest' && method === 'POST') {
-    let body = '';
-    req.on('data', chunk => { body += chunk; if (body.length > 1024) req.destroy(); });
-    req.on('end', async () => {
-      try {
-        const params = JSON.parse(body);
-        const upstream = await fetch('https://medigwpre.alipay.com/medigw/aqpc/chat/getTtsDigest', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-cx-viewer-internal': 'true',
-            'authorization': 'Bearer eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJITVBDX0FMSVBBWV9BVVRIX0xPR0lOIiwiaXNzIjoibWVkYWljb3JlIiwiaWF0IjoxNzcwMDEwOTY5LCJleHAiOjQ4OTIwNzQ5NjksInVzZXJJZCI6IjIwODkxMDIwMzI5MjY2MDAiLCJndWVzdCI6InRydWUifQ.iPWWBOf6qyiBeMWx1mZ3FNTJgNxsNd8ifx4ta0P2uejiSmve33a5lCwVoABMpalwsNYYcLkSICZzp0YUGGxtYJSaWzcX_bH8dKM--PMRC4R4AcRzqBOYJKF0KGZ5TiZRco55or1izSGda-B9pKaDbVdRHI2XfDEhg94pAUpOQ9iB5n9I-QJ-cRH9o0k7hfaDiAUuXSW110gxxZqR5fsXQHpQzD9dsbjzVlLeGUVaFtjuvumxOHdwRKgV8hmupsEIr-t-i9dvEemt2jTfc10-pHIEcAUqsDfU7MHz5zMTYhZolWmXOi3sIZwOF504ZZ_lOzgo_Lgqm9kf3kIhW2pdkg',
-            'did-token': '4DXuS7bmIfoKM249cDdIiMxPMIiVMyNy4IlJzX6SgtLeFzSanQEAAA==',
-            'origin': 'https://chat.antafu.com',
-            'referer': 'https://chat.antafu.com/',
-          },
-          body: JSON.stringify({ appKey: params.appKey || '', configType: 'aidoctor0225' }),
-        });
-        const data = await upstream.text();
-        res.writeHead(upstream.status, { 'Content-Type': 'application/json' });
-        res.end(data);
-      } catch (err) {
-        res.writeHead(502, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: false, error: err.message }));
-      }
-    });
     return;
   }
 
@@ -2756,14 +2836,17 @@ async function handleRequest(req, res) {
 }
 
 export async function startViewer() {
+  pluginRoutes = [];
   // 加载插件（需要在创建服务器之前，以便通过 hook 获取 HTTPS 证书）
   await loadPlugins();
 
   // 通过插件 hook 获取 HTTPS 证书选项
   let httpsOptions = null;
+  let httpsFromPlugin = false;
   try {
     const httpsResult = await runWaterfallHook('httpsOptions', {});
     httpsOptions = (httpsResult.pfx || httpsResult.cert) ? httpsResult : null;
+    httpsFromPlugin = !!httpsOptions;
   } catch (err) {
     console.error('[CX Viewer] httpsOptions hook error:', err.message);
   }
@@ -2809,7 +2892,7 @@ export async function startViewer() {
   const useHttps = !!httpsOptions;
   const protocol = useHttps ? 'https' : 'http';
   serverProtocol = protocol;
-  if (useHttps) console.error('[CX Viewer] HTTPS mode enabled via plugin hook');
+  if (useHttps) console.error(httpsFromPlugin ? '[CX Viewer] HTTPS mode enabled via plugin hook' : '[CX Viewer] HTTPS mode enabled via self-signed certificate');
 
   return new Promise((resolve, reject) => {
     function tryListen(port) {
@@ -2875,7 +2958,7 @@ export async function startViewer() {
             await setupTerminalWebSocket(currentServer);
           }
           // 通知插件服务器已启动
-          runParallelHook('serverStarted', { port, host: HOST, url, ip: getLocalIp(), token: ACCESS_TOKEN, protocol: serverProtocol, httpServer: currentServer })
+          refreshPluginRuntime()
             .catch(err => console.error('[CX Viewer] Plugin serverStarted hook error:', err.message));
           resolve(server);
         });
@@ -3201,6 +3284,7 @@ export function stopViewer() {
 }
 async function _doStop() {
   try { await Promise.race([runParallelHook('serverStopping'), new Promise(r => setTimeout(r, 3000))]); } catch { }
+  pluginRoutes = [];
   // 如果用户未做选择，将临时文件转为正式文件
   if (_resumeState && _resumeState.tempFile) {
     try {

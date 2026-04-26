@@ -1,82 +1,14 @@
-import React, { useState, useCallback } from 'react';
-import { Modal, Input, message } from 'antd';
+import React, { useRef, useState } from 'react';
 import { uploadFileAndGetPath } from './TerminalPanel';
 import { apiUrl } from '../utils/apiUrl';
 import { isMobile, isPad } from '../env';
 import { t } from '../i18n';
-import { useWsAsr } from '../hooks/useWsAsr';
+import VoiceInputPluginSlot from './VoiceInputPluginSlot';
 import styles from './ChatInputBar.module.css';
 
-const ASR_APPKEY_STORAGE_KEY = 'cxv-asr-appkey';
-
-function ChatInputBar({ inputRef, inputEmpty, inputSuggestion, terminalVisible, onKeyDown, onChange, onSend, onSuggestionClick, onUploadPath, presetItems, onPresetSend, onOpenPresetModal, isStreaming, streamingFading, pendingImages, onRemovePendingImage }) {
+function ChatInputBar({ inputRef, inputEmpty, inputSuggestion, terminalVisible, onKeyDown, onChange, onSend, onSuggestionClick, onUploadPath, presetItems, onPresetSend, onOpenPresetModal, isStreaming, streamingFading, pendingImages, onRemovePendingImage, voiceInputPlugin }) {
   const [plusOpen, setPlusOpen] = useState(false);
-  const [interimText, setInterimText] = useState('');
-
-  const handleAsrCompleted = useCallback((text) => {
-    if (!text || !inputRef?.current) return;
-    const ta = inputRef.current;
-    const existing = ta.value;
-    ta.value = existing ? existing + text : text;
-    ta.style.height = 'auto';
-    ta.style.height = Math.min(ta.scrollHeight, 120) + 'px';
-    setInterimText('');
-    // 触发 onChange 更新 inputEmpty 状态（模拟 input 事件）
-    const nativeInputEvent = new Event('input', { bubbles: true });
-    ta.dispatchEvent(nativeInputEvent);
-  }, [inputRef]);
-
-  const [appKeyModalOpen, setAppKeyModalOpen] = useState(false);
-  const [appKeyInput, setAppKeyInput] = useState('');
-  const [appKeyCached, setAppKeyCached] = useState('');
-  // 本次会话已确认的 appKey，避免每次点击都弹窗
-  const sessionAppKeyRef = React.useRef(null);
-
-  const { start: startAsr, stop: stopAsr, isRunning: asrRunning, isLoading: asrLoading } = useWsAsr({
-    onChange: setInterimText,
-    onCompleted: handleAsrCompleted,
-    onError: () => { sessionAppKeyRef.current = null; }, // 连接异常时清除，下次重新询问
-  });
-
-  const doStartAsr = useCallback((key) => {
-    if (key) {
-      sessionAppKeyRef.current = key;
-      try { localStorage.setItem(ASR_APPKEY_STORAGE_KEY, key); } catch {}
-      startAsr(key);
-    }
-  }, [startAsr]);
-
-  const handleMicClick = useCallback(() => {
-    if (asrRunning || asrLoading) {
-      stopAsr();
-      return;
-    }
-    // 本次会话已有确认过的 key，直接使用
-    if (sessionAppKeyRef.current) {
-      startAsr(sessionAppKeyRef.current);
-      return;
-    }
-    // 检查浏览器缓存
-    const cached = localStorage.getItem(ASR_APPKEY_STORAGE_KEY) || '';
-    if (cached) {
-      setAppKeyCached(cached);
-      setAppKeyInput(cached);
-    } else {
-      setAppKeyCached('');
-      setAppKeyInput('');
-    }
-    setAppKeyModalOpen(true);
-  }, [asrRunning, asrLoading, stopAsr, startAsr]);
-
-  const handleAppKeyConfirm = useCallback(() => {
-    const key = appKeyInput.trim();
-    if (!key) {
-      message.warning(t('ui.chatInput.appKeyEmpty'));
-      return;
-    }
-    setAppKeyModalOpen(false);
-    doStartAsr(key);
-  }, [appKeyInput, doStartAsr]);
+  const voiceOverlayRef = useRef(null);
 
   const handlePaste = async (e) => {
     const items = e.clipboardData?.items;
@@ -141,13 +73,7 @@ function ChatInputBar({ inputRef, inputEmpty, inputSuggestion, terminalVisible, 
           </svg>
         )}
         <div className={styles.chatTextareaWrap}>
-          {(asrRunning || asrLoading) && (
-            <div className={styles.asrOverlay}>
-              <span className={styles.asrIndicator} />
-              <span className={styles.asrLabel}>{asrLoading ? t('ui.chatInput.micConnecting') : t('ui.chatInput.listening')}</span>
-              {interimText && <div className={styles.asrText}>{interimText}</div>}
-            </div>
-          )}
+          <div ref={voiceOverlayRef} className={styles.voicePluginOverlayHost} />
           {pendingImages && pendingImages.length > 0 && (
             <div className={styles.imagePreviewStrip}>
               {pendingImages.map((img, i) => {
@@ -269,24 +195,12 @@ function ChatInputBar({ inputRef, inputEmpty, inputSuggestion, terminalVisible, 
                   <span className={styles.chatInputHintTerminal}>{t('ui.chatInput.hintTerminal')}</span>
                 </>}
           </div>
-          <button
-            className={`${styles.micBtn}${asrRunning ? ` ${styles.micBtnActive}` : ''}${asrLoading ? ` ${styles.micBtnLoading}` : ''}`}
-            onClick={handleMicClick}
-            title={asrRunning ? t('ui.chatInput.micStop') : t('ui.chatInput.mic')}
-          >
-            {asrRunning ? (
-              <svg className={styles.micIcon} viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                <rect x="6" y="6" width="12" height="12" rx="2" />
-              </svg>
-            ) : (
-              <svg className={styles.micIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                <line x1="12" y1="19" x2="12" y2="23" />
-                <line x1="8" y1="23" x2="16" y2="23" />
-              </svg>
-            )}
-          </button>
+          <VoiceInputPluginSlot
+            plugin={voiceInputPlugin}
+            inputRef={inputRef}
+            overlayContainerRef={voiceOverlayRef}
+            className={styles.voicePluginSlot}
+          />
           <button
             className={`${styles.sendBtn} ${inputEmpty && !(pendingImages?.length) ? styles.sendBtnDisabled : ''}`}
             onClick={onSend}
@@ -300,27 +214,6 @@ function ChatInputBar({ inputRef, inputEmpty, inputSuggestion, terminalVisible, 
           </button>
         </div>
       </div>
-      <Modal
-        title={t('ui.chatInput.appKeyTitle')}
-        open={appKeyModalOpen}
-        onCancel={() => setAppKeyModalOpen(false)}
-        onOk={handleAppKeyConfirm}
-        okText={t('ui.chatInput.appKeyStart')}
-        cancelText={t('ui.cancel')}
-        okButtonProps={{ disabled: !appKeyInput.trim() }}
-        width={400}
-        destroyOnClose
-        styles={{ content: { background: 'var(--bg-elevated)', border: '1px solid var(--border-light)' }, header: { background: 'var(--bg-elevated)', borderBottom: 'none' } }}
-      >
-        {appKeyCached && <div className={styles.appKeyHint}>{t('ui.chatInput.appKeyCachedHint')}</div>}
-        <Input
-          value={appKeyInput}
-          onChange={e => setAppKeyInput(e.target.value)}
-          placeholder={t('ui.chatInput.appKeyPlaceholder')}
-          onPressEnter={handleAppKeyConfirm}
-          autoFocus
-        />
-      </Modal>
     </div>
   );
 }

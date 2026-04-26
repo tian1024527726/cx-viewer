@@ -786,6 +786,20 @@ const i18nData = {
     "tr": "Eklenti indiriliyor...",
     "uk": "Завантаження плагіна..."
   },
+  "ui.plugins.loadError": {
+    "zh": "加载失败：{reason}",
+    "en": "Load failed: {reason}",
+    "zh-TW": "載入失敗：{reason}",
+    "ko": "로드 실패: {reason}",
+    "ja": "読み込み失敗: {reason}"
+  },
+  "ui.plugins.clientLoadFailed": {
+    "zh": "插件前端模块加载失败：{name}，{reason}",
+    "en": "Failed to load plugin client module: {name}, {reason}",
+    "zh-TW": "插件前端模組載入失敗：{name}，{reason}",
+    "ko": "플러그인 클라이언트 모듈 로드 실패: {name}, {reason}",
+    "ja": "プラグインのクライアントモジュールの読み込みに失敗しました: {name}, {reason}"
+  },
   "ui.tokenStats": {
     "zh": "数据统计",
     "en": "Data Stats",
@@ -4244,6 +4258,20 @@ const i18nData = {
   "ui.chatInput.appKeyEmpty": {
     "zh": "请输入 AppKey", "en": "Please enter AppKey", "zh-TW": "請輸入 AppKey",
     "ko": "AppKey를 입력하세요", "ja": "AppKeyを入力してください"
+  },
+  "ui.chatInput.voicePluginLoadFailed": {
+    "zh": "语音插件加载失败：{reason}",
+    "en": "Voice plugin failed to load: {reason}",
+    "zh-TW": "語音插件載入失敗：{reason}",
+    "ko": "음성 플러그인 로드 실패: {reason}",
+    "ja": "音声プラグインの読み込みに失敗しました: {reason}"
+  },
+  "ui.chatInput.voicePluginMissingAppKey": {
+    "zh": "语音插件未提供 AppKey",
+    "en": "Voice plugin did not provide an AppKey",
+    "zh-TW": "語音插件未提供 AppKey",
+    "ko": "음성 플러그인이 AppKey를 제공하지 않았습니다",
+    "ja": "音声プラグインが AppKey を提供していません"
   },
   "ui.chatInput.send": {
     "zh": "发送",

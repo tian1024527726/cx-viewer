@@ -1,5 +1,5 @@
 import React from 'react';
-import { Empty, Typography, Divider, Spin, Popover } from 'antd';
+import { Empty, Typography, Divider, Spin, Popover, message } from 'antd';
 import ChatMessage from './ChatMessage';
 import TerminalPanel from './TerminalPanel';
 import FileExplorer from './FileExplorer';
@@ -52,6 +52,20 @@ const VirtuosoScroller = React.forwardRef((props, ref) => (
 
 function randomInterval() {
   return 100 + Math.random() * 50;
+}
+
+function getVoiceInputPlugin(plugins = []) {
+  return plugins.find(item => item.enabled && item.loaded && (
+    item.capabilities?.includes('voiceInput') ||
+    item.hooks?.includes('voiceInput')
+  ));
+}
+
+function getVoicePluginLoadIssue(plugins = []) {
+  return plugins.find(plugin => {
+    const id = `${plugin.name || ''} ${plugin.file || ''}`.toLowerCase();
+    return plugin.enabled && plugin.loadError && (id.includes('voice') || id.includes('speech') || id.includes('asr'));
+  }) || null;
 }
 
 class ChatView extends React.Component {
@@ -124,6 +138,7 @@ class ChatView extends React.Component {
       pendingPermission: null, // { id, toolName, input } — active permission approval request
       pendingPlanApproval: null, // { id, input } — active ExitPlanMode approval in SDK mode
       pendingImages: [], // [{ path, source }] — images uploaded/pasted, shown as previews in chat input
+      voiceInputPlugin: null,
     };
     this._processedToolIds = new Set();
     this._projectDirCache = null; // 缓存项目目录绝对路径
@@ -263,7 +278,36 @@ class ChatView extends React.Component {
     this._loadPresets();
     this._onPresetsChanged = () => this._loadPresets();
     window.addEventListener('ccv-presets-changed', this._onPresetsChanged);
+    this._loadPluginCapabilities();
+    this._onPluginsChanged = (event) => {
+      this._syncVoicePluginState(event.detail?.plugins || []);
+    };
+    window.addEventListener('ccv-plugins-changed', this._onPluginsChanged);
   }
+
+  _syncVoicePluginState = (plugins) => {
+    this.setState({
+      voiceInputPlugin: getVoiceInputPlugin(plugins) || null,
+    });
+    const issue = getVoicePluginLoadIssue(plugins);
+    if (issue && this._lastVoicePluginIssue !== `${issue.file}:${issue.loadError}`) {
+      this._lastVoicePluginIssue = `${issue.file}:${issue.loadError}`;
+      message.warning(t('ui.chatInput.voicePluginLoadFailed', { reason: issue.loadError }));
+    }
+    if (!issue) this._lastVoicePluginIssue = null;
+  };
+
+  _loadPluginCapabilities = () => {
+    fetch(apiUrl('/api/plugins'))
+      .then(r => {
+        if (!r.ok) throw new Error(r.status);
+        return r.json();
+      })
+      .then(data => {
+        this._syncVoicePluginState(data.plugins || []);
+      })
+      .catch(() => {});
+  };
 
   shouldComponentUpdate(nextProps, nextState) {
     return (
@@ -434,6 +478,7 @@ class ChatView extends React.Component {
   componentWillUnmount() {
     this._unmounted = true;
     window.removeEventListener('ccv-presets-changed', this._onPresetsChanged);
+    window.removeEventListener('ccv-plugins-changed', this._onPluginsChanged);
     // 清理全局权限通知
     if (this.props.onPendingPermission) this.props.onPendingPermission(null);
     if (this.props.onPendingPlanApproval) this.props.onPendingPlanApproval(null);
@@ -3041,6 +3086,7 @@ class ChatView extends React.Component {
               streamingFading={this.state.streamingFading}
               pendingImages={this.state.pendingImages}
               onRemovePendingImage={this._removePendingImage}
+              voiceInputPlugin={this.state.voiceInputPlugin}
             />
             </div>
           </div>

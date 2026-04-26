@@ -860,7 +860,12 @@ class AppHeader extends React.Component {
       return r.json();
     }).then(data => {
       this.setState({ pluginsList: data.plugins || [], pluginsDir: data.pluginsDir || '' });
+      this._emitPluginsChanged(data.plugins || []);
     }).catch(() => {});
+  };
+
+  _emitPluginsChanged = (plugins) => {
+    window.dispatchEvent(new CustomEvent('ccv-plugins-changed', { detail: { plugins } }));
   };
 
   handleShowPlugins = () => {
@@ -888,6 +893,7 @@ class AppHeader extends React.Component {
       return r.json();
     }).then(data => {
       this.setState({ pluginsList: data.plugins || [], pluginsDir: data.pluginsDir || '' });
+      this._emitPluginsChanged(data.plugins || []);
     }).catch(() => {});
   };
 
@@ -907,6 +913,7 @@ class AppHeader extends React.Component {
       .then(data => {
         if (data.plugins) {
           this.setState({ pluginsList: data.plugins, pluginsDir: data.pluginsDir || '' });
+          this._emitPluginsChanged(data.plugins);
         }
       }).catch(() => {});
   };
@@ -919,6 +926,7 @@ class AppHeader extends React.Component {
       })
       .then(data => {
         this.setState({ pluginsList: data.plugins || [], pluginsDir: data.pluginsDir || '' });
+        this._emitPluginsChanged(data.plugins || []);
       }).catch(() => {});
   };
 
@@ -963,6 +971,7 @@ class AppHeader extends React.Component {
           message.error(t('ui.plugins.addFailed', { reason: data.error }));
         } else if (data.plugins) {
           this.setState({ pluginsList: data.plugins, pluginsDir: data.pluginsDir || '' });
+          this._emitPluginsChanged(data.plugins);
           message.success(t('ui.plugins.addSuccess'));
         }
       }).catch(err => {
@@ -1006,6 +1015,7 @@ class AppHeader extends React.Component {
           message.success(t('ui.plugins.cdnInstallSuccess'));
           if (data.plugins) {
             this.setState({ pluginsList: data.plugins, pluginsDir: data.pluginsDir || '' });
+            this._emitPluginsChanged(data.plugins);
           }
           this.setState({ cdnModalVisible: false, cdnUrl: '' });
         }
@@ -1706,6 +1716,14 @@ class AppHeader extends React.Component {
                       <span className={styles.pluginHooks}>
                         {p.hooks.map(h => <span key={h} className={styles.pluginHookTag}>{h}</span>)}
                       </span>
+                    )}
+                    {p.capabilities?.length > 0 && (
+                      <span className={styles.pluginHooks}>
+                        {p.capabilities.map(c => <span key={c} className={styles.pluginCapabilityTag}>{c}</span>)}
+                      </span>
+                    )}
+                    {p.loadError && (
+                      <span className={styles.pluginErrorText}>{t('ui.plugins.loadError', { reason: p.loadError })}</span>
                     )}
                   </div>
                   <div className={styles.pluginActions}>

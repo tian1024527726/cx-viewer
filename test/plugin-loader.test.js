@@ -117,6 +117,51 @@ describe('loadPlugins', () => {
     assert.deepStrictEqual(nh.hooks, []);
   });
 
+  it('loads capability-only voice plugin and exposes voiceInput config', async () => {
+    writePlugin('test-voice.mjs', `
+      export default {
+        name: 'voice-plugin',
+        capabilities: ['voiceInput'],
+        voiceInput: { appKey: 'voice-app-key' }
+      };
+    `);
+    await loadPlugins();
+    const info = getPluginsInfo();
+    const voice = info.find(p => p.file === 'test-voice.mjs');
+    assert.ok(voice, 'voice plugin should be listed');
+    assert.equal(voice.loaded, true);
+    assert.deepStrictEqual(voice.capabilities, ['voiceInput']);
+    assert.deepStrictEqual(voice.voiceInput, { appKey: 'voice-app-key' });
+  });
+
+  it('reloads updated plugin file content instead of using stale module cache', async () => {
+    const filePath = join(PLUGINS_DIR, 'test-reload.mjs');
+    writePlugin('test-reload.mjs', `
+      export default {
+        name: 'reload-plugin',
+        capabilities: ['voiceInput'],
+        voiceInput: { appKey: 'first-key' }
+      };
+    `);
+    await loadPlugins();
+    let info = getPluginsInfo();
+    let plugin = info.find(p => p.file === 'test-reload.mjs');
+    assert.deepStrictEqual(plugin?.voiceInput, { appKey: 'first-key' });
+
+    await new Promise(r => setTimeout(r, 20));
+    writeFileSync(filePath, `
+      export default {
+        name: 'reload-plugin',
+        capabilities: ['voiceInput'],
+        voiceInput: { appKey: 'second-key' }
+      };
+    `);
+    await loadPlugins();
+    info = getPluginsInfo();
+    plugin = info.find(p => p.file === 'test-reload.mjs');
+    assert.deepStrictEqual(plugin?.voiceInput, { appKey: 'second-key' });
+  });
+
   it('handles empty plugins directory', async () => {
     await loadPlugins();
     const info = getPluginsInfo();

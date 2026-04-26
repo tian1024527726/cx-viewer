@@ -204,6 +204,17 @@
 
 /* ─── ASR 麦克风按钮 ─── */
 
+.voicePluginSlot {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.voicePluginOverlayHost {
+  width: 100%;
+  flex: 0 0 100%;
+}
+
 .micBtn {
   width: 28px;
   height: 28px;
