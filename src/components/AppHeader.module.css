@@ -121,6 +121,13 @@
   padding: 8px;
 }
 
+.qrcodeGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+
 .qrcodeSection {
   display: flex;
   flex-direction: column;
@@ -130,6 +137,14 @@
   border: 1px solid var(--border-secondary);
   border-radius: 8px;
   background: var(--bg-container);
+}
+
+.qrcodeSectionTitle {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
 }
 
 .qrcodeTitle {

@@ -178,8 +178,12 @@ const ACCESS_TOKEN = randomBytes(16).toString('hex');
 
 let clients = [];
 let server;
+let secondaryServer = null;
 let actualPort = 0;
+let secondaryPort = 0;
 let serverProtocol = 'http';
+let publicAccessProtocol = 'http';
+let publicAccessPort = 0;
 let pluginRoutes = [];
 // Stats Worker 实例
 let statsWorker = null;
@@ -211,6 +215,33 @@ async function refreshPluginRuntime() {
     protocol: serverProtocol,
     httpServer: server,
     registerRoute: registerPluginRoute,
+  });
+}
+
+function getPublicAccessUrl(ip = getLocalIp()) {
+  const protocol = publicAccessProtocol || serverProtocol;
+  const port = publicAccessPort || actualPort;
+  return `${protocol}://${ip}:${port}?token=${ACCESS_TOKEN}`;
+}
+
+function findAvailablePort(startPort) {
+  return new Promise((resolve) => {
+    function tryPort(port) {
+      if (port > MAX_PORT) {
+        resolve(null);
+        return;
+      }
+      const probe = createConnection({ host: '127.0.0.1', port });
+      probe.on('connect', () => {
+        probe.destroy();
+        tryPort(port + 1);
+      });
+      probe.on('error', () => {
+        probe.destroy();
+        resolve(port);
+      });
+    }
+    tryPort(startPort);
   });
 }
 
@@ -2467,10 +2498,22 @@ async function handleRequest(req, res) {
   // 返回局域网访问地址
   if (url === '/api/local-url' && method === 'GET') {
     const localIp = getLocalIp();
-    const defaultUrl = `${serverProtocol}://${localIp}:${actualPort}?token=${ACCESS_TOKEN}`;
-    const hookResult = await runWaterfallHook('localUrl', { url: defaultUrl, ip: localIp, port: actualPort, token: ACCESS_TOKEN });
+    const defaultUrl = getPublicAccessUrl(localIp);
+    const hookResult = await runWaterfallHook('localUrl', {
+      url: defaultUrl,
+      ip: localIp,
+      port: publicAccessPort || actualPort,
+      token: ACCESS_TOKEN,
+      protocol: publicAccessProtocol || serverProtocol,
+      httpUrl: actualPort ? `http://${localIp}:${actualPort}?token=${ACCESS_TOKEN}` : null,
+      httpsUrl: secondaryPort ? `https://${localIp}:${secondaryPort}?token=${ACCESS_TOKEN}` : null,
+    });
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ url: hookResult.url }));
+    res.end(JSON.stringify({
+      url: hookResult.url,
+      httpUrl: actualPort ? `http://${localIp}:${actualPort}?token=${ACCESS_TOKEN}` : null,
+      httpsUrl: secondaryPort ? `https://${localIp}:${secondaryPort}?token=${ACCESS_TOKEN}` : null,
+    }));
     return;
   }
 
@@ -2837,6 +2880,10 @@ async function handleRequest(req, res) {
 
 export async function startViewer() {
   pluginRoutes = [];
+  secondaryServer = null;
+  secondaryPort = 0;
+  publicAccessProtocol = 'http';
+  publicAccessPort = 0;
   // 加载插件（需要在创建服务器之前，以便通过 hook 获取 HTTPS 证书）
   await loadPlugins();
 
@@ -2851,9 +2898,9 @@ export async function startViewer() {
     console.error('[CX Viewer] httpsOptions hook error:', err.message);
   }
 
-  // CLI 模式默认保持 HTTP，避免本地 OTel/bridge 回退链路被自签 HTTPS 证书阻断。
-  // 非 CLI 场景（浏览器独立打开）才自动生成自签证书以支持麦克风等能力。
-  if (!httpsOptions && !isCliMode) {
+  // 自动生成自签证书，供 HTTPS 访问使用。
+  // CLI 模式下会保留 HTTP 主入口，同时额外起一个 HTTPS 入口用于二维码和局域网麦克风访问。
+  if (!httpsOptions) {
     try {
       const { generateKeyPairSync, createSign, X509Certificate } = await import('node:crypto');
       const { privateKey, publicKey } = generateKeyPairSync('rsa', {
@@ -2889,9 +2936,10 @@ export async function startViewer() {
     }
   }
 
-  const useHttps = !!httpsOptions;
+  const useHttps = !!httpsOptions && !isCliMode;
   const protocol = useHttps ? 'https' : 'http';
   serverProtocol = protocol;
+  publicAccessProtocol = protocol;
   if (useHttps) console.error(httpsFromPlugin ? '[CX Viewer] HTTPS mode enabled via plugin hook' : '[CX Viewer] HTTPS mode enabled via self-signed certificate');
 
   return new Promise((resolve, reject) => {
@@ -2927,7 +2975,38 @@ export async function startViewer() {
         currentServer.listen(port, HOST, async () => {
           server = currentServer;
           actualPort = port;
+          publicAccessPort = port;
           const url = `${serverProtocol}://127.0.0.1:${port}`;
+          if (isCliMode && httpsOptions) {
+            const httpsPort = await findAvailablePort(port + 1);
+            if (httpsPort) {
+              try {
+                secondaryServer = createHttpsServer(httpsOptions, handleRequest);
+                await new Promise((resolveSecondary, rejectSecondary) => {
+                  secondaryServer.once('error', rejectSecondary);
+                  secondaryServer.listen(httpsPort, HOST, () => {
+                    secondaryServer.off('error', rejectSecondary);
+                    resolveSecondary();
+                  });
+                });
+                secondaryPort = httpsPort;
+                publicAccessProtocol = 'https';
+                publicAccessPort = httpsPort;
+                console.error('[CX Viewer] Secondary HTTPS access enabled for QR/remote browser');
+                console.error(`  ➜ HTTPS:   https://127.0.0.1:${httpsPort}`);
+                const _ips = getAllLocalIps();
+                for (const _ip of _ips) {
+                  console.error(`  ➜ HTTPS:   https://${_ip}:${httpsPort}?token=${ACCESS_TOKEN}`);
+                }
+              } catch (err) {
+                secondaryServer = null;
+                secondaryPort = 0;
+                publicAccessProtocol = serverProtocol;
+                publicAccessPort = port;
+                console.error('[CX Viewer] Secondary HTTPS server creation failed:', err.message);
+              }
+            }
+          }
           if (!isCliMode) {
             console.error(t('server.started'));
             console.error(t('server.startedLocal', { protocol: serverProtocol, port }));
@@ -2935,6 +3014,10 @@ export async function startViewer() {
             for (const _ip of _ips) {
               console.error(t('server.startedNetwork', { protocol: serverProtocol, ip: _ip, port, token: ACCESS_TOKEN }));
             }
+          } else if (secondaryPort) {
+            console.error(t('server.started'));
+            console.error(t('server.startedLocal', { protocol: serverProtocol, port }));
+            console.error(t('server.startedNetwork', { protocol: 'https', ip: getLocalIp(), port: secondaryPort, token: ACCESS_TOKEN }));
           }
           // v2.0.69 之前的版本会清空控制台，自动打开浏览器确保用户能看到界面
           try {
@@ -2956,6 +3039,9 @@ export async function startViewer() {
           // CLI 模式下启动 WebSocket 服务 (必须 await，否则插件 hook 拿不到 upgrade listeners)
           if (isCliMode) {
             await setupTerminalWebSocket(currentServer);
+            if (secondaryServer) {
+              await setupTerminalWebSocket(secondaryServer);
+            }
           }
           // 通知插件服务器已启动
           refreshPluginRuntime()

@@ -45,7 +45,7 @@ const countryToFlag = (code) => {
 class AppHeader extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { countdownText: '', countryFlag: null, countryInfo: null, promptModalVisible: false, promptData: [], promptViewMode: 'original', settingsDrawerVisible: false, globalSettingsVisible: false, projectStatsVisible: false, projectStats: null, projectStatsLoading: false, localUrl: '', pluginModalVisible: false, pluginsList: [], pluginsDir: '', deleteConfirmVisible: false, deleteTarget: null, processModalVisible: false, processList: [], processLoading: false, logoDropdownOpen: false, cacheHighlightIdx: null, cacheHighlightFading: false, cdnModalVisible: false, cdnUrl: '', cdnLoading: false, calibrationModel: (v => CALIBRATION_MODELS.some(m => m.value === v) ? v : 'auto')(localStorage.getItem('cxv_calibrationModel') || 'auto'), proxyModalVisible: false, editingProxy: null, editForm: { name: '', baseURL: '', apiKey: '', models: '', activeModel: '' }, logDirDraft: null };
+    this.state = { countdownText: '', countryFlag: null, countryInfo: null, promptModalVisible: false, promptData: [], promptViewMode: 'original', settingsDrawerVisible: false, globalSettingsVisible: false, projectStatsVisible: false, projectStats: null, projectStatsLoading: false, localUrl: '', httpUrl: '', httpsUrl: '', pluginModalVisible: false, pluginsList: [], pluginsDir: '', deleteConfirmVisible: false, deleteTarget: null, processModalVisible: false, processList: [], processLoading: false, logoDropdownOpen: false, cacheHighlightIdx: null, cacheHighlightFading: false, cdnModalVisible: false, cdnUrl: '', cdnLoading: false, calibrationModel: (v => CALIBRATION_MODELS.some(m => m.value === v) ? v : 'auto')(localStorage.getItem('cxv_calibrationModel') || 'auto'), proxyModalVisible: false, editingProxy: null, editForm: { name: '', baseURL: '', apiKey: '', models: '', activeModel: '' }, logDirDraft: null };
     this._rafId = null;
     this._expiredTimer = null;
     this.updateCountdown = this.updateCountdown.bind(this);
@@ -54,7 +54,11 @@ class AppHeader extends React.Component {
   componentDidMount() {
     this.startCountdown();
     fetch(apiUrl('/api/local-url')).then(r => r.json()).then(data => {
-      if (data.url) this.setState({ localUrl: data.url });
+      this.setState({
+        localUrl: data.url || '',
+        httpUrl: data.httpUrl || '',
+        httpsUrl: data.httpsUrl || '',
+      });
     }).catch(() => {});
     fetch(apiUrl('/api/codex-settings')).then(r => r.json()).then(data => {
       if (data.model) this.setState({ settingsModel: data.model });
@@ -1382,7 +1386,7 @@ class AppHeader extends React.Component {
               <strong className={styles.countdownStrong}>{countdownText}</strong>
             </Tag>
           )}
-          {viewMode === 'chat' && cliMode && !isLocalLog && this.state.localUrl && (
+          {viewMode === 'chat' && cliMode && !isLocalLog && (this.state.localUrl || this.state.httpUrl || this.state.httpsUrl) && (
             <>
               {this.state.countryFlag && this.state.countryInfo?.country !== 'CN' && (
                 <Popover
@@ -1412,22 +1416,50 @@ class AppHeader extends React.Component {
               content={
                 <div className={styles.qrcodePopover}>
                   <div className={styles.qrcodeTitle}>{t('ui.scanToCoding')} <ConceptHelp doc="QRCode" /></div>
-                  <QRCodeCanvas value={this.state.localUrl} size={200} bgColor={themeColor === 'light' ? '#ffffff' : '#141414'} fgColor={themeColor === 'light' ? '#1a1a1a' : '#d9d9d9'} level="M" />
-                  <Input
-                    readOnly
-                    value={this.state.localUrl}
-                    className={styles.qrcodeUrlInput}
-                    suffix={
-                      <CopyOutlined
-                        className={styles.qrcodeUrlCopy}
-                        onClick={() => {
-                          navigator.clipboard.writeText(this.state.localUrl).then(() => {
-                            message.success(t('ui.copied'));
-                          }).catch(() => {});
-                        }}
-                      />
-                    }
-                  />
+                  <div className={styles.qrcodeGrid}>
+                    {this.state.httpUrl && (
+                      <div className={styles.qrcodeSection}>
+                        <div className={styles.qrcodeSectionTitle}>HTTP</div>
+                        <QRCodeCanvas value={this.state.httpUrl} size={180} bgColor={themeColor === 'light' ? '#ffffff' : '#141414'} fgColor={themeColor === 'light' ? '#1a1a1a' : '#d9d9d9'} level="M" />
+                        <Input
+                          readOnly
+                          value={this.state.httpUrl}
+                          className={styles.qrcodeUrlInput}
+                          suffix={
+                            <CopyOutlined
+                              className={styles.qrcodeUrlCopy}
+                              onClick={() => {
+                                navigator.clipboard.writeText(this.state.httpUrl).then(() => {
+                                  message.success(t('ui.copied'));
+                                }).catch(() => {});
+                              }}
+                            />
+                          }
+                        />
+                      </div>
+                    )}
+                    {this.state.httpsUrl && (
+                      <div className={styles.qrcodeSection}>
+                        <div className={styles.qrcodeSectionTitle}>HTTPS</div>
+                        <QRCodeCanvas value={this.state.httpsUrl} size={180} bgColor={themeColor === 'light' ? '#ffffff' : '#141414'} fgColor={themeColor === 'light' ? '#1a1a1a' : '#d9d9d9'} level="M" />
+                        <Input
+                          readOnly
+                          value={this.state.httpsUrl}
+                          className={styles.qrcodeUrlInput}
+                          suffix={
+                            <CopyOutlined
+                              className={styles.qrcodeUrlCopy}
+                              onClick={() => {
+                                navigator.clipboard.writeText(this.state.httpsUrl).then(() => {
+                                  message.success(t('ui.copied'));
+                                }).catch(() => {});
+                              }}
+                            />
+                          }
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               }
               trigger="hover"
