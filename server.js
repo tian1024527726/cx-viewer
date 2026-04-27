@@ -3020,15 +3020,17 @@ export async function startViewer() {
             console.error(t('server.startedNetwork', { protocol: 'https', ip: getLocalIp(), port: secondaryPort, token: ACCESS_TOKEN }));
           }
           // v2.0.69 之前的版本会清空控制台，自动打开浏览器确保用户能看到界面
-          try {
-            const ccPkgPath = join(__dirname, '..', '@openai', 'codex', 'package.json');
-            const ccVer = JSON.parse(readFileSync(ccPkgPath, 'utf-8')).version;
-            const [maj, min, pat] = ccVer.split('.').map(Number);
-            if (maj < 2 || (maj === 2 && min === 0 && pat < 69)) {
-              const cmd = platform() === 'darwin' ? 'open' : platform() === 'win32' ? 'start' : 'xdg-open';
-              execAsync(`${cmd} ${url}`, { timeout: 5000 }).catch(() => {});
-            }
-          } catch { }
+          if (!isCliMode) {
+            try {
+              const ccPkgPath = join(__dirname, '..', '@openai', 'codex', 'package.json');
+              const ccVer = JSON.parse(readFileSync(ccPkgPath, 'utf-8')).version;
+              const [maj, min, pat] = ccVer.split('.').map(Number);
+              if (maj < 2 || (maj === 2 && min === 0 && pat < 69)) {
+                const cmd = platform() === 'darwin' ? 'open' : platform() === 'win32' ? 'start' : 'xdg-open';
+                execAsync(`${cmd} ${url}`, { timeout: 5000 }).catch(() => {});
+              }
+            } catch { }
+          }
           // 工作区模式下延迟到选择工作区后再启动监听
           if (!isWorkspaceMode) {
             readModelContextSize(); // Cache model→size mapping at startup
