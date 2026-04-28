@@ -19,20 +19,29 @@ npm install -g cx-viewer --registry=https://registry.npmjs.org
 
 ### 编程模式
 
-cxv 是 codex 的直接替身，所有参数透传给 codex，同时启动 Web Viewer。
+`cxv` 会先启动 Web Viewer，再把 Codex 当前支持的 CLI 参数原样透传过去。CXV 自己只额外提供少量包装能力：
+
+- `cxv continue` 是 `codex resume --last` 的便捷别名
+- `cxv --d` 是 `codex --dangerously-bypass-approvals-and-sandbox` 的便捷别名
+- `cxv --ad` 是兼容旧版的快捷参数，只保留 CXV 侧的 bypass 切换能力
+
+其余参数都应该按 Codex 原生命令理解。
 
 ```bash
-cxv                    # == codex（交互模式）
-cxv -c                 # == codex --continue（继续上次对话）
-cxv -r                 # == codex --resume（恢复对话）
-cxv -p "hello"         # == codex --print "hello"（打印模式）
-cxv --d                # == codex --dangerously-skip-permissions（快捷方式）
-cxv --model opus       # == codex --model opus
+cxv                                         # == codex（交互模式）
+cxv continue                                # == codex resume --last
+cxv resume --last                           # == codex resume --last
+cxv -c 'model="gpt-5.5"'                    # == codex -c 'model="gpt-5.5"'
+cxv exec "summarize this repo"              # == codex exec "summarize this repo"
+cxv review                                  # == codex review
+cxv --search --model gpt-5.5                # == codex --search --model gpt-5.5
+cxv --d                                     # == codex --dangerously-bypass-approvals-and-sandbox
 ```
 
 作者本人常用的命令是
-```
-cxv -c --d             # == codex --continue --dangerously-skip-permissions
+
+```bash
+cxv continue --d
 ```
 
 编程模式启动以后，会主动打开web页面。
@@ -83,9 +92,19 @@ cxv --uninstall
 ### 其他辅助指令
 
 查阅
+
 ```bash
 cxv -h
 ```
+
+目前最常用的 Codex 原生命令透传包括：
+
+- `cxv resume [session-id]`
+- `cxv exec [prompt]`
+- `cxv review`
+- `cxv -c key=value`
+- `cxv --search`
+- `cxv -C <dir>`
 
 ### 配置覆盖 (Configuration Override)
 

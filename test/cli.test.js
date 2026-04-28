@@ -5,6 +5,7 @@ import { readFileSync, writeFileSync, mkdirSync, rmSync, existsSync } from 'node
 import { resolve, join } from 'node:path';
 import { tmpdir, homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { normalizeCodexArgs, CODEX_BYPASS_FLAG } from '../lib/cli-args.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const CLI_PATH = resolve(__dirname, '..', 'cli.js');
@@ -367,6 +368,33 @@ describe('cxv run', () => {
 // ─── arg parsing edge cases ───
 
 describe('arg parsing', () => {
+  it('preserves codex -c/--config overrides', () => {
+    const parsed = normalizeCodexArgs(['-c', 'model="gpt-5"', '--config', 'features.search=true']);
+    assert.deepEqual(parsed.codexArgs, ['-c', 'model="gpt-5"', '--config', 'features.search=true']);
+  });
+
+  it('translates continue alias to codex resume --last', () => {
+    const parsed = normalizeCodexArgs(['continue', 'Fix this bug']);
+    assert.deepEqual(parsed.codexArgs, ['resume', '--last', 'Fix this bug']);
+  });
+
+  it('keeps legacy --continue working without stealing codex -c', () => {
+    const parsed = normalizeCodexArgs(['--continue']);
+    assert.deepEqual(parsed.codexArgs, ['resume', '--last']);
+  });
+
+  it('translates legacy dangerous shortcut to the current codex bypass flag', () => {
+    const parsed = normalizeCodexArgs(['--d']);
+    assert.deepEqual(parsed.codexArgs, [CODEX_BYPASS_FLAG]);
+    assert.equal(parsed.bypassPermissions, true);
+  });
+
+  it('keeps --ad as a cxv-only compatibility flag', () => {
+    const parsed = normalizeCodexArgs(['--ad', 'resume', '--last']);
+    assert.deepEqual(parsed.codexArgs, ['resume', '--last']);
+    assert.equal(parsed.allowBypassToggle, true);
+  });
+
   it('--help takes priority even with other flags', () => {
     const r = runCli(['--help', '--version']);
     assert.equal(r.exitCode, 0);
@@ -400,8 +428,11 @@ describe('arg parsing', () => {
     assert.equal(r.exitCode, 0);
     assert.ok(r.stdout.includes('-logger'), 'help should mention -logger');
     assert.ok(r.stdout.includes('passed through') || r.stdout.includes('passed\nthrough') || r.stdout.includes('透传') || r.stdout.includes('透傳'), 'help should mention passthrough');
-    // Old -d/-c flags should no longer appear as ccv options
+    assert.ok(r.stdout.includes('continue [prompt]') || r.stdout.includes('continue [提示词]') || r.stdout.includes('continue [提示詞]'), 'help should mention continue alias');
+    assert.ok(r.stdout.includes('--dangerously-bypass-approvals-and-sandbox'), 'help should mention the current codex bypass flag');
+    assert.ok(r.stdout.includes('-c, --config'), 'help should mention codex config overrides');
+    // Old -d/-c flags should no longer appear as obsolete ccv options
     assert.ok(!r.stdout.includes('-d [path]'), 'help should not mention old -d [path]');
-    assert.ok(!r.stdout.includes('-c [path]'), 'help should not mention old -c [path]');
+    assert.ok(!r.stdout.includes('-c                                    Continue last conversation'), 'help should not advertise old -c continue alias');
   });
 });

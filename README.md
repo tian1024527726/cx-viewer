@@ -19,25 +19,34 @@ npm install -g cx-viewer --registry=https://registry.npmjs.org
 
 ### Programming Mode
 
-cxv is a drop-in replacement for codex — all arguments are passed through to codex while launching the Web Viewer.
+`cxv` launches the Web Viewer and then forwards the real Codex CLI surface through unchanged. CXV only adds a few wrapper features of its own:
+
+- `cxv continue` is a convenience alias for `codex resume --last`
+- `cxv --d` is a convenience alias for `codex --dangerously-bypass-approvals-and-sandbox`
+- `cxv --ad` is a legacy compatibility flag kept only for CXV-side bypass toggles
+
+Everything else should be treated as standard Codex CLI syntax.
 
 ```bash
-cxv                    # == codex (interactive mode)
-cxv -c                 # == codex --continue (continue last conversation)
-cxv -r                 # == codex --resume (resume a conversation)
-cxv -p "hello"         # == codex --print "hello" (print mode)
-cxv --d                # == codex --dangerously-skip-permissions (shortcut)
-cxv --model opus       # == codex --model opus
+cxv                                         # == codex (interactive mode)
+cxv continue                                # == codex resume --last
+cxv resume --last                           # == codex resume --last
+cxv -c 'model="gpt-5.5"'                    # == codex -c 'model="gpt-5.5"'
+cxv exec "summarize this repo"              # == codex exec "summarize this repo"
+cxv review                                  # == codex review
+cxv --search --model gpt-5.5                # == codex --search --model gpt-5.5
+cxv --d                                     # == codex --dangerously-bypass-approvals-and-sandbox
 ```
 
 The author's most-used command is:
-```
-cxv -c --d             # == codex --continue --dangerously-skip-permissions
+
+```bash
+cxv continue --d
 ```
 
 After launching in programming mode, a web page will open automatically.
 
-You can use Claude directly from the web page while viewing the full request payloads and code changes.
+You can use Codex directly from the web page while viewing the full request payloads and code changes.
 
 Even better — you can even code from your mobile device!
 
@@ -89,6 +98,15 @@ See:
 ```bash
 cxv -h
 ```
+
+The most useful inherited Codex commands in CXV are:
+
+- `cxv resume [session-id]`
+- `cxv exec [prompt]`
+- `cxv review`
+- `cxv -c key=value`
+- `cxv --search`
+- `cxv -C <dir>`
 
 ### Configuration Override
 

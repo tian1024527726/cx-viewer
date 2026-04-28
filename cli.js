@@ -10,6 +10,7 @@ import { homedir } from 'node:os';
 import { spawn } from 'node:child_process';
 import { t } from './i18n.js';
 import { INJECT_IMPORT, resolveCliPath, resolveNativePath, resolveNpmCodexPath, buildShellCandidates } from './findcx.js';
+import { normalizeCodexArgs, hasBypassPermissions } from './lib/cli-args.js';
 import { ensureHooks } from './lib/ensure-hooks.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
@@ -269,8 +270,8 @@ async function runCliMode(extraCodexArgs = [], cwd) {
   // 2. 设置 CLI 模式标记
   process.env.CXV_CLI_MODE = '1';
   process.env.CXV_PROJECT_DIR = workingDir;
-  // 当 --dangerously-skip-permissions 生效时，通知 perm-bridge 不要拦截
-  if (extraCodexArgs.includes('--dangerously-skip-permissions')) {
+  // 当 bypass 模式生效时，通知 perm-bridge 不要拦截
+  if (hasBypassPermissions(extraCodexArgs)) {
     process.env.CXV_BYPASS_PERMISSIONS = '1';
   }
 
@@ -426,10 +427,8 @@ async function runSdkMode(extraCodexArgs = [], cwd) {
   const { basename } = await import('node:path');
 
   // 解析 permission mode from CLI args
-  // --d / --dangerously-skip-permissions → bypassPermissions（跳过所有权限检查）
-  // --ad / --allow-dangerously-skip-permissions → default（只是允许用户后续切换，不立即跳过）
   let permissionMode = 'default';
-  if (extraCodexArgs.includes('--dangerously-skip-permissions')) {
+  if (hasBypassPermissions(extraCodexArgs)) {
     permissionMode = 'bypassPermissions';
   }
 
@@ -705,11 +704,7 @@ if (args[0] === 'run') {
   runProxyCommand(args);
 } else if (args.includes('-SDK') || args.includes('--sdk')) {
   // SDK 模式（显式 -SDK 切换）
-  let codexArgs = args.filter(a => a !== '-SDK' && a !== '--sdk')
-    .map(a => a === '--d' ? '--dangerously-skip-permissions' : a === '--ad' ? '--allow-dangerously-skip-permissions' : a);
-
-  // 处理 codex 不支持的 -c/--continue 参数（codex 使用 resume 子命令）
-  codexArgs = codexArgs.filter(a => a !== '-c' && a !== '--continue');
+  const { codexArgs } = normalizeCodexArgs(args.filter(a => a !== '-SDK' && a !== '--sdk'));
 
   runSdkMode(codexArgs, process.cwd()).catch(err => {
     console.error('SDK mode error:', err);
@@ -717,16 +712,7 @@ if (args[0] === 'run') {
   });
 } else {
   // PTY 模式（默认）
-  // 将 -c/--continue 转换为 codex 的 resume 子命令
-  let codexArgs = args.map(a => a === '--d' ? '--dangerously-skip-permissions' : a === '--ad' ? '--allow-dangerously-skip-permissions' : a);
-
-  // 处理 codex 不支持的 -c/--continue 参数
-  const hasContinue = codexArgs.includes('-c') || codexArgs.includes('--continue');
-  codexArgs = codexArgs.filter(a => a !== '-c' && a !== '--continue');
-
-  // 如果用户想继续会话，在 codex 中使用 resume 子命令
-  // 但子命令需要在参数列表开头，所以我们不能直接添加
-  // 暂时忽略 -c 参数，codex 会自动恢复最近的会话
+  const { codexArgs } = normalizeCodexArgs(args);
 
   runCliMode(codexArgs, process.cwd()).catch(err => {
     console.error('CLI mode error:', err);
