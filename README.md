@@ -212,14 +212,7 @@ You can upload images and describe your needs — Claude's image understanding i
 
 <img width="600" height="370" alt="image" src="https://github.com/user-attachments/assets/87d332ea-3e34-4957-b442-f9d070211fbf" />
 
-You can customize plugins, manage all CX-Viewer processes, and CX-Viewer supports hot-switching to third-party APIs (yes, you can use GLM, Kimi, MiniMax, Qwen, DeepSeek — although the author considers them all quite weak at this point).
-
----
-
-
-<img width="1500" height="746" alt="image" src="https://github.com/user-attachments/assets/b1f60c7c-1438-4ecc-8c64-193d21ee3445" />
-
-More features waiting to be discovered... For example: the system supports Agent Team, and has a built-in Code Reviewer. Codex Code Reviewer integration is coming soon (the author highly recommends using Codex to review Codex's code).
+You can customize plugins, manage all CX-Viewer processes
 
 
 ### Auto-Update
