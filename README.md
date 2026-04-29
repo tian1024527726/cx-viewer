@@ -5,7 +5,8 @@ The latest version of CX-Viewer also provides a server-deployed web programming 
 
 Check out the fun part — here's what you can see on mobile:
 
-<img width="1700" height="790" alt="image" src="https://github.com/user-attachments/assets/da3e519f-ff66-4cd2-81d1-f4e131215f6c" />
+<img width="6360" height="2930" alt="image" src="https://github.com/user-attachments/assets/49f237f4-7827-4f15-8532-e8f165fef9f1" />
+
 
 English | [简体中文](./docs/README.zh.md) | [繁體中文](./docs/README.zh-TW.md) | [한국어](./docs/README.ko.md) | [日本語](./docs/README.ja.md) | [Deutsch](./docs/README.de.md) | [Español](./docs/README.es.md) | [Français](./docs/README.fr.md) | [Italiano](./docs/README.it.md) | [Dansk](./docs/README.da.md) | [Polski](./docs/README.pl.md) | [Русский](./docs/README.ru.md) | [العربية](./docs/README.ar.md) | [Norsk](./docs/README.no.md) | [Português (Brasil)](./docs/README.pt-BR.md) | [ไทย](./docs/README.th.md) | [Türkçe](./docs/README.tr.md) | [Українська](./docs/README.uk.md)
 
@@ -126,12 +127,13 @@ Once configured, use the `codex` command as normal. Visit `http://localhost:7008
 
 After launching with cxv, you can see:
 
-<img width="1500" height="765" alt="image" src="https://github.com/user-attachments/assets/ab353a2b-f101-409d-a28c-6a4e41571ea2" />
+<img width="1506" height="764" alt="image" src="https://github.com/user-attachments/assets/1441ebc6-94ac-4908-a72c-72f172466bec" />
 
 
 You can view code diffs directly after editing:
 
-<img width="1500" height="728" alt="image" src="https://github.com/user-attachments/assets/2a4acdaa-fc5f-4dc0-9e5f-f3273f0849b2" />
+<img width="1507" height="773" alt="image" src="https://github.com/user-attachments/assets/ef6d0e14-80df-4e97-a365-a8a5af335efe" />
+
 
 While you can open files and code manually, manual coding is not recommended — that's old-school coding!
 
@@ -139,13 +141,15 @@ While you can open files and code manually, manual coding is not recommended —
 
 You can even scan a QR code to code from your mobile device:
 
-<img width="3018" height="1460" alt="image" src="https://github.com/user-attachments/assets/8debf48e-daec-420c-b37a-609f8b81cd20" />
+<img width="3936" height="2002" alt="image" src="https://github.com/user-attachments/assets/69786720-2b12-45a6-b4b8-3b382fd790aa" />
+
 
 Fulfill your imagination of mobile programming. There's also a plugin mechanism — if you need to customize for your coding habits, stay tuned for plugin hooks updates.
 
 ### Logger Mode (View Complete Codex Sessions)
 
-<img width="1500" height="768" alt="image" src="https://github.com/user-attachments/assets/a8a9f3f7-d876-4f6b-a64d-f323a05c4d21" />
+<img width="1507" height="778" alt="image" src="https://github.com/user-attachments/assets/3daef25e-b9f6-4c23-af6f-e6c36c1feb27" />
+
 
 
 - Captures all API requests from Codex in real time, ensuring raw text — not redacted logs (this is important!!!)
@@ -158,7 +162,7 @@ Fulfill your imagination of mobile programming. There's also a plugin mechanism 
 
 Click the "Conversation Mode" button in the top-right corner to parse the Main Agent's complete conversation history into a chat interface:
 
-<img width="1500" height="764" alt="image" src="https://github.com/user-attachments/assets/725b57c8-6128-4225-b157-7dba2738b1c6" />
+<img width="1509" height="767" alt="image" src="https://github.com/user-attachments/assets/f1e3ce12-b5e0-4905-a41d-1dc10c43663f" />
 
 
 - Agent Team display is not yet supported
@@ -171,10 +175,6 @@ Click the "Conversation Mode" button in the top-right corner to parse the Main A
 
 ### Statistics Tool
 
-The "Data Statistics" floating panel in the header area:
-
-<img width="1500" height="765" alt="image" src="https://github.com/user-attachments/assets/a3d2db47-eac3-463a-9b44-3fa64994bf3b" />
-
 - Displays cache creation/read counts and cache hit rate
 - Cache rebuild statistics: grouped by reason (TTL, system/tools/model changes, message truncation/modification, key changes) showing counts and cache_creation tokens
 - Tool usage statistics: displays call frequency for each tool sorted by number of calls
@@ -185,32 +185,15 @@ The "Data Statistics" floating panel in the header area:
 ### Log Management
 
 Via the CX-Viewer dropdown menu in the top-left corner:
-<img width="1500" height="760" alt="image" src="https://github.com/user-attachments/assets/33295e2b-f2e0-4968-a6f1-6f3d1404454e" />
+<img width="1503" height="784" alt="image" src="https://github.com/user-attachments/assets/4e80b485-a198-45e8-9abb-a13a8e50a2fe" />
+
 
 **Log Compression**
 Regarding logs, the author wants to clarify that the official Anthropic definitions have not been modified, ensuring log integrity. However, since individual log entries from the 1M Opus model can become extremely large in later stages, thanks to certain log optimizations for MainAgent, at least 66% size reduction is achieved without gzip. The parsing method for these compressed logs can be extracted from the current repository.
 
-### More Useful Features
-
-<img width="1500" height="767" alt="image" src="https://github.com/user-attachments/assets/add558c5-9c4d-468a-ac6f-d8d64759fdbd" />
-
-You can quickly locate your prompts using the sidebar tools.
-
---- 
-
-<img width="1500" height="765" alt="image" src="https://github.com/user-attachments/assets/82b8eb67-82f5-41b1-89d6-341c95a047ed" />
-
-The interesting KV-Cache-Text feature lets you see exactly what Claude sees.
-
 ---
 
-<img width="1500" height="765" alt="image" src="https://github.com/user-attachments/assets/54cdfa4e-677c-4aed-a5bb-5fd946600c46" />
-
-You can upload images and describe your needs — Claude's image understanding is incredibly powerful. And as you know, you can paste images directly with Ctrl+V, and your complete content will be displayed in the conversation.
-
----
-
-<img width="600" height="370" alt="image" src="https://github.com/user-attachments/assets/87d332ea-3e34-4957-b442-f9d070211fbf" />
+<img width="1499" height="779" alt="image" src="https://github.com/user-attachments/assets/f1349997-c382-46de-82cb-87a06ddf8461" />
 
 You can customize plugins, manage all CX-Viewer processes
 
